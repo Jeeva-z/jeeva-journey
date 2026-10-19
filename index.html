@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#6fae55">
+<title>The Road So Far · Jeeva S U</title>
+<link rel="stylesheet" href="style.css">
+<style>
+#jbar{position:absolute;top:16px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;background:var(--glass);border:2px solid #a77a4a;border-radius:30px;padding:7px 16px;box-shadow:0 6px 0 #6b4a2c33,0 12px 28px #3b2a2233}
+#jbar span{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:#8a7260;letter-spacing:.04em;opacity:.65}
+#jbar span i{font-style:normal;font-size:17px;filter:grayscale(1)}
+#jbar span.done{opacity:1;color:var(--leaf)}#jbar span.done i{filter:none}
+#jbar span.cur{opacity:1;color:var(--rust)}#jbar span.cur i{filter:none;animation:bob2 1.2s ease-in-out infinite}
+#jbar b{width:16px;height:2px;background:#a77a4a77;border-radius:2px}
+@keyframes bob2{50%{transform:translateY(-3px)}}
+#finale{position:fixed;inset:0;z-index:55;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6vh;background:linear-gradient(transparent 40%,#1a120e99);pointer-events:auto}
+.fnbox{max-width:640px;margin:0 16px;text-align:center;background:#fbf1daf2;border:3px solid var(--wood);border-radius:24px;padding:22px 28px 20px;box-shadow:0 8px 0 #6b4a2c55,0 24px 60px #000a;animation:drop .8s cubic-bezier(.2,1.3,.4,1)}
+.fnbox h2{margin:0;font-family:var(--serif);font-style:italic;font-size:clamp(30px,6vw,46px);color:var(--rust)}
+.fnbox p{font-family:var(--serif);font-size:16px;line-height:1.6;color:#5a4538;margin:8px 0 0}
+.fnbtns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px}
+.fnbtns button{padding:10px 20px;font-size:15px;border-radius:14px;border:2px solid var(--wood);background:var(--gold);color:var(--ink);font-weight:700;box-shadow:0 4px 0 #8a5a36}
+.fnbtns button:nth-child(2){background:#fffaf0}.fnbtns button:nth-child(3){background:#bfe3a0}
+@media(max-width:760px){#jbar span{font-size:0;gap:0}#jbar{padding:6px 10px;gap:3px;max-width:94vw}#jbar b{width:8px}#quest{top:64px}}
+#tabs{position:absolute;top:16px;left:50%;transform:translateX(-50%);display:flex;gap:8px;pointer-events:auto;z-index:5}#tabs a{display:flex;align-items:center;gap:6px;padding:8px 16px;background:var(--glass);border:2px solid #a77a4a77;border-radius:999px;color:var(--rust);font-weight:800;font-size:13px;letter-spacing:.05em;text-decoration:none;box-shadow:0 4px 14px #3b2a2230}#tabs a:hover{background:#fff6e4}#tabs a i{font-style:normal}
+@media(max-width:760px){#tabs{left:auto;right:12px;transform:none}}
+</style>
+</head>
+<body>
+<div id="game"></div>
+
+<div id="hud" hidden>
+  <nav id="tabs"><a href="#" id="tabResume">Resume <i>&#128424;</i></a></nav>
+  <div class="panel" id="quest" style="top:76px">
+    <small id="qChapter">Chapter 1</small>
+    <strong id="qTitle">The Gully</strong>
+    <p id="qText"></p>
+    <div id="qArrowRow"><span id="qArrow">↑</span><span id="qDist"></span></div>
+  </div>
+  <div id="prompt" hidden></div>
+  <div id="toast" hidden></div>
+  <div id="help">WASD / arrows move · E interact · follow the golden path</div>
+</div>
+
+<div id="touch" hidden>
+  <div id="stick"><i id="knob"></i></div>
+  <button id="actBtn">E</button>
+</div>
+
+<div id="dlg" hidden>
+  <div id="dlgName"></div>
+  <div id="dlgText"></div>
+  <div id="dlgChoices"></div>
+  <div id="dlgHint">▼ Space / E / click</div>
+</div>
+
+<div id="cricketHud" hidden>
+  <div class="ckboard">
+    <div><small id="ckBalls">Ball 1 / 6</small><b id="ckRuns">0</b><small id="ckTarget">Target 12</small></div>
+    <div id="ckDots"></div>
+  </div>
+  <div id="ckBig"></div>
+  <div id="ckSub"></div>
+  <div class="cktip">SPACE / tap: swing when the ball reaches the bat · hold A / D to aim</div>
+</div>
+
+<div id="chessUI" hidden>
+  <div id="chessStatus">Your move.</div>
+  <div class="chessbtns"><button id="chessHint">💡 Hint</button><button id="chessSkip">Let Thatha win &amp; move on</button></div>
+</div>
+
+<div id="folio" hidden>
+  <div class="folioWrap">
+    <button id="folioClose" aria-label="Close">×</button>
+    <div id="folioBody"></div>
+    <em>Esc / E to close</em>
+  </div>
+</div>
+
+<div id="card" hidden>
+  <div class="polaroid">
+    <div class="photo" id="cardEmoji">🏏</div>
+    <h3 id="cardTitle"></h3>
+    <p id="cardText"></p>
+    <small id="cardAge"></small>
+    <em>Press Space to walk on</em>
+  </div>
+</div>
+
+<div id="finale" hidden>
+  <div class="fnbox">
+    <h2>Challenge accepted.</h2>
+    <p>Every road so far began with something I did not know how to do: a bat, a chess board, a classroom, a production incident. AI is the next one. I will learn it, build with it, and keep security first.</p>
+    <div class="fnbtns">
+      <button id="fnWalk">Walk the road again</button>
+      <button id="fnHello">Say hello</button>
+    </div>
+  </div>
+</div>
+
+<div id="title">
+  <div class="titlebox">
+    <img id="titlePhoto" src="assets/me.jpg" alt="" onerror="this.remove()">
+    <p class="eyebrow">Jeeva S U · a life journey</p>
+    <h1>The Road So Far</h1>
+    <p class="sub">A gully cricket pitch, a chess board under a banyan tree, a college campus, a working street, and one very big tower at the end.</p>
+    <div class="btns">
+      <button id="btnNew">Begin</button>
+      <button id="btnCont" hidden>Continue</button>
+    </div>
+    <p class="keys">WASD / arrows to walk · <b>E</b> or Space to interact<br>Touch screens: on-screen stick &amp; E button.</p>
+  </div>
+</div>
+
+<div id="fade"></div>
+
+<script src="vendor/three.min.js"></script>
+<script src="chess.js"></script>
+<script src="cricket.js"></script>
+<script src="post.js"></script>
+<script src="journey.js"></script>
+</body>
+</html>
