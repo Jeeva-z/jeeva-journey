@@ -439,7 +439,7 @@ function barOf(parent, a, b, r, color) {
   m.position.copy(u.clone().add(v).multiplyScalar(.5)); m.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), d.normalize()); m.castShadow = true; parent.add(m); return m;
 }
 const VEH = {
-  trike: { max: 8.4, acc: 8, turn: 5, seat: { y: -.1, z: -.2, lean: 0 }, build() {
+  trike: { max: 10.5, acc: 9, turn: 5, seat: { y: -.1, z: -.2, lean: 0 }, build() {
     const g = new T.Group(), red = 0xd94e47, gold = 0xf1ca68;
     const front = wheelOf(g, .3, .07, .6), rl = wheelOf(g, .27, .07, -.5), rr = wheelOf(g, .27, .07, -.5); rl.position.x = -.32; rr.position.x = .32;
     barOf(g, [0, .62, -.45], [0, .6, .1], .05, red); barOf(g, [0, .6, .1], [0, .35, .6], .05, red);
@@ -449,7 +449,7 @@ const VEH = {
     for (const sd of [-1, 1]) { const p = box(g, .09, .05, .16, gold, 0, 0, 0, false); front.add(p); p.position.set(sd * .22, sd * .13, 0); }
     return { g, wheels: [front, rl, rr], front };
   } },
-  bike: { max: 8.6, acc: 3.2, turn: 4, seat: { y: .27, z: -.2, lean: .3 }, build() {
+  bike: { max: 12.5, acc: 4.2, turn: 4, seat: { y: .27, z: -.2, lean: .3 }, build() {
     const g = new T.Group(), blue = 0x397c98;
     const fw = wheelOf(g, .42, .05, .64), rw = wheelOf(g, .42, .05, -.64);
     const BB = [0, .46, -.02], S = [0, .98, -.24], H = [0, .96, .46], Rh = [0, .42, -.64], Fh = [0, .42, .64];
@@ -460,28 +460,28 @@ const VEH = {
     for (const sd of [-1, 1]) { const p = box(g, .12, .04, .16, 0x222222, 0, 0, 0, false); crank.add(p); p.position.set(sd * .16, sd * .17, 0); }
     return { g, wheels: [fw, rw], crank };
   } },
-  moto: { max: 12, acc: 3, turn: 3.4, seat: { y: .3, z: -.42, lean: .12 }, build() {
-    const g = new T.Group(), RED = 0xd8402f, BLK = 0x2b2b30, WHT = 0xf3efe4, GRY = 0xb8bcc4, GOLD = 0xd9a441;
+  moto: { max: 17, acc: 4.2, turn: 3.6, seat: { y: .3, z: -.42, lean: .12 }, build() {
+    const g = new T.Group(), AZ = 0x1f86d8, AZD = 0x145c9e, RED = 0xd8402f, BLK = 0x2b2b30, WHT = 0xf3efe4, GRY = 0xb8bcc4, GOLD = 0xd9a441;
     const fw = wheelOf(g, .46, .1, .9, 0x2a2420, 22), rw = wheelOf(g, .42, .12, -.86, 0x2a2420, 22);
     for (const w of [fw, rw]) { const rim = new T.Mesh(new T.TorusGeometry(w.userData.r * .8, .022, 6, 28), mat(GRY)); rim.rotation.y = Math.PI / 2; w.add(rim); }
     box(g, .34, .4, .66, 0x3a3a42, 0, .55, 0); box(g, .3, .22, .3, 0x4a4a54, 0, .82, -.05);
     barOf(g, [0, .95, .42], [0, .55, .12], .05, BLK); barOf(g, [0, .55, .12], [0, .45, -.2], .05, BLK); barOf(g, [0, .9, .4], [0, .95, -.3], .05, BLK);
-    sph(g, .3, RED, 0, 1.02, .18, .9, .72, 1.45);
-    for (const sg of [-1, 1]) { const sh = box(g, .08, .3, .52, WHT, sg * .23, .94, .12); sh.rotation.x = .1; }
+    sph(g, .3, AZ, 0, 1.02, .18, .9, .72, 1.45); for (const sg of [-1, 1]) { const st = box(g, .02, .07, .5, WHT, sg * .265, 1.03, .2, false); st.rotation.x = .08; }
+    for (const sg of [-1, 1]) { const sh = box(g, .08, .3, .52, AZ, sg * .23, .94, .12); sh.rotation.x = .1; const sw = box(g, .085, .08, .4, WHT, sg * .232, .86, .1, false); sw.rotation.x = .1; box(g, .09, .12, .3, AZD, sg * .2, .62, -.62, false); }
     box(g, .3, .09, .82, BLK, 0, 1.0, -.52); const tail = box(g, .26, .08, .46, BLK, 0, 1.07, -1.0); tail.rotation.x = .2;
     barOf(g, [0, .55, -.1], [0, .43, -.86], .045, BLK); barOf(g, [0, .92, -.5], [0, .6, -.4], .04, GOLD);
     for (const sg of [-1, 1]) { barOf(g, [sg * .11, 1.3, .55], [sg * .11, .48, .9], .045, 0x2a2a2a); barOf(g, [sg * .11, .95, .7], [sg * .11, .55, .86], .06, GOLD); }
-    const fm = box(g, .2, .05, .64, WHT, 0, .93, .98); fm.rotation.x = -.18; box(g, .2, .05, .12, RED, 0, .98, 1.3).rotation.x = -.5;
-    const nose = box(g, .4, .34, .2, WHT, 0, 1.34, .68); nose.rotation.x = -.25;
+    const fm = box(g, .2, .05, .64, WHT, 0, .93, .98); fm.rotation.x = -.18; box(g, .2, .05, .12, AZ, 0, .98, 1.3).rotation.x = -.5;
+    const nose = box(g, .4, .34, .2, AZ, 0, 1.34, .68); nose.rotation.x = -.25; const ns = box(g, .42, .06, .21, WHT, 0, 1.2, .71, false); ns.rotation.x = -.25;
     add(g, new T.SphereGeometry(.13, 12, 9), new T.MeshBasicMaterial({ color: new T.Color(0xfff0a8).multiplyScalar(1.4) }), 0, 1.3, .8, false);
     const ws = new T.Mesh(new T.BoxGeometry(.36, .4, .02), new T.MeshToonMaterial({ color: 0xaedcf0, gradientMap: toonGrad, transparent: true, opacity: .55 })); ws.position.set(0, 1.66, .6); ws.rotation.x = -.5; g.add(ws);
     barOf(g, [0, 1.24, .5], [0, 1.32, .5], .04, BLK); barOf(g, [-.47, 1.34, .5], [.47, 1.34, .5], .03, BLK);
-    for (const sg of [-1, 1]) { box(g, .06, .2, .14, RED, sg * .5, 1.38, .56); sph(g, .05, 0x222222, sg * .46, 1.34, .5); }
+    for (const sg of [-1, 1]) { box(g, .06, .2, .14, WHT, sg * .5, 1.38, .56); sph(g, .05, 0x222222, sg * .46, 1.34, .5); }
     const ex = cyl(g, .075, .09, .85, 0xc8ccd4, .3, .76, -.5, 10); ex.rotation.x = 1.3; box(g, .05, .1, .5, BLK, .36, .72, -.5).rotation.x = .25;
     barOf(g, [.2, .5, .1], [.3, .62, -.15], .05, GRY);
     for (const sg of [-1, 1]) box(g, .08, .04, .16, GRY, sg * .3, .42, -.18, false);
     box(g, .12, .06, .05, 0xff3030, 0, 1.12, -1.24, false); box(g, .32, .03, .5, BLK, 0, 1.12, -1.15);
-    return { g, wheels: [fw, rw] };
+    return { g, wheels: [fw, rw], exhaust: new T.Vector3(.3, .66, -.95) };
   } },
 };
 function setSeat() { const s = player.veh.cfg.seat; player.body.position.set(0, s.y, s.z); player.body.rotation.set(s.lean, 0, 0); }
@@ -508,7 +508,7 @@ const vehicleFor = i => i < 1 ? 'trike' : i < 4 ? 'bike' : 'moto';
 
 
 const LOOKS = [[0xf0a44b, 0xeadcc0, .62, 'kid', 'trike'], [0xb7a2dc, 0x2b3a6b, .74, 'kid', 'bike'], [0xf4f0e6, 0x3a3a48, .9, 'teen', 'bike'], [0x7a2d3f, 0xc9b48a, 1, 'adult', 'moto'], [0x7a2d3f, 0xc9b48a, 1, 'adult', 'moto']];
-const VEHNAME = { trike: 'a red tricycle', bike: 'a cycle', moto: 'an XPulse-style adventure bike' };
+const VEHNAME = { trike: 'a red tricycle', bike: 'a cycle', moto: 'an Azure Blue XPulse 210-style bike' };
 let targetScale = .62;
 setVehicle('trike');
 function applyLook(i) { const L = LOOKS[Math.min(i, 4)]; player.torsoMat.color.setHex(L[0]); player.legMat.color.setHex(L[1]); targetScale = L[2]; player.setAge(L[3]); setVehicle(stageVeh()); }
@@ -555,6 +555,50 @@ const PRINTER = { x: 49, z: -218.5, paper: null, slot: null };
   STN.push(PRINTER.stn);
 }
 
+// ---- the AI stretch: agent desks, drifting code, words orbiting the tower
+function textCanvas(w, h, draw) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new T.CanvasTexture(c); t.colorSpace = T.SRGBColorSpace; t.anisotropy = 4; return t; }
+function wordSprite(text, col) {
+  const tex = textCanvas(512, 128, (x, w, h) => { x.font = '700 64px ui-monospace, Menlo, monospace'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.shadowColor = col; x.shadowBlur = 24; x.fillStyle = '#ffffff'; x.fillText(text, w / 2, h / 2); x.shadowBlur = 0; x.fillStyle = col; x.globalAlpha = .55; x.fillText(text, w / 2, h / 2); });
+  const s = new T.Sprite(new T.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, fog: false })); s.scale.set(8, 2, 1); return s;
+}
+const AGENTS = [
+  { id: 'claude', title: 'CLAUDE CODE', sub: 'pair-programmer in the terminal', x: -9, z: -297, col: '#f2a36b' },
+  { id: 'codex', title: 'CODEX', sub: 'many tasks, in parallel', x: 9, z: -297, col: '#8fd8ff' },
+  { id: 'astra', title: 'ASTRA', sub: 'agents on the night shift', x: -9, z: -309, col: '#c7a6ff' },
+  { id: 'auto', title: 'AUTOMATION', sub: 'pipelines that run themselves', x: 9, z: -309, col: '#9ff0b0' },
+];
+for (const a of AGENTS) {
+  const g = new T.Group(); g.position.set(a.x, 0, a.z); g.rotation.y = a.x < 0 ? .55 : -.55; world.add(g);
+  box(g, 2.2, .3, 1.4, 0x5a6270, 0, .15, 0); box(g, .35, 1.6, .35, 0x3a404a, 0, 1.05, -.2);
+  box(g, 2.9, 1.9, .18, 0x22262e, 0, 2.6, -.2);
+  const scr = textCanvas(512, 320, (x, w, h) => {
+    x.fillStyle = '#0e1320'; x.fillRect(0, 0, w, h); x.fillStyle = '#1b2236'; x.fillRect(0, 0, w, 34);
+    ['#ff6b5e', '#ffc65a', '#5fd38a'].forEach((c, i) => { x.fillStyle = c; x.beginPath(); x.arc(22 + i * 22, 17, 7, 0, 7); x.fill(); });
+    x.font = '700 54px ui-monospace, Menlo, monospace'; x.fillStyle = a.col; x.fillText(a.title, 26, 118);
+    x.font = '26px ui-monospace, Menlo, monospace'; x.fillStyle = '#c9d4e8'; x.fillText(a.sub, 26, 168);
+    x.fillStyle = '#7f8aa3'; x.fillText('> press E to open session_', 26, 260);
+  });
+  const sm = new T.Mesh(new T.PlaneGeometry(2.7, 1.7), new T.MeshBasicMaterial({ map: scr })); sm.position.set(0, 2.6, -.1); g.add(sm);
+  const gl = new T.Sprite(new T.SpriteMaterial({ map: glowTex(), color: new T.Color(a.col), transparent: true, opacity: .35, depthWrite: false })); gl.scale.set(6, 4, 1); gl.position.set(0, 2.6, -.4); g.add(gl);
+  rounds.push({ x: a.x, z: a.z, r: 1.4 });
+  const sx = a.x < 0 ? a.x + 2.6 : a.x - 2.6, r = ringAt(sx, a.z, new T.Color(a.col).getHex());
+  STN.push({ id: a.id, x: sx, z: a.z, label: 'Open · ' + a.title.charAt(0) + a.title.slice(1).toLowerCase(), kind: 'term', act: 4, ...r });
+}
+// drifting code glyphs along the last stretch
+const GLYPHS = [];
+{
+  const bits = ['{ }', '</>', '+ diff', '- bug', '=>', 'git push', '✓ tests', 'async', '#!', 'λ', 'PR #42', '[ ]', 'npm i', 'deploy', 'agent', '{…}'];
+  const cols = ['#bff6ff', '#ffe9a8', '#c7a6ff', '#9ff0b0'];
+  for (let i = 0; i < 34; i++) {
+    const tex = textCanvas(256, 64, (x, w, h) => { x.font = '600 34px ui-monospace, Menlo, monospace'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = cols[i % 4]; x.shadowColor = cols[i % 4]; x.shadowBlur = 12; x.fillText(bits[i % bits.length], w / 2, h / 2); });
+    const s = new T.Sprite(new T.SpriteMaterial({ map: tex, transparent: true, opacity: 0, depthWrite: false })); s.scale.set(2.4, .6, 1);
+    s.userData = { x: (Math.random() - .5) * 26, z: -288 - Math.random() * 44, y: Math.random() * 12, sp: .4 + Math.random() * .8 };
+    s.position.set(s.userData.x, s.userData.y, s.userData.z); scene.add(s); GLYPHS.push(s);
+  }
+}
+// words orbiting the tower
+SPIRE.words = ['CLAUDE CODE', 'CODEX', 'ASTRA', 'AUTOMATION', 'CHANGES'].map((w, i) => { const s = wordSprite(w, ['#f2a36b', '#8fd8ff', '#c7a6ff', '#9ff0b0', '#ffe9a8'][i]); s.userData = { a: i / 5 * Math.PI * 2, y: 9 + i * 3.2 }; SPIRE.g.add(s); return s; });
+
 /* --------------------------------------------------------- dialogue */
 let dlg = null;
 function say(lines) {
@@ -579,7 +623,7 @@ function finishText() {
   } else $('dlgHint').hidden = false;
 }
 function pick(k) {
-  if (!dlg || !dlg.waitingChoice) return;
+  if (!dlg || !dlg.waitingChoice || !(dlg.q[dlg.i].choices || [])[k]) return;
   const l = dlg.q[dlg.i]; l.picked = true; dlg.result = k; dlg.waitingChoice = false;
   beep(660, .08, 'triangle'); $('dlgChoices').innerHTML = '';
   if (l.choices[k].reply) dlg.q.splice(dlg.i + 1, 0, ...l.choices[k].reply);
@@ -600,7 +644,7 @@ function showCard(emoji, title, text, age) {
     $('cardEmoji').textContent = emoji; $('cardTitle').textContent = title; $('cardText').textContent = text; $('cardAge').textContent = age;
     $('card').hidden = false; state.mode = 'card'; chime();
     const done = () => { $('card').removeEventListener('click', done); removeEventListener('keydown', onKey); $('card').hidden = true; state.mode = 'explore'; resolve(); };
-    const onKey = e => { if (e.code === 'Space' || e.code === 'Enter' || e.code === 'KeyE') done(); };
+    const onKey = e => { if (e.code === 'Space' || e.code === 'Enter' || e.code === 'KeyE' || e.code === 'Escape') done(); };
     setTimeout(() => { $('card').addEventListener('click', done); addEventListener('keydown', onKey); }, 700);
   });
 }
@@ -662,7 +706,7 @@ const CARDS = [
   ['💼', 'Grootan Technologies', 'Intern in June 2023, Software Engineer Level 1 since May 2024: secure authentication for banks in Europe, IBM, and a city in Germany.', 'Chapter 4'],
 ];
 const curAct = () => { for (let i = 0; i < ACTS.length; i++) if (!save.done.includes(i)) return i; return ACTS.length; };
-const stationDone = s => s.kind === 'folio' ? save.visited.includes(s.id) : save.done.includes(s.act);
+const stationDone = s => s.kind === 'term' ? (save.terms || []).includes(s.id) : s.kind === 'folio' ? save.visited.includes(s.id) : save.done.includes(s.act);
 const $q = id => document.getElementById(id);
 let toastT = 0;
 function toast(head, text) { $('toast').innerHTML = `<b>${head}</b>${text}`; $('toast').hidden = false; toastT = 4.5; beep(900, .2, 'sine', .05); }
@@ -725,17 +769,137 @@ const runStory = {
   },
   async ai() {
     busy = true;
+    const seen = (save.terms || []).length;
     await say([
-      NAR('The road ends at a tower of light, humming somewhere above the clouds.'),
-      NAR('Machines that write code, answer questions and change how software gets built. Everything on this road is about to change.'),
-      { who: '', text: 'Every road so far started with something I did not know how to do. What about this one?', choices: [
-        { label: 'It is a lot.', reply: [NAR('A lot is just a challenge with the volume turned up.')] },
-        { label: 'Challenge accepted.', reply: [NAR('Good. Walk into the light.')] }] },
+      NAR('The road ends at a tower of light. Words drift around it like fireflies: CLAUDE CODE. CODEX. ASTRA. AUTOMATION. CHANGES.'),
+      NAR('Not long ago, building software meant typing every line yourself. Now agents read the codebase, plan, write, test and open the pull request while you watch.'),
+      ...(seen < AGENTS.length ? [NAR(`You looked into ${seen} of the ${AGENTS.length} agent desks on the way in. The rest are still humming behind you.`)] : [NAR('You opened every desk on the way in. The terminal, the parallel tasks, the night-shift agents, the pipeline. The tower noticed.')]),
+      { who: '', text: 'So where does that leave the engineer?', choices: [
+        { label: 'Replaced?', reply: [NAR('No. Typing gets cheaper. Knowing what to build, and what must never break, gets more valuable.')] },
+        { label: 'Promoted.', reply: [NAR('Exactly. From writing every line to directing the work: framing the problem, reviewing every diff, owning the security.')] }] },
+      NAR('Banks still need keys that never leak. A city still needs an app that does not go down at 2 a.m. The tools changed. The responsibility did not.'),
+      { who: '', text: 'Every road so far began with something I did not know how to do. A bat. A chessboard. A classroom. A production incident. This is the next one.', choices: [
+        { label: 'Challenge accepted.', reply: [NAR('Then walk into the light.')] }] },
     ]);
     await finale();
   },
 };
+function on(id, fn) { const el = document.getElementById(id); if (el) el.onclick = fn; }
 let printT = -1, resumeGuide = false, away = null;
+// ---- exhaust smoke
+const SMOKE = [], smokeTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 2, 32, 32, 30); g.addColorStop(0, 'rgba(255,255,255,.9)'); g.addColorStop(.5, 'rgba(235,235,235,.45)'); g.addColorStop(1, 'rgba(235,235,235,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); return new T.CanvasTexture(c); })();
+for (let i = 0; i < 48; i++) { const s = new T.Sprite(new T.SpriteMaterial({ map: smokeTex, color: 0xb4afa6, transparent: true, opacity: 0, depthWrite: false })); s.visible = false; scene.add(s); SMOKE.push({ s, t: 9, life: 1 }); }
+let smokeAcc = 0, smokeI = 0; const _ex = new T.Vector3();
+function smokeStep(dt) {
+  const V = player.veh;
+  if (V && V.type === 'moto' && V.d.exhaust && player.g.visible !== false && (state.mode === 'explore' || state.mode === 'cut')) {
+    const r = player.v / V.cfg.max; smokeAcc += dt * (3 + r * 22);
+    while (smokeAcc >= 1) { smokeAcc -= 1; const P = SMOKE[smokeI++ % SMOKE.length]; _ex.copy(V.d.exhaust); V.d.g.localToWorld(_ex); P.s.position.copy(_ex); P.t = 0; P.life = .9 + Math.random() * .6; P.vx = (Math.random() - .5) * .4 - Math.sin(player.heading) * player.v * .15; P.vz = (Math.random() - .5) * .4 - Math.cos(player.heading) * player.v * .15; P.s.visible = true; }
+  }
+  for (const P of SMOKE) { if (P.t >= P.life) { if (P.s.visible) P.s.visible = false; continue; } P.t += dt; const k = P.t / P.life; P.s.position.x += P.vx * dt; P.s.position.z += P.vz * dt; P.s.position.y += dt * .7; P.s.scale.setScalar(.25 + k * 1.1); P.s.material.opacity = .55 * (1 - k); }
+}
+// ---- map
+const MAPN = { ravi: 'Cricket · Ravi', thatha: 'Chess · Thatha', edu: 'B.I.T.', ach: 'Hackathon Hall', exp: 'Grootan', ibm: 'IBM PKV', ibb: 'IBB Istanbul', city: 'CityApp Worms', skills: 'Tool Shed', printer: 'Resume printer', claude: 'Claude Code', codex: 'Codex', astra: 'Astra', auto: 'Automation', ai: 'The AI tower' };
+let mapBig = false, mapAcc = 0;
+function drawMap(cv, big) {
+  const x = cv.getContext('2d'), W = cv.width, H = cv.height, pp = player.g.position;
+  // big map: road runs left to right (u = -z, v = x). minimap: north-up around the player (u = x, v = z).
+  const U = big ? (wx, wz) => -wz : (wx, wz) => wx, Vv = big ? (wx, wz) => wx : (wx, wz) => wz;
+  let u0, u1, v0, v1;
+  if (big) { u0 = -50; u1 = 385; v0 = -34; v1 = 62; } else { const R = 55; u0 = pp.x - R; u1 = pp.x + R; v0 = pp.z - R; v1 = pp.z + R; }
+  const sc = Math.min(W / (u1 - u0), H / (v1 - v0)), ou = (W - (u1 - u0) * sc) / 2, ov = (H - (v1 - v0) * sc) / 2;
+  const X = (wx, wz) => ou + (U(wx, wz) - u0) * sc, Y = (wx, wz) => ov + (Vv(wx, wz) - v0) * sc;
+  x.clearRect(0, 0, W, H); x.fillStyle = '#9cc67a'; x.fillRect(0, 0, W, H);
+  x.lineCap = x.lineJoin = 'round';
+  const road = () => { x.beginPath(); PATH.forEach(([a, b], i) => i ? x.lineTo(X(a, b), Y(a, b)) : x.moveTo(X(a, b), Y(a, b))); };
+  road(); x.strokeStyle = '#7a5a3a66'; x.lineWidth = Math.max(5, 6 * sc); x.stroke(); x.strokeStyle = '#e8c88f'; x.lineWidth = Math.max(3, 4.4 * sc); x.stroke();
+  x.fillStyle = '#6fb6d8'; x.beginPath(); x.arc(X(0, -334), Y(0, -334), Math.max(5, 3 * sc), 0, 7); x.fill();
+  const cur = curAct(), a = ACTS[cur];
+  for (const s of STN) {
+    const done = stationDone(s), want = a && a.need.includes(s.id) && !done;
+    const col = s.kind === 'term' ? '#8f7cff' : s.kind === 'print' ? '#2fb8a0' : s.kind === 'folio' ? '#e8a33d' : '#d8402a';
+    const sx = X(s.x, s.z), sy = Y(s.x, s.z), r = big ? 5.5 : 3.5;
+    x.fillStyle = done ? '#ffffffaa' : col; x.strokeStyle = '#3b2a22'; x.lineWidth = 1.5; x.beginPath(); x.arc(sx, sy, want ? r + 2 : r, 0, 7); x.fill(); x.stroke();
+    if (want) { x.strokeStyle = '#ffffff'; x.lineWidth = 2; x.beginPath(); x.arc(sx, sy, r + 5 + Math.sin(performance.now() / 200) * 1.5, 0, 7); x.stroke(); }
+    if (big && MAPN[s.id]) {
+      x.font = '600 13px system-ui, sans-serif'; x.fillStyle = '#2b1d16';
+      const n = pathNear(s.x, s.z), nx = X(n.px, n.pz), ny = Y(n.px, n.pz), dx = sx - nx, dy = sy - ny;
+      if (s.kind === 'term') { const first = s.z > -303; x.textAlign = first ? 'right' : 'left'; x.fillText(MAPN[s.id], sx + (first ? -9 : 9), sy + (dy < 0 ? -9 : 15)); }
+      else if (s.id === 'ai') { x.textAlign = 'left'; x.fillText(MAPN[s.id], X(0, -334) + 12, sy + 4); }
+      else if (Math.abs(dx) > Math.abs(dy)) { x.textAlign = dx < 0 ? 'right' : 'left'; x.fillText(MAPN[s.id], sx + (dx < 0 ? -10 : 10), sy + 4); }
+      else { x.textAlign = 'center'; x.fillText(MAPN[s.id], sx, sy + (dy < 0 ? -11 : 20)); }
+    }
+  }
+  const h = player.heading, px = X(pp.x, pp.z), pz = Y(pp.x, pp.z), L = big ? 12 : 9;
+  const fx_ = Math.sin(h), fz_ = Math.cos(h), du = big ? -fz_ : fx_, dv = big ? fx_ : fz_;
+  x.save(); x.translate(px, pz); x.rotate(Math.atan2(du, -dv)); x.fillStyle = '#ffffff'; x.strokeStyle = '#d8402a'; x.lineWidth = 2.5;
+  x.beginPath(); x.moveTo(0, -L); x.lineTo(L * .65, L * .7); x.lineTo(0, L * .35); x.lineTo(-L * .65, L * .7); x.closePath(); x.fill(); x.stroke(); x.restore();
+  if (!big) { x.strokeStyle = '#3b2a22'; x.lineWidth = 3; x.strokeRect(1.5, 1.5, W - 3, H - 3); }
+}
+function toggleMap(on) {
+  mapBig = on === undefined ? !mapBig : on; $('mapBig').hidden = !mapBig;
+  if (mapBig) { state.mode = 'map'; drawMap($('mapBigCv'), true); } else if (state.mode === 'map') state.mode = 'explore';
+}
+const SESS = {
+  claude: { title: 'claude — ~/consent-auth', lines: [
+    ['cmd', '$ claude'], ['dim', '✻ Claude Code · ready in ~/consent-auth'],
+    ['cmd', '> add key rotation to the HSM service and cover it with tests'],
+    ['out', '● Reading src/hsm/client.ts, src/keys/store.ts …'],
+    ['out', '● Plan: 1. rotate on schedule  2. keep the old key for a grace period  3. tests'],
+    ['del', '- // TODO: key rotation'],
+    ['add', '+ export async function rotateKey(id: string) {'],
+    ['add', '+   const next = await hsm.generate(id);'],
+    ['add', '+   await store.promote(next, { graceMs: DAY });'],
+    ['add', '+ }'],
+    ['out', '● Running the test suite …'], ['ok', '✓ 42 passed · 0 failed'],
+    ['note', 'It writes the first draft. I still read every diff, because the keys are mine to protect.']] },
+  codex: { title: 'codex — task board', lines: [
+    ['cmd', '$ codex'], ['dim', 'running 3 tasks in parallel'],
+    ['out', '[1] fix the flaky login test ........ done'],
+    ['out', '[2] move config to env variables .... done'],
+    ['out', '[3] write docs for the consent API .. done'],
+    ['ok', '✓ 3 pull requests ready for review'],
+    ['cmd', '> open PR #3'], ['add', '+ docs/consent-api.md   (+214 lines)'],
+    ['note', 'Many hands, working at once. One reviewer who knows what “done” means.']] },
+  astra: { title: 'astra — agent desk', lines: [
+    ['cmd', '$ astra status'], ['dim', 'night shift · watching builds, logs and the support queue'],
+    ['out', '02:14  spike in 401s on /token'],
+    ['out', '02:15  traced to an expired client certificate'],
+    ['out', '02:16  drafted a fix and a rollback plan · paged a human'],
+    ['ok', '✓ human approved · incident closed in 9 minutes'],
+    ['note', 'Agents can keep watch all night. A human still holds the keys.']] },
+  auto: { title: 'pipeline — main', lines: [
+    ['cmd', '$ git push origin main'],
+    ['out', '→ lint ................ ok'], ['out', '→ unit tests .......... ok'],
+    ['out', '→ security scan ....... ok'], ['out', '→ build ............... ok'],
+    ['out', '→ deploy .............. ok'], ['ok', '✓ live in 41 seconds'],
+    ['note', 'The boring parts run themselves now. That frees my hours for the hard parts.']] },
+};
+let term = null;
+function openTerm(id) {
+  const S = SESS[id]; if (!S) return;
+  state.mode = 'term'; $('hud').hidden = true; $('termTitle').textContent = S.title; $('termBody').innerHTML = ''; $('term').hidden = false;
+  term = { id, S, li: 0, ci: 0, acc: 0, el: null, done: false }; beep(440, .05, 'triangle', .03);
+}
+function termAddLine(L) { const d = document.createElement('div'); d.className = 't-' + L[0]; $('termBody').appendChild(d); return d; }
+function termStep(dt) {
+  if (!term || term.done) return;
+  term.acc += dt * (term.S.lines[term.li][0] === 'cmd' ? 38 : 120);
+  while (term.acc >= 1 && !term.done) {
+    term.acc -= 1; const L = term.S.lines[term.li];
+    if (!term.el) term.el = termAddLine(L);
+    term.ci++; term.el.textContent = L[1].slice(0, term.ci);
+    if (term.ci >= L[1].length) { term.li++; term.ci = 0; term.el = null; term.acc -= L[0] === 'cmd' ? 8 : 3; if (term.li >= term.S.lines.length) { term.done = true; $('termHint').textContent = 'E · close'; } }
+  }
+  $('termBody').scrollTop = 1e6;
+}
+function termKey() {
+  if (!term) return;
+  if (!term.done) { $('termBody').innerHTML = ''; for (const L of term.S.lines) termAddLine(L).textContent = L[1]; term.done = true; $('termHint').textContent = 'E · close'; $('termBody').scrollTop = 1e6; return; }
+  $('term').hidden = true; $('hud').hidden = false; $('termHint').textContent = 'E · skip'; state.mode = 'explore';
+  const id = term.id; term = null; save.terms = save.terms || [];
+  if (!save.terms.includes(id)) { save.terms.push(id); persist(); const n = save.terms.length; if (n === AGENTS.length) toast('The tower is listening', 'You opened every agent desk. Walk up to the tower.'); else toast('Agent desk', `${n} of ${AGENTS.length} desks opened.`); }
+}
 const fx = [];
 function poof(x, z, col = 0x9be8ff) {
   const sp = new T.Sprite(new T.SpriteMaterial({ map: glowTex(), color: col, transparent: true, opacity: .9, depthWrite: false })); sp.position.set(x, 1.1, z); sp.scale.set(1, 1, 1); scene.add(sp); fx.push({ sp, t: 0 });
@@ -786,6 +950,7 @@ async function printResume() {
 }
 async function interactStation(s) {
   if (s.kind === 'print') { await printResume(); return; }
+  if (s.kind === 'term') { openTerm(s.id); return; }
   if (s.kind === 'folio') { openFolio(s.id); return; }
   if (save.done.includes(s.act) && s.id !== 'ai') {
     if (s.id === 'ravi') await say([A('Ravi', '"Another over? Fine, but no crying this time."')]);
@@ -796,19 +961,25 @@ async function interactStation(s) {
 }
 
 /* ---- finale: challenge accepted */
-async function finale() {
+const CAPS = [[.4, 'CLAUDE CODE', 'plans, edits and tests, right in the terminal'], [2.0, 'CODEX', 'many coding tasks, running at once'], [3.6, 'ASTRA', 'agents keeping watch on the night shift'], [5.2, 'AUTOMATION', 'pipelines that build, test and ship themselves'], [6.8, 'CHANGES', 'the job moves up a level: from typing to directing'], [8.6, 'CHALLENGE ACCEPTED', 'Jeeva S U · software engineer, still learning']];
+let capI = -1;
+function caption(t) {
+  let i = -1; for (let k = 0; k < CAPS.length; k++) if (t >= CAPS[k][0]) i = k;
+  if (i !== capI) { capI = i; if (i < 0) { $('cap').hidden = true; return; } $('capH').textContent = CAPS[i][1]; $('capP').textContent = CAPS[i][2]; $('cap').hidden = false; const c = $('cap'); c.classList.remove('in'); void c.offsetWidth; c.classList.add('in'); beep(500 + i * 70, .12, 'sine', .03); }
+}
+async function finale() { capI = -1;
   state.mode = 'cut'; $('hud').hidden = true; busy = true;
   const p0 = player.g.position.clone(), cam0 = camera.position.clone(); let t = 0;
   player.v = 0; player.heading = Math.PI; player.g.rotation.y = Math.PI; player.legs.forEach(l => l.rotation.x = 0);
   await new Promise(resolve => {
     ticker = dt => {
-      t += dt; const k = clamp(t / 7, 0, 1), e = k * k * (3 - 2 * k);
+      t += dt; const k = clamp(t / 9, 0, 1), e = k * k * (3 - 2 * k); caption(t);
       SPIRE.awaken = e;
       const tx = lerp(cam0.x, 0, e), ty = lerp(cam0.y, 19, e), tz = lerp(cam0.z, p0.z + 32, e);
       camera.position.set(tx, ty, tz); camera.lookAt(0, lerp(1.2, 21, e), lerp(p0.z - 14, -334, e));
       player.arms[0].rotation.x = player.arms[1].rotation.x = -lerp(.2, 3.0, clamp(t / 2.5, 0, 1));
       player.body.position.y = Math.abs(Math.sin(t * 6)) * .05 * (1 - e); player.g.position.y = e > .5 ? .07 + Math.sin((e - .5) * 3) * .02 : .07;
-      if (t >= 7.5) { ticker = null; resolve(); }
+      if (t >= 10.5) { ticker = null; $('cap').hidden = true; resolve(); }
     };
   });
   state.mode = 'end'; $('finale').hidden = false; chime();
@@ -894,6 +1065,11 @@ function animate() {
   }
   sun.position.set(pp.x - 22, 34, pp.z + 14); sun.target.position.set(pp.x, 0, pp.z);
   if (state.mode === 'explore' && !busy) { const it = nearestInteract(); $('prompt').hidden = !it; if (it) $('prompt').textContent = 'E · ' + it.label; } else $('prompt').hidden = true;
+  termStep(dt); smokeStep(dt);
+  mapAcc += dt; if (mapAcc > .1) { mapAcc = 0; if (!$('hud').hidden) drawMap($('miniMap'), false); if (mapBig) drawMap($('mapBigCv'), true); }
+  { const pz = player.g.position.z, near = clamp((-pz - 262) / 30, 0, 1), aw = SPIRE.awaken || 0;
+    for (const s of GLYPHS) { const u = s.userData; u.y += dt * u.sp; if (u.y > 14) u.y = 0; s.position.set(u.x + Math.sin(t * .5 + u.z) * .4, u.y, u.z); s.material.opacity = (near * .75 + aw * .25) * Math.min(1, u.y / 2) * Math.min(1, (14 - u.y) / 3); }
+    for (const w of SPIRE.words) { const u = w.userData, a = u.a + t * (.18 + aw * .5), r = 9.5 + aw * 3; w.position.set(Math.cos(a) * r, u.y + Math.sin(t + u.a) * .6 + aw * 3, Math.sin(a) * r); w.material.opacity = .35 + near * .35 + aw * .3; const sc = 1 + aw * .6; w.scale.set(8 * sc, 2 * sc, 1); } }
   for (let i = fx.length - 1; i >= 0; i--) { const f = fx[i]; f.t += dt; const k = f.t / .8; f.sp.scale.setScalar(1 + k * 7); f.sp.material.opacity = Math.max(0, .9 * (1 - k)); if (k >= 1) { scene.remove(f.sp); fx.splice(i, 1); } }
   if (printT >= 0) { printT += dt; PRINTER.paper.position.z = Math.min(1.25, .3 + printT * .22); PRINTER.paper.position.y = .56 + Math.sin(printT * 9) * .004; }
   if (state.mode === 'explore') {
@@ -911,6 +1087,9 @@ addEventListener('keydown', e => {
   if (e.repeat) { keys.add(e.code); return; }
   keys.add(e.code);
   if (state.mode === 'folio') { if (['Escape', 'KeyE', 'Space', 'Enter'].includes(e.code)) closeFolio(); return; }
+  if (state.mode === 'map') { if (['Escape', 'KeyM', 'KeyE', 'Space', 'Enter'].includes(e.code)) toggleMap(false); return; }
+  if (state.mode === 'explore' && !busy && e.code === 'KeyM') { toggleMap(true); return; }
+  if (state.mode === 'term') { if (['Escape', 'KeyE', 'Space', 'Enter'].includes(e.code)) termKey(); return; }
   if (state.mode === 'dialog') { if (e.code === 'Space' || e.code === 'Enter' || e.code === 'KeyE') advance(); else if (/^Digit[1-4]$/.test(e.code)) pick(+e.code.slice(5) - 1); }
   else if (state.mode === 'explore' && !busy) { if (e.code === 'KeyE' || e.code === 'Enter' || e.code === 'Space') interact(); }
 });
@@ -919,7 +1098,7 @@ addEventListener('blur', () => keys.clear());
 renderer.domElement.addEventListener('pointerdown', e => { if (state.mode === 'chess') ChessGame.pointer(e.clientX, e.clientY, innerWidth, innerHeight); });
 $('dlg').addEventListener('click', () => advance());
 async function interact() { if (state.mode !== 'explore' || busy) return; const s = nearestInteract(); if (s) await interactStation(s); }
-$('actBtn').addEventListener('pointerdown', e => { e.preventDefault(); if (state.mode === 'explore') interact(); else if (state.mode === 'folio') closeFolio(); else if (state.mode === 'dialog') advance(); });
+$('actBtn').addEventListener('pointerdown', e => { e.preventDefault(); if (state.mode === 'explore') interact(); else if (state.mode === 'term') termKey(); else if (state.mode === 'folio') closeFolio(); else if (state.mode === 'dialog') advance(); });
 {
   const stick = $('stick'), knob = $('knob'); let id = null;
   const set = e => { const r = stick.getBoundingClientRect(), x = (e.clientX - r.left - 60) / 60, z = (e.clientY - r.top - 60) / 60, l = Math.hypot(x, z) || 1, k = Math.min(1, l); joy.x = x / l * k; joy.z = z / l * k; knob.style.transform = `translate(${joy.x * 35}px,${joy.z * 35}px)`; };
@@ -937,7 +1116,7 @@ function placeAtAct(i) {
 }
 async function begin(fresh) {
   try { if (ac && ac.state === 'suspended') ac.resume(); beep(520, .05); } catch (e) { }
-  if (fresh) { resetSave(); save.reach = 0; }
+  if (fresh) { resetSave(); save.reach = 0; save.terms = []; }
   $('fade').classList.add('on'); await wait(500);
   $('title').hidden = true; $('hud').hidden = false; state.mode = 'explore';
   GATES.forEach((G, k) => { if (save.done.includes(k)) { openGate(k); G.t = 1; G.g.visible = false; } });
@@ -950,7 +1129,10 @@ async function begin(fresh) {
 }
 try { loadSave(); } catch (e) { }
 if (save.done.length || save.visited.length) $('btnCont').hidden = false;
-$('tabResume').onclick = e => { e.preventDefault(); resumePortal(); };
+on('tabResume', e => { e.preventDefault(); resumePortal(); });
+on('tabMap', e => { e.preventDefault(); if (state.mode === 'explore' && !busy) toggleMap(true); });
+on('miniMap', () => { if (state.mode === 'explore' && !busy) toggleMap(true); });
+on('mapBig', () => toggleMap(false));
 $('btnNew').onclick = () => begin(true);
 $('btnCont').onclick = () => begin(false);
 { const m = /act=(\d)/.exec(location.hash); if (m) { const n = +m[1]; save.done = [...Array(n).keys()]; if (n >= 3) save.visited.push('edu', 'ach'); if (n >= 4) save.visited.push('exp', 'ibm', 'ibb', 'city', 'skills'); window.__start = () => begin(false); } }
