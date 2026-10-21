@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#6fae55">
 <title>The Road So Far · Jeeva S U</title>
-<link rel="stylesheet" href="style.css?v=20261020c">
+<link rel="stylesheet" href="style.css?v=1792607321">
 <style>
 #jbar{position:absolute;top:16px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;background:var(--glass);border:2px solid #a77a4a;border-radius:30px;padding:7px 16px;box-shadow:0 6px 0 #6b4a2c33,0 12px 28px #3b2a2233}
 #jbar span{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:#8a7260;letter-spacing:.04em;opacity:.65}
@@ -42,6 +42,10 @@
 #mapBigCv{width:min(90vw,1100px);height:auto;aspect-ratio:1100/320;border-radius:12px;border:2px solid #3b2a22}
 #mapBig p{margin:8px 0 0;font-size:12px;color:#5a4538}
 @media(max-width:760px){#miniMap{width:110px;height:110px;top:auto;bottom:150px}}
+#stuntTxt{position:fixed;left:50%;top:26%;transform:translateX(-50%);z-index:50;pointer-events:none;font:900 clamp(26px,4.4vw,44px)/1 var(--serif,Georgia,serif);font-style:italic;color:#fff;letter-spacing:.02em;text-shadow:0 3px 0 #1f86d8,0 6px 18px #0006}
+#stuntTxt.pop{animation:stpop 1.3s ease both}@keyframes stpop{0%{opacity:.4;transform:translateX(-50%) scale(.6) rotate(-6deg)}18%{opacity:1;transform:translateX(-50%) scale(1.12) rotate(2deg)}30%{transform:translateX(-50%) scale(1) rotate(0)}80%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-14px)}}
+#ckExit{position:absolute;top:16px;right:16px;pointer-events:auto;padding:8px 16px;border-radius:999px;border:2px solid #a77a4a77;background:var(--glass,#fdf6e3);color:var(--rust,#b5532b);font:800 12px system-ui,sans-serif;letter-spacing:.06em;cursor:pointer;z-index:5}#ckExit:hover{background:#fff6e4}
+.cktip{max-width:92vw;white-space:normal!important;text-align:center;line-height:1.35}
 </style>
 </head>
 <body>
@@ -80,7 +84,8 @@
   </div>
   <div id="ckBig"></div>
   <div id="ckSub"></div>
-  <div class="cktip">SPACE / tap: swing when the ball reaches the bat · hold A / D to aim</div>
+  <button id="ckExit" type="button">Exit · Esc</button>
+  <div class="cktip">SPACE: swing as the ball reaches the bat · hold a direction first: none = straight drive · D = cover / cut · A = pull / sweep · W = loft (risky) · S = defend</div>
 </div>
 
 <div id="chessUI" hidden>
@@ -134,12 +139,13 @@
 <div id="term" hidden><div class="tbar"><i></i><i></i><i></i><span id="termTitle"></span></div><div id="termBody"></div><div id="termHint">E · skip</div></div>
 <div id="cap" hidden><b id="capH"></b><span id="capP"></span></div>
 <div id="mapBig" hidden><div class="mapbox"><h3>The road so far</h3><canvas id="mapBigCv" width="1100" height="320"></canvas><p>M or click to close · <span style="color:#d8402a">●</span> stories <span style="color:#e8a33d">●</span> places <span style="color:#8f7cff">●</span> agent desks <span style="color:#2fb8a0">●</span> resume printer <span style="color:#c9a040">◆</span> memories · golden arrows on the road give a speed boost</p></div></div>
+<div id="stuntTxt" hidden></div>
 <div id="fade"></div>
 
 <script src="vendor/three.min.js"></script>
-<script src="chess.js?v=20261020c"></script>
-<script src="cricket.js?v=20261020c"></script>
-<script src="post.js?v=20261020c"></script>
-<script src="journey.js?v=20261020c"></script>
+<script src="chess.js?v=1792607321"></script>
+<script src="cricket.js?v=1792607321"></script>
+<script src="post.js?v=1792607321"></script>
+<script src="journey.js?v=1792607321"></script>
 </body>
 </html>
