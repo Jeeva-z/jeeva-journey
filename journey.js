@@ -356,15 +356,90 @@ house(-16, 34, 8, 6, 0xf1d9a8, 0xb5532b); house(15, 28, 7, 6, 0xd7a6b0, 0x6b3e1d
 const ST0 = PORT.length;
 landmark('ach', 36, -168, { title: 'HALL OF FAME', sub: 'BIT Hackathon', label: 'Hall of Fame · BIT Hackathon', wall: 0xf3e2b8, roof: 0xc4573a, w: 8, d: 6,
   prop: (g, w, d) => { cyl(g, .55, .7, .8, 0xd9d2c0, w / 2 + 1.4, .4, d / 2 - 1, 10); cyl(g, .38, .12, .55, 0xf2c14e, w / 2 + 1.4, 1.1, d / 2 - 1, 12); cyl(g, .08, .08, .4, 0xf2c14e, w / 2 + 1.4, 1.0, d / 2 - 1, 6); sph(g, .08, 0xf2c14e, w / 2 + 1.4, 1.5, d / 2 - 1); } });
-landmark('exp', 42, -223, { title: 'GROOTAN TECH', sub: 'Experience', label: 'Grootan Technologies', wall: 0xcfe0f0, roof: 0x4f6fa8, tower: true, w: 8, d: 6,
-  prop: (g, w, d) => { box(g, .1, 4, .1, 0x5a4a3a, -w / 2 + .6, 5.5, d / 2 - .4, false); box(g, 1.4, .8, .05, 0xe8a33d, -w / 2 + 1.3, 7, d / 2 - .4, false); } });
-landmark('ibm', 28, -223, { title: 'IBM PKV', sub: 'Insurance · HSM keys', label: 'IBM PKV', wall: 0xf1d9a8, roof: 0x3f7a8a, w: 8, d: 6,
-  prop: (g, w, d) => { const v = cyl(g, .9, .9, .25, 0xb8bcc4, w / 2 + .1, 1.5, 0, 22); v.rotation.z = Math.PI / 2; for (let k = 0; k < 6; k++) { const sp = box(g, .08, .08, 1.5, 0x8a8e96, w / 2 + .3, 1.5, 0, false); sp.rotation.x = k * Math.PI / 6; } sph(g, .25, 0xe8c25a, w / 2 + .35, 1.5, 0); } });
-landmark('ibb', 14, -223, { title: 'IBB · ISTANBUL', sub: 'Istanbul Senin', label: 'IBB Istanbul Senin', wall: 0xf4e3d3, roof: 0x3a8a9a, dome: true, w: 8, d: 6,
-  prop: (g, w, d) => { cyl(g, .22, .26, 6.5, 0xf4e3d3, -w / 2 - .5, 3.25, -d / 2, 10); const t = new T.Mesh(new T.ConeGeometry(.4, 1.4, 10), mat(0x3a8a9a)); t.position.set(-w / 2 - .5, 7.2, -d / 2); g.add(t); } });
-landmark('city', 0, -223, { title: 'CITYAPP · WORMS', sub: 'Nibelungenstadt', label: 'CityApp · Worms', wall: 0xfaf0dc, roof: 0xb5532b, timber: true, w: 8, d: 6 });
-landmark('skills', -14, -223, { title: 'TOOL SHED', sub: 'Skills', label: 'The Tool Shed', wall: 0xc9a46c, roof: 0x6b8f4a, w: 8, d: 6,
-  prop: (g, w, d) => { const gr = new T.Mesh(new T.TorusGeometry(.9, .24, 8, 10), mat(0xb8bcc4)); gr.position.set(-w / 2 - .1, 2.2, 1); gr.rotation.y = Math.PI / 2; g.add(gr); for (let k = 0; k < 8; k++) { const tt = box(g, .3, .36, .3, 0xb8bcc4, -w / 2 - .1, 2.2 + Math.sin(k * .785) * 1.15, 1 + Math.cos(k * .785) * 1.15, false); tt.rotation.x = -k * .785; } for (let k = 0; k < 3; k++) box(g, 1.6, .1, .5, 0x7a4a2c, w / 2 + .9, .6 + k * .6, -1, false); } });
+// ---- one Grootan office: park, step off the bike and walk in (the projects are inside)
+const OFFICE = { x: 24, z: -223, w: 26, d: 11 };
+{
+  const { x, z, w, d } = OFFICE, g = new T.Group(); g.position.set(x, 0, z); world.add(g);
+  const mk = (c, tex) => new T.MeshToonMaterial({ color: c, gradientMap: toonGrad });
+  const slab = box(g, w + 10, .09, d + 17, 0xc4c8d0, 0, .045, 4.2, false); slab.receiveShadow = true; box(g, w + 10.6, .12, .3, 0x8a8f9a, 0, .06, 4.2 + (d + 17) / 2, false); box(g, .3, .12, d + 17, 0x8a8f9a, -(w + 10) / 2, .06, 4.2, false); box(g, .3, .12, d + 17, 0x8a8f9a, (w + 10) / 2, .06, 4.2, false);
+  box(g, w, 9, d, 0xdfe6ee, 0, 4.5, 0); box(g, w + .6, 1.4, d + .6, 0x4f6fa8, 0, 9.5, 0);
+  box(g, w * .6, 3, d * .66, 0xcdd7e3, -w * .12, 11.7, -.8); box(g, w * .6 + .5, .35, d * .66 + .5, 0x3c5788, -w * .12, 13.35, -.8);
+  for (const y of [3.05, 5.95]) box(g, w + .3, .22, d + .3, 0xaab6c6, 0, y, 0, false);
+  for (let f = 0; f < 3; f++) for (let k = 0; k < 9; k++) { const wx = -w / 2 + 1.9 + k * 2.85; if (f === 0 && Math.abs(wx) < 3.4) continue;
+    const wy = 1.8 + f * 2.95; box(g, 2.3, 1.8, .12, 0x7fb4d6, wx, wy, d / 2 + .05, false); box(g, 2.45, .1, .16, 0xffffff, wx, wy - .95, d / 2 + .06, false); box(g, 2.45, .1, .16, 0xffffff, wx, wy + .95, d / 2 + .06, false); box(g, .08, 1.8, .16, 0xffffff, wx, wy, d / 2 + .06, false); }
+  for (const sx of [-1, 1]) for (let f = 0; f < 3; f++) box(g, .12, 1.8, 6.5, 0x7fb4d6, sx * (w / 2 + .05), 1.8 + f * 2.95, 0, false);
+  // glass entrance, canopy, steps
+  box(g, 4.6, 3.1, .16, 0x9fd8e8, 0, 1.55, d / 2 + .08, false); for (const mx of [-1.1, 0, 1.1]) box(g, .08, 3.1, .2, 0xe8eef5, mx, 1.55, d / 2 + .1, false);
+  for (const hx of [-.35, .35]) box(g, .08, .7, .1, 0x3c5788, hx, 1.5, d / 2 + .22, false);
+  box(g, 7.4, .28, 3.4, 0x4f6fa8, 0, 3.55, d / 2 + 1.7); for (const sx of [-3.3, 3.3]) cyl(g, .1, .1, 3.5, 0xe8eef5, sx, 1.75, d / 2 + 3.2, 8);
+  box(g, 6.4, .02, 2.6, 0xd8d0c0, 0, .1, d / 2 + 1.5, false); box(g, 5.6, .02, 1.5, 0xe6dfd0, 0, .12, d / 2 + .9, false);
+  // big sign on the roof band
+  const sc = document.createElement('canvas'); sc.width = 1024; sc.height = 128; { const c = sc.getContext('2d'); c.fillStyle = '#3c5788'; c.fillRect(0, 0, 1024, 128); c.fillStyle = '#ffffff'; c.font = '800 70px system-ui, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('GROOTAN TECHNOLOGIES', 540, 68);
+    c.strokeStyle = '#ffd36a'; c.lineWidth = 9; c.beginPath(); c.arc(86, 64, 36, .5, 5.8); c.stroke(); c.fillStyle = '#ffd36a'; c.beginPath(); c.arc(86, 64, 11, 0, 7); c.fill(); }
+  const stex = new T.CanvasTexture(sc); stex.colorSpace = T.SRGBColorSpace;
+  const sgn = new T.Mesh(new T.PlaneGeometry(14.4, 1.2), new T.MeshBasicMaterial({ map: stex })); sgn.position.set(0, 9.5, d / 2 + .33); g.add(sgn);
+  // rooftop plant + AC, planters, lamps
+  for (let k = 0; k < 3; k++) box(g, 1.6, .9, 1.1, 0xb8bcc4, -w * .36 + k * 2.2, 10.1, 2.4, false);
+  for (const sx of [-5.2, 5.2]) { box(g, 1.6, .7, .9, 0x8a5a36, sx, .35, d / 2 + 2.6); sph(g, .8, 0x4f9a52, sx, 1.2, d / 2 + 2.6, 1, 1.1, 1); }
+  for (const sx of [-13.8, 13.8]) { cyl(g, .08, .1, 3.6, 0x444850, sx, 1.8, d / 2 + 1.8, 6); sph(g, .26, 0xfff1b0, sx, 3.7, d / 2 + 1.8); }
+  // parking bay for the bike (right of the door)
+  const BX = 9.2, BZ = d / 2 + 4.6; box(g, 5.2, .02, 3.4, 0x5c6068, BX, .1, BZ, false); for (let k = -1; k <= 1; k++) box(g, .1, .02, 2.8, 0xffffff, BX + k * 1.7, .12, BZ, false);
+  cyl(g, .06, .06, 2.2, 0x6c7078, BX + 2.8, 1.1, BZ + 1.4, 6); signBoard(g, 'PARKING', 1.8, .6, BX + 2.8, 2.4, BZ + 1.5);
+  walls.push({ x0: x - w / 2 - .4, x1: x + w / 2 + .4, z0: z - d / 2 - .4, z1: z + d / 2 + .4 });
+  OFFICE.bay = { x: x + BX, z: z + BZ }; OFFICE.door = { x, z: z + d / 2 + 2.4 };
+  const dr = ringAt(x, z + d / 2 + 2.4); dr.ring.position.y = .16; STN.push({ id: 'office', x, z: z + d / 2 + 2.4, label: 'Enter · Grootan Technologies', kind: 'door', act: 3, ...dr });
+}
+// ---- inside Grootan: lobby, project screens, desks (a separate room far off the map)
+const INT = { x: 300, z: -223, W: 34, D: 22 }; let INTGLASS = null;
+{
+  const { x, z, W, D } = INT, g = new T.Group(); g.position.set(x, 0, z); world.add(g);
+  const pc = document.createElement('canvas'); pc.width = pc.height = 256; { const c = pc.getContext('2d'); c.fillStyle = '#c9a87a'; c.fillRect(0, 0, 256, 256); for (let k = 0; k < 8; k++) { c.fillStyle = k % 2 ? '#bf9c6e' : '#d2b284'; c.fillRect(0, k * 32, 256, 31); c.fillStyle = '#a98657'; c.fillRect(k * 37 % 256, k * 32, 2, 31); } }
+  const ptex = new T.CanvasTexture(pc); ptex.wrapS = ptex.wrapT = T.RepeatWrapping; ptex.repeat.set(7, 5); ptex.colorSpace = T.SRGBColorSpace;
+  { const out = new T.Mesh(new T.BoxGeometry(170, .1, 130), new T.MeshToonMaterial({ color: 0x2c3244, gradientMap: toonGrad })); out.position.set(0, .0, 12); out.receiveShadow = true; g.add(out); }
+  const fl = new T.Mesh(new T.BoxGeometry(W, .2, D), new T.MeshToonMaterial({ map: ptex, gradientMap: toonGrad })); fl.position.y = 0; fl.receiveShadow = true; g.add(fl);
+  // rug with the logo
+  const rc = document.createElement('canvas'); rc.width = rc.height = 256; { const c = rc.getContext('2d'); c.fillStyle = '#35507a'; c.fillRect(0, 0, 256, 256); c.strokeStyle = '#ffd36a'; c.lineWidth = 10; c.beginPath(); c.arc(128, 128, 62, .5, 5.8); c.stroke(); c.fillStyle = '#ffd36a'; c.beginPath(); c.arc(128, 128, 18, 0, 7); c.fill(); c.strokeStyle = '#ffffff55'; c.lineWidth = 4; c.strokeRect(8, 8, 240, 240); }
+  const rtex = new T.CanvasTexture(rc); rtex.colorSpace = T.SRGBColorSpace; const rug = new T.Mesh(new T.PlaneGeometry(10, 10), new T.MeshBasicMaterial({ map: rtex })); rug.rotation.x = -Math.PI / 2; rug.position.set(0, .125, 4.5); g.add(rug);
+  // walls (open front and top so the camera can see in)
+  box(g, W + 1, 6, .5, 0xe9e2d4, 0, 3, -D / 2); box(g, W + 1, 1.5, .5, 0x4f6fa8, 0, .75, -D / 2 + .3); for (const sx of [-1, 1]) { box(g, .5, 6, D, 0xe9e2d4, sx * W / 2, 3, 0); box(g, .5, 1.5, D, 0x4f6fa8, sx * (W / 2 - .3), .75, 0); }
+  for (const sg of [-1, 1]) { box(g, W / 2 - 2.6, 1.1, .3, 0xd8dde6, sg * (W / 4 + 1.3), .55, D / 2); }
+  box(g, W + 1, .3, .5, 0x4f6fa8, 0, 6.1, -D / 2);
+  const sTex = (icon, title, sub, c1, c2) => { const c = document.createElement('canvas'); c.width = 512; c.height = 288; const x = c.getContext('2d'), gr = x.createLinearGradient(0, 0, 512, 288); gr.addColorStop(0, c1); gr.addColorStop(1, c2); x.fillStyle = gr; x.fillRect(0, 0, 512, 288);
+    x.fillStyle = '#ffffff22'; x.beginPath(); x.arc(430, 60, 120, 0, 7); x.fill(); x.font = '90px serif'; x.textAlign = 'left'; x.fillStyle = '#fff'; x.fillText(icon, 36, 120); x.font = '800 38px system-ui, sans-serif'; x.fillText(title, 36, 190); x.font = '500 22px system-ui, sans-serif'; x.fillStyle = '#ffffffcc'; x.fillText(sub, 36, 226);
+    x.font = '700 16px system-ui, sans-serif'; x.fillStyle = '#ffd36a'; x.fillText('PRESS E · OPEN THE SLIDES', 36, 262); const t = new T.CanvasTexture(c); t.colorSpace = T.SRGBColorSpace; return t; };
+  const SCR = [['ibm', '🔐', 'IBM PKV', 'Insurance · HSM keys', '#1d3b5a', '#3f7a8a', -12.5], ['ibb', '🕌', 'IBB Istanbul', 'Istanbul Senin city app', '#2a4a58', '#3a8a9a', -4.2], ['city', '🏰', 'CityApp Worms', 'Citizen app · GDPR consent', '#5a2f1d', '#b5532b', 4.2], ['skills', '🧰', 'The Tool Shed', 'Skills and stack', '#2d4a2a', '#6b8f4a', 12.5]];
+  for (const [id, ic, ti, su, c1, c2, sx] of SCR) {
+    box(g, 6.5, 3.8, .22, 0x1c2230, sx, 3.4, -D / 2 + .45); const sm = new T.Mesh(new T.PlaneGeometry(6.1, 3.43), new T.MeshBasicMaterial({ map: sTex(ic, ti, su, c1, c2) })); sm.position.set(sx, 3.4, -D / 2 + .58); g.add(sm);
+    box(g, 2.6, .9, 1.1, 0xe8e2d2, sx, .45, -D / 2 + 2.4); box(g, 2.2, .1, .8, 0x4f6fa8, sx, .95, -D / 2 + 2.4);
+    const sw = g.localToWorld(new T.Vector3(sx, 0, -D / 2 + 4.6)), r = ringAt(sw.x, sw.z); STN.push({ id, x: sw.x, z: sw.z, label: 'Present · ' + ti, kind: 'folio', act: 3, ...r }); rounds.push({ x: sw.x, z: sw.z - 2.2, r: 1.5 });
+  }
+  // reception desk + receptionist, with the Experience station
+  box(g, 7.4, 1.15, 1.7, 0x4f6fa8, 0, .6, -3.2); box(g, 7.6, .12, 1.9, 0xf4f0e6, 0, 1.2, -3.2); box(g, 2.2, .75, .08, 0x1c2230, -1.8, 1.65, -3.4); box(g, 2.2, .75, .08, 0x1c2230, 1.8, 1.65, -3.4);
+  const rec = person({ shirt: 0x8f5fd0, pants: 0x2a2a3a, scale: .9, hair: 'bun', hairColor: 0x2a1713 }); rec.g.position.set(0, .11, -4.3); rec.g.rotation.y = 0; g.add(rec.g);
+  { const rw = g.localToWorld(new T.Vector3(0, 0, -1.2)), r = ringAt(rw.x, rw.z); STN.push({ id: 'exp', x: rw.x, z: rw.z, label: 'Reception · My experience here', kind: 'folio', act: 3, ...r }); const dw = g.localToWorld(new T.Vector3(0, 0, -3.2)); rounds.push({ x: dw.x - 2.6, z: dw.z, r: 1.2 }, { x: dw.x, z: dw.z, r: 1.4 }, { x: dw.x + 2.6, z: dw.z, r: 1.2 }); }
+  // desk islands with colleagues
+  const col = [0xe0705a, 0x4a9a6a, 0xd0a040, 0x6a7fd0]; let ci = 0; const typers = [];
+  for (const [dx, dz] of [[-10.5, 2], [-10.5, 6.5], [10.5, 2], [10.5, 6.5]]) {
+    box(g, 3.2, .1, 1.4, 0xd8c8a8, dx, .95, dz); for (const lx of [-1.4, 1.4]) box(g, .1, .9, 1.2, 0x7a6a5a, dx + lx, .45, dz);
+    box(g, .9, .6, .08, 0x1c2230, dx, 1.4, dz - .3); box(g, .12, .3, .12, 0x333333, dx, 1.12, dz - .3); box(g, 1.3, .05, .5, 0x444850, dx, 1.02, dz + .15);
+    const pn = person({ shirt: col[ci++ % 4], pants: 0x2a3042, scale: .88, hair: ci % 2 ? 'none' : 'bun', hairColor: 0x2a1713 }); pn.g.position.set(dx, .11, dz + 1.35); pn.g.rotation.y = Math.PI; g.add(pn.g); typers.push(pn);
+    const dw = g.localToWorld(new T.Vector3(dx, 0, dz)); rounds.push({ x: dw.x, z: dw.z, r: 1.9 });
+  }
+  // wall decor: whiteboard, clock, plants, cooler
+  const wc = document.createElement('canvas'); wc.width = 512; wc.height = 256; { const c = wc.getContext('2d'); c.fillStyle = '#f4f0e6'; c.fillRect(0, 0, 512, 256); c.fillStyle = '#3c5788'; c.font = '800 34px system-ui, sans-serif'; c.fillText('What we build', 24, 50); c.font = '600 26px system-ui, sans-serif'; c.fillStyle = '#2b1d16'; ['Keycloak · OAuth 2.0 · OIDC', 'Spring Boot · Java 17', 'Secure login for banks', 'Zero-downtime upgrades'].forEach((t, k) => c.fillText('• ' + t, 24, 96 + k * 38)); }
+  const wt = new T.CanvasTexture(wc); wt.colorSpace = T.SRGBColorSpace; const wb = new T.Mesh(new T.PlaneGeometry(5, 2.5), new T.MeshBasicMaterial({ map: wt })); wb.position.set(-W / 2 + .3, 3.1, 4); wb.rotation.y = Math.PI / 2; g.add(wb);
+  const clk = cyl(g, .7, .7, .12, 0xfff3d0, 0, 5.1, -D / 2 + .45, 20); clk.rotation.x = Math.PI / 2; box(g, .08, .5, .05, 0x3b2a22, 0, 5.2, -D / 2 + .55, false); box(g, .4, .08, .05, 0x3b2a22, .15, 5.1, -D / 2 + .55, false);
+  for (const [px, pz] of [[-15.5, -9], [15.5, -9], [-15.5, 9.5], [15.5, 9.5], [-6, 9.8], [6, 9.8]]) { cyl(g, .5, .38, .7, 0xb5532b, px, .35, pz, 10); sph(g, .7, 0x4f9a52, px, 1.3, pz, 1, 1.2, 1); sph(g, .5, 0x3f8a4a, px + .25, 1.8, pz - .1); }
+  cyl(g, .35, .35, 1.2, 0xe8f2f8, 15.8, .6, 1, 10); sph(g, .4, 0x9fd8e8, 15.8, 1.45, 1);
+  for (let k = -2; k <= 2; k++) { const l = new T.Sprite(new T.SpriteMaterial({ map: glowTex(), color: 0xfff1c0, transparent: true, opacity: .55, depthWrite: false })); l.position.set(k * 6.5, 5.6, 2); l.scale.set(5, 5, 1); g.add(l); }
+  // exit door (front gap) with a glowing exit sign
+  for (const sg of [-1, 1]) cyl(g, .12, .12, 3.4, 0x4f6fa8, sg * 2.6, 1.7, D / 2, 8); 
+  { const ew = g.localToWorld(new T.Vector3(0, 0, D / 2 - 2.2)), r = ringAt(ew.x, ew.z, 0x7fe8a0); STN.push({ id: 'exit', x: ew.x, z: ew.z, label: 'Leave · Back to your bike', kind: 'exit', act: 3, ...r }); }
+  const W0 = { x, z }; walls.push({ x0: x - W / 2 - .6, x1: x + W / 2 + .6, z0: z - D / 2 - .6, z1: z - D / 2 + .3 }, { x0: x - W / 2 - .6, x1: x - W / 2 + .3, z0: z - D / 2, z1: z + D / 2 }, { x0: x + W / 2 - .3, x1: x + W / 2 + .6, z0: z - D / 2, z1: z + D / 2 }, { x0: x - W / 2, x1: x - 2.9, z0: z + D / 2 - .2, z1: z + D / 2 + .4 }, { x0: x + 2.9, x1: x + W / 2, z0: z + D / 2 - .2, z1: z + D / 2 + .4 }, { x0: x - 3, x1: x + 3, z0: z + D / 2 - .2, z1: z + D / 2 + .4 });
+  { const gl = new T.Mesh(new T.PlaneGeometry(5.2, 3.2), new T.MeshBasicMaterial({ color: 0x9fd8e8, transparent: true, opacity: .22, side: T.DoubleSide, depthWrite: false })); gl.position.set(x, 1.7, z + D / 2); INTGLASS = gl; world.add(gl); }
+  INT.spawn = { x, z: z + D / 2 - 3.4 }; for (const st of STN) if (st.x > 250) st.ring.position.y = .17;
+  (globalThis.PREAMB = globalThis.PREAMB || []).push(t => { typers.forEach((p, k) => { p.arms[0].rotation.x = -1.25 + Math.sin(t * 9 + k) * .12; p.arms[1].rotation.x = -1.25 + Math.sin(t * 9 + k + 2) * .12; }); rec.arms[1].rotation.x = Math.sin(t * 1.6) > .8 ? -2.4 : -.1; });
+}
 const ACT_OF = { edu: 2, ach: 2, exp: 3, ibm: 3, ibb: 3, city: 3, skills: 3 };
 for (const p of PORT) STN.push({ id: p.id, x: p.door[0], z: p.door[1], label: 'Visit · ' + p.title, kind: 'folio', act: ACT_OF[p.id], ring: p.ring, glow: p.glow });
 
@@ -500,13 +575,14 @@ function setVehicle(type) {
   if (player.veh) player.veh.d.g.visible = false;
   player.vehCache = player.vehCache || {};
   if (!player.vehCache[type]) { const d = VEH[type].build(); player.g.add(d.g); player.vehCache[type] = { type, d, cfg: VEH[type] }; }
-  player.veh = player.vehCache[type]; player.veh.d.g.visible = true; setSeat();
+  player.veh = player.vehCache[type]; player.veh.d.g.visible = !player.onFoot; if (!player.onFoot) setSeat();
 }
 function hideVehicle(on) {
   player.veh.d.g.visible = !on;
   if (on) { player.body.position.set(0, 0, 0); player.body.rotation.set(0, 0, 0); } else setSeat();
 }
 function rideAnim(dt, v) {
+  if (player.onFoot) { walkAnim(dt, v); return; }
   const V = player.veh, d = V.d;
   for (const w of d.wheels) w.rotation.x += v * dt / w.userData.r;
   if (V.type === 'trike') { const ph = d.front.rotation.x; player.legs[0].rotation.x = -1.0 + Math.sin(ph) * .4; player.legs[1].rotation.x = -1.0 - Math.sin(ph) * .4; player.arms[0].rotation.x = player.arms[1].rotation.x = -1.0; }
@@ -737,22 +813,86 @@ for (const [frac, txt] of [[.2, 'CHESS AHEAD'], [.4, 'COLLEGE AHEAD'], [.58, 'WO
   });
 }
 // stunt arena and gym off the road (ramps trigger tricks, the lifter keeps pumping)
-const ARENA = { ramps: [], score: 0, combo: 0 };
+const AR = { active: false, t: 0, tricks: 0, goal: 8, limit: 60, cd: 0, skip: false, parts: [] };
+const ARENA = { ramps: [], score: 0, combo: 0 }; const _rv = new T.Vector3();
+// height of the ramp surface under a world point (the bike climbs the kickers)
+function rampH(p) {
+  for (const R of ARENA.ramps) { if (!R.len) continue; _rv.set(p.x, 0, p.z); R.r.worldToLocal(_rv); const u = (_rv.x + R.len / 2) / R.len; if (u < 0 || u > 1 || Math.abs(_rv.z) > R.w / 2) continue; return .16 + R.h * Math.pow(u, 1.9) * .95; }
+  return ARENA.center && Math.hypot(p.x - ARENA.center.x, p.z - ARENA.center.z) < 21.4 ? .16 : 0;
+}
 {
   const q = along(CUM[9] + 12, 26), g = new T.Group(); g.position.set(q.x, 0, q.z); g.rotation.y = q.ry - Math.PI / 2; world.add(g);
-  const flat = new T.Mesh(new T.CylinderGeometry(21, 21, .05, 48), new T.MeshToonMaterial({ color: 0xc9a46e, gradientMap: toonGrad })); flat.position.y = .03; flat.receiveShadow = true; g.add(flat);
-  for (let k = 0; k < 32; k++) { const a = k / 32 * 6.283; box(g, 1.1, .5, .35, k % 2 ? 0xe8e2d2 : 0xd8402a, Math.cos(a) * 21, .25, Math.sin(a) * 21, false).rotation.y = -a; }
-  signBoard(g, 'STUNT ARENA', 5, 1, 0, 4.2, 16); cyl(g, .1, .1, 4, 0x5a3f2c, -2.3, 2, 16, 6); cyl(g, .1, .1, 4, 0x5a3f2c, 2.3, 2, 16, 6);
-  // kicker ramps in a lap (wedge: tilted slab on a block)
-  const mkRamp = (x, z, ry, col, len) => {
-    const r = new T.Group(); r.position.set(x, 0, z); r.rotation.y = ry; g.add(r);
-    const sl = box(r, len, .22, 3.2, col, 0, len * .17, 0); sl.rotation.z = .34;
-    box(r, .5, len * .34, 3.2, 0x7a4a2a, len * .47, len * .17, 0); for (const sz of [-1.6, 1.6]) box(r, len, .12, .1, 0xf4f0e6, 0, len * .17 + .12, sz).rotation.z = .34;
-    ARENA.ramps.push({ r, x: 0, z: 0, cool: 0, lx: -len * .15 });
+  // concrete skate-park surface with painted lanes
+  const cc = document.createElement('canvas'); cc.width = cc.height = 512; { const x = cc.getContext('2d'); x.fillStyle = '#9a9ca2'; x.fillRect(0, 0, 512, 512); for (let k = 0; k < 2600; k++) { x.fillStyle = `rgba(${60 + Math.random() * 90|0},${60 + Math.random() * 90|0},${66 + Math.random() * 90|0},.18)`; x.fillRect(Math.random() * 512, Math.random() * 512, 2 + Math.random() * 6, 2 + Math.random() * 4); } x.strokeStyle = '#6c6e74'; x.lineWidth = 2; for (let k = 0; k <= 512; k += 128) { x.beginPath(); x.moveTo(k, 0); x.lineTo(k, 512); x.moveTo(0, k); x.lineTo(512, k); x.stroke(); } }
+  const ctex = new T.CanvasTexture(cc); ctex.wrapS = ctex.wrapT = T.RepeatWrapping; ctex.repeat.set(5, 5);
+  const flat = new T.Mesh(new T.CylinderGeometry(21, 21.6, .16, 56), new T.MeshToonMaterial({ map: ctex, gradientMap: toonGrad })); flat.position.y = .08; flat.receiveShadow = true; g.add(flat);
+  const ring = (rr, col, w) => { const m = new T.Mesh(new T.RingGeometry(rr, rr + w, 64), new T.MeshBasicMaterial({ color: col, side: T.DoubleSide })); m.rotation.x = -Math.PI / 2; m.position.y = .17; g.add(m); };
+  ring(18.8, 0xf4f0e6, .25); ring(12.2, 0xffc93a, .2); ring(5.2, 0xf4f0e6, .18);
+  for (let k = -2; k <= 2; k++) box(g, .3, .01, 3, 0xf4f0e6, k * 1.6, .17, 14.5, false);
+  // tyre barriers, chain-link fence and floodlights around the rim
+  for (let k = 0; k < 40; k++) { const a = k / 40 * 6.283, cx0 = Math.cos(a) * 20.5, cz0 = Math.sin(a) * 20.5; if (Math.sin(a) > .83 && Math.abs(Math.cos(a)) < .2) continue;
+    for (let h = 0; h < 2; h++) { const paint = h === 1 && k % 4 === 0, tr = new T.Mesh(new T.TorusGeometry(.4, .17, 8, 16), mat(paint ? 0xe8e2d2 : 0x24262b)); tr.position.set(cx0, .24 + h * .3, cz0); tr.rotation.x = Math.PI / 2; tr.rotation.z = a; tr.castShadow = true; g.add(tr); }
+    const cap = cyl(g, .38, .38, .03, 0x24262b, cx0, .64, cz0, 14); }
+  for (let k = 0; k < 24; k++) { const a = k / 24 * 6.283 + .13; if (Math.sin(a) > .86) continue; cyl(g, .05, .05, 2.4, 0x6c7078, Math.cos(a) * 22, 1.3, Math.sin(a) * 22, 6); }
+  for (let k = 0; k < 24; k++) { const a0 = k / 24 * 6.283 + .13, a1 = (k + 1) / 24 * 6.283 + .13, am = (a0 + a1) / 2; if (Math.sin(am) > .86) continue; const fm = new T.Mesh(new T.PlaneGeometry(2 * 22 * Math.sin((a1 - a0) / 2), 1.9), new T.MeshBasicMaterial({ color: 0xcfd6dd, transparent: true, opacity: .22, side: T.DoubleSide })); fm.position.set(Math.cos(am) * 22, 1.35, Math.sin(am) * 22); fm.rotation.y = -am + Math.PI / 2; g.add(fm); box(g, 2 * 22 * Math.sin((a1 - a0) / 2), .06, .06, 0x6c7078, Math.cos(am) * 22, 2.35, Math.sin(am) * 22, false).rotation.y = -am + Math.PI / 2; }
+  for (const a of [.9, 2.3, 3.9, 5.4]) { const fx = Math.cos(a) * 19.5, fz = Math.sin(a) * 19.5; cyl(g, .12, .2, 9, 0x5c6068, fx, 4.5, fz, 8); const hd = box(g, 1.6, .4, .9, 0x2a2e36, fx, 9.1, fz); hd.rotation.y = -a; const gl = box(g, 1.4, .08, .7, 0xfff4c0, fx, 8.85, fz, false); gl.material = new T.MeshBasicMaterial({ color: 0xfff1b0 }); gl.rotation.y = -a; const hs = new T.Sprite(new T.SpriteMaterial({ map: glowTex(), color: 0xfff1b0, transparent: true, opacity: .5, depthWrite: false })); hs.position.set(fx, 8.6, fz); hs.scale.set(5, 5, 1); g.add(hs); }
+  // entrance arch with banner + start gate
+  for (const sx of [-3.2, 3.2]) cyl(g, .18, .22, 5.2, 0xd8402a, sx, 2.6, 17.6, 8); box(g, 7.2, .5, .4, 0xd8402a, 0, 5.2, 17.6);
+  signBoard(g, 'STUNT ARENA', 5.4, 1.1, 0, 6.3, 17.6, 'ride fast . land clean'); signBoard(g, 'GOAL: 8 TRICKS IN 60 SEC', 5.0, .8, 0, 4.5, 17.4);
+  // bleachers and hay bales
+  for (let r = 0; r < 3; r++) box(g, 8, .4, 1, r % 2 ? 0x6a5a48 : 0x8a7358, -8, .5 + r * .6, 24.2 + r * .9); box(g, 8.2, 2.6, .12, 0x4a3a2a, -8, 1.4, 27.2);
+  for (let k = 0; k < 4; k++) { const hb = cyl(g, .5, .5, .9, 0xd8b24a, 12 + k * 1.1, .5, 21.6, 10); hb.rotation.z = Math.PI / 2; }
+  // wedge builder: solid side profile (concave lip) extruded across the width
+  const wedge = (len, h, w, col) => {
+    const sh = new T.Shape(); sh.moveTo(0, 0); sh.lineTo(len, 0); sh.lineTo(len, h); sh.quadraticCurveTo(len * .45, h * .12, 0, 0);
+    const geo = new T.ExtrudeGeometry(sh, { depth: w, bevelEnabled: false, steps: 1 }); geo.translate(-len / 2, 0, -w / 2);
+    const m = new T.Mesh(geo, new T.MeshToonMaterial({ color: col, gradientMap: toonGrad })); m.castShadow = m.receiveShadow = true; outline(m, 1.02); return m;
   };
-  mkRamp(-8, 8, -.6, 0xf2a03a, 5); mkRamp(9, 7, 3.9, 0x3f8f88, 5); mkRamp(-2, -9, 1.6, 0xd8402a, 6); mkRamp(12, -6, 2.6, 0x6a7fd0, 4.4);
-  // quarter pipe wall
-  const qp = new T.Mesh(new T.CylinderGeometry(3.2, 3.2, 6, 16, 1, true, 0, Math.PI / 2), new T.MeshToonMaterial({ color: 0x9aa0aa, gradientMap: toonGrad, side: T.DoubleSide })); qp.rotation.x = Math.PI / 2; qp.rotation.y = 0; qp.position.set(-15, 3.2, -4); qp.rotation.z = Math.PI / 2; g.add(qp);
+  const mkRamp = (x, z, ry, col, len, h, w, opt = {}) => {
+    const r = new T.Group(); r.position.set(x, .16, z); r.rotation.y = ry; g.add(r);
+    r.add(wedge(len, h, w, col));
+    for (const sz of [-1, 1]) { const rail = box(r, len * .98, .08, .1, 0xf4f0e6, 0, h * .55, sz * w / 2); rail.rotation.z = Math.atan2(h, len) * .82; }
+    for (let k = 0; k < 4; k++) box(r, .05, .02, w * .94, 0xf4f0e6, -len / 2 + len * (.2 + k * .2), .01 + h * .16 * (k * .2 + .2) * 2, 0, false);
+    ARENA.ramps.push({ r, x: 0, z: 0, cool: 0, lx: len / 2 - .6, len, h, w, trig: opt.trig !== false, big: !!opt.big });
+  };
+  mkRamp(-8, 8, -.6, 0xf2a03a, 6, 1.5, 3.4); mkRamp(9, 7, 3.9, 0x3f8f88, 6, 1.5, 3.4); mkRamp(-7, -4, 1.6, 0xd8402a, 7, 1.9, 3.6); mkRamp(12, -3, 2.6, 0x6a7fd0, 5, 1.2, 3.0);
+  // mega gap jump: launch ramp, a 6 m gap and a landing table
+  mkRamp(11, -13, Math.PI, 0xff7a2a, 7, 2.6, 3.8, { big: true }); mkRamp(-1, -13, 0, 0x6a7fd0, 7, 2.2, 3.8, { trig: false });
+  box(g, 6.2, .06, 3.8, 0x1c2230, 5, .19, -13, false); for (let k = 0; k < 6; k++) box(g, 1, .02, .5, k % 2 ? 0xffffff : 0x1c2230, 2.5 + k * 1, .23, -11.4, false);
+  // real quarter-pipe: curved transition with coping and deck
+  { const qs = new T.Shape(); qs.moveTo(0, 0); qs.lineTo(4, 0); qs.lineTo(4, 3.2); qs.lineTo(3.4, 3.2); qs.absarc(0, 3.2, 3.4, 0, -Math.PI / 2, true); const qg = new T.ExtrudeGeometry(qs, { depth: 7, bevelEnabled: false });
+    const q2 = new T.Mesh(qg, new T.MeshToonMaterial({ color: 0x8c9098, gradientMap: toonGrad })); q2.position.set(-17, .16, -3.5); q2.rotation.y = Math.PI / 2; q2.castShadow = q2.receiveShadow = true; g.add(q2); const cop = cyl(g, .1, .1, 7, 0xdadde2, -17, 3.4, 0, 8); cop.rotation.x = Math.PI / 2; }
+  // trophy podium at the centre (lights up when the challenge is won)
+  box(g, 3, .5, 3, 0xd8d0c0, 0, .42, 0); box(g, 2.2, .5, 2.2, 0xe8e2d2, 0, .92, 0);
+  const trophy = new T.Group(); trophy.position.set(0, 1.2, 0); g.add(trophy);
+  cyl(trophy, .3, .12, .5, 0xe8b84a, 0, .45, 0, 12); cyl(trophy, .06, .06, .3, 0xe8b84a, 0, .15, 0, 8); cyl(trophy, .28, .28, .06, 0xe8b84a, 0, 0, 0, 12); sph(trophy, .22, 0xffd36a, 0, .78, 0);
+  ARENA.trophy = trophy;
+  // grind rail and funbox
+  { const rl = box(g, 5, .08, .08, 0xd8d8de, 4, 1.0, 12); for (const sx of [-2, 0, 2]) box(g, .08, 1, .08, 0x777, 4 + sx, .5, 12); box(g, 4, .9, 3, 0x5a6a8a, 15, .6, 5); }
+  // scoreboard tower (live tricks / time / score)
+  const sbc = document.createElement('canvas'); sbc.width = 640; sbc.height = 320; const sbx = sbc.getContext('2d'), sbt = new T.CanvasTexture(sbc); sbt.colorSpace = T.SRGBColorSpace; let sbKey = '';
+  for (const sx of [-4.4, 4.4]) cyl(g, .16, .2, 7.2, 0x4a4e58, sx, 3.6, -24, 8); box(g, 10.2, 5.6, .5, 0x1c2230, 0, 6.2, -24); box(g, 10.6, .25, .7, 0xd8402a, 0, 9.1, -24);
+  const sbm = new T.Mesh(new T.PlaneGeometry(9.6, 4.8), new T.MeshBasicMaterial({ map: sbt })); sbm.position.set(0, 6.2, -23.72); g.add(sbm);
+  const sbDraw = () => {
+    const act = AR.active, key = act ? [AR.tricks, Math.ceil(AR.limit - AR.t), ARENA.score].join() : 'idle' + (ARENA.best || 0); if (key === sbKey) return; sbKey = key;
+    sbx.fillStyle = '#0d1220'; sbx.fillRect(0, 0, 640, 320); sbx.textAlign = 'center'; sbx.fillStyle = '#ffd36a'; sbx.font = '800 40px system-ui, sans-serif'; sbx.fillText('STUNT ARENA', 320, 56);
+    sbx.strokeStyle = '#ffffff22'; sbx.lineWidth = 3; sbx.beginPath(); sbx.moveTo(40, 76); sbx.lineTo(600, 76); sbx.stroke();
+    if (act) { sbx.fillStyle = '#7fe8a0'; sbx.font = '800 120px system-ui, sans-serif'; sbx.fillText(AR.tricks + ' / ' + AR.goal, 320, 190); sbx.fillStyle = '#fff'; sbx.font = '700 42px system-ui, sans-serif'; sbx.fillText('TIME ' + Math.max(0, Math.ceil(AR.limit - AR.t)) + 's   ·   SCORE ' + ARENA.score, 320, 268); }
+    else { sbx.fillStyle = '#fff'; sbx.font = '800 56px system-ui, sans-serif'; sbx.fillText('GOAL: 8 TRICKS', 320, 156); sbx.fillText('IN 60 SECONDS', 320, 222); sbx.fillStyle = '#9be8ff'; sbx.font = '600 30px system-ui, sans-serif'; sbx.fillText(ARENA.best ? 'BEST SCORE ' + ARENA.best : 'RIDE THROUGH THE GATE TO START', 320, 285); }
+    sbt.needsUpdate = true; };
+  sbDraw();
+  // cheering crowd on the bleachers and around the rim
+  const crowd = [], cs = [0xe0705a, 0x4a9a6a, 0xd0a040, 0x6a7fd0, 0xb06ad0, 0xf4f0e6, 0x3f8f88];
+  const addFan = (px, py, pz, i) => { const f = person({ shirt: cs[i % cs.length], pants: i % 2 ? 0x2a3042 : 0x6a5a48, scale: .8 + (i % 3) * .05, hair: i % 4 === 0 ? 'none' : 'bun', hairColor: [0x2a1713, 0x4a3020, 0x1a1a1a][i % 3] }); f.g.position.set(px, py, pz); f.g.rotation.y = Math.atan2(-px, -pz); g.add(f.g); crowd.push({ f, base: py, ph: i * 1.7 }); };
+  for (let r = 0; r < 3; r++) for (let k = 0; k < 4; k++) addFan(-11 + k * 1.9, .78 + r * .6, 24.4 + r * .9, r * 4 + k);
+  for (let k = 0; k < 8; k++) { const a = 3.4 + k * .3; addFan(Math.cos(a) * 23.6, .07, Math.sin(a) * 23.6, 12 + k); }
+  // bunting between the floodlights
+  const LA = [.9, 2.3, 3.9, 5.4]; for (let i = 0; i < 4; i++) { const a1 = LA[i], a2 = LA[(i + 1) % 4], p1 = [Math.cos(a1) * 19.5, Math.sin(a1) * 19.5], p2 = [Math.cos(a2) * 19.5, Math.sin(a2) * 19.5];
+    for (let k = 1; k < 15; k++) { const u = k / 15, px = lerp(p1[0], p2[0], u), pz = lerp(p1[1], p2[1], u), py = 8.8 - Math.sin(Math.PI * u) * 1.7; const pn = box(g, .3, .42, .03, [0xd8402a, 0xffd36a, 0xffffff, 0x4f9a52, 0x6a7fd0][k % 5], px, py - .22, pz, false); pn.rotation.y = -Math.atan2(p2[1] - p1[1], p2[0] - p1[0]); pn.rotation.z = Math.PI; } }
+  // tyre skid marks on the concrete
+  for (let k = 0; k < 16; k++) { const a = k * 2.1, rr = 4 + (k * 37 % 13), sm = box(g, .22, .01, 2.4 + (k % 4), 0x55575e, Math.cos(a) * rr, .165, Math.sin(a) * rr, false); sm.rotation.y = a * 1.7; sm.material = new T.MeshBasicMaterial({ color: 0x55575e, transparent: true, opacity: .45 }); }
+  AMB.push((t, dt) => { sbDraw(); const ch = ARENA.cheerT > 0; if (ch) ARENA.cheerT -= dt;
+    crowd.forEach(c => { const f = c.f; f.g.position.y = c.base + (ch ? Math.abs(Math.sin(t * 9 + c.ph)) * .22 : Math.sin(t * 2 + c.ph) * .01); const up = ch ? -2.7 + Math.sin(t * 12 + c.ph) * .3 : -.15 + Math.sin(t * 1.5 + c.ph) * .05; f.arms[0].rotation.x = up; f.arms[1].rotation.x = ch ? up + .2 : up; }); });
   // cones slalom
   for (let k = 0; k < 6; k++) cyl(g, .05, .3, .6, k % 2 ? 0xffffff : 0xff7a2a, 2 + k * 2.2, .3, 0 + (k % 2 ? 1.2 : -1.2), 8);
   // gym building + yard
@@ -767,19 +907,21 @@ const ARENA = { ramps: [], score: 0, combo: 0 };
   const dbell = new T.Group(); dbell.position.set(0, 0, 0); trainer.arms[0].add(dbell);
   world.updateMatrixWorld(true);
   const wp = g.localToWorld(new T.Vector3(0, 0, 0)); let greeted = false;
-  { const gp = gy.localToWorld(new T.Vector3(0, 0, 0)); rounds.push({ x: gp.x, z: gp.z, r: 4.2 }); ARENA.gym = gp; ARENA.center = wp; }
-  for (const R of ARENA.ramps) { const v = R.r.localToWorld(new T.Vector3(R.lx, 0, 0)); R.x = v.x; R.z = v.z; }
+  { const gp = gy.localToWorld(new T.Vector3(0, 0, 0)); rounds.push({ x: gp.x, z: gp.z, r: 4.2 }); ARENA.gym = gp; ARENA.center = wp; ARENA.gate = g.localToWorld(new T.Vector3(0, 0, 19.5)); rounds.push({ x: wp.x, z: wp.z, r: 2.2 }); }
+  for (const R of ARENA.ramps) { const v = R.r.localToWorld(new T.Vector3(R.lx, 0, 0)), w0 = R.r.localToWorld(new T.Vector3(0, 0, 0)), w1 = R.r.localToWorld(new T.Vector3(1, 0, 0)); R.x = v.x; R.z = v.z; R.dx = w1.x - w0.x; R.dz = w1.z - w0.z; }
   AMB.push((t, dt, pp) => {
     trainer.arms[0].rotation.x = -1.3 - Math.abs(Math.sin(t * 2.4)) * 1.1; trainer.arms[1].rotation.x = -1.3 - Math.abs(Math.sin(t * 2.4 + 1.5)) * 1.1;
     lifter.arms[0].rotation.x = lifter.arms[1].rotation.x = -.2 - Math.abs(Math.sin(t * 2)) * 1.6;
     const d = Math.hypot(wp.x - pp.x, wp.z - pp.z);
     if (d < 26 && !greeted) { greeted = true; toast('STUNT ARENA + IRON GYM', 'Hit the orange kickers at speed for jumps, whips and supermen. The gym crew keeps lifting.'); }
     if (d > 60) greeted = false;
+    arenaStep(dt, pp, t);
     for (const R of ARENA.ramps) {
       R.cool -= dt;
-      if (R.cool <= 0 && !stunt && state.mode === 'explore' && !busy && player.veh && Math.hypot(R.x - pp.x, R.z - pp.z) < 2.3 && player.v > 4.5) {
-        R.cool = 2.6; const kinds = ['jump', 'whip', 'superman', 'jump', 'nohands']; startStunt(kinds[Math.floor(Math.random() * kinds.length)]); player.v = Math.max(player.v, player.veh.cfg.max * 1.1); ARENA.combo++; ARENA.score += 100 * ARENA.combo; beep(660, .1, 'triangle', .05);
-        if (ARENA.combo % 3 === 0) toast('Arena combo x' + ARENA.combo, 'Score ' + ARENA.score);
+      if (R.trig === false) continue;
+      if (R.cool <= 0 && !stunt && state.mode === 'explore' && !busy && player.veh && !player.onFoot && player.v > 4.5 && (pp.x - R.x) * R.dx + (pp.z - R.z) * R.dz > -.4 && (pp.x - R.x) * R.dx + (pp.z - R.z) * R.dz < 1.4 && Math.abs(-(pp.x - R.x) * R.dz + (pp.z - R.z) * R.dx) < R.w / 2 + .3 && Math.sin(player.heading) * R.dx + Math.cos(player.heading) * R.dz > .45) {
+        R.cool = 2.2; const vy = clamp(player.v * 1.9 * R.h / R.len * .95, 3.8, 13), kinds = R.big && vy > 8 ? ['flip', 'tabletop', 'superman', 'whip'] : ['tabletop', 'whip', 'superman', 'nohands'];
+        startStunt(kinds[Math.floor(Math.random() * kinds.length)], { vy, arena: true }); player.v = Math.max(player.v, player.veh.cfg.max * .95);
       }
     }
   });
@@ -900,7 +1042,7 @@ const ACTS = [
   { name: 'Cricket', emoji: '🏏', title: 'The Gully', hint: 'Find Ravi at the cricket pitch and bat six balls.', need: ['ravi'] },
   { name: 'Chess', emoji: '♟️', title: 'Thatha\'s Board', hint: 'Thatha is playing chess under the banyan tree. Pull up a chair.', need: ['thatha'] },
   { name: 'College', emoji: '🎓', title: 'B.I.T.', hint: 'Visit the campus gate and the Hackathon Hall of Fame.', need: ['edu', 'ach'], folio: true },
-  { name: 'Work', emoji: '💼', title: 'The Working Street', hint: 'Walk the street: Grootan Technologies, three projects and the tool shed.', need: ['exp', 'ibm', 'ibb', 'city', 'skills'], folio: true },
+  { name: 'Work', emoji: '💼', title: 'The Working Street', hint: 'Park outside Grootan Technologies, walk in and present the projects.', need: ['exp', 'ibm', 'ibb', 'city', 'skills'], folio: true },
   { name: 'AI', emoji: '✨', title: 'The Big Picture', hint: 'A tower of light stands at the end of the road. Walk up to it.', need: ['ai'] },
 ];
 const CARDS = [
@@ -1006,13 +1148,25 @@ const SKIDS = [], DUST = [], _w = new T.Vector3();
 { const g = new T.PlaneGeometry(.22, .5); for (let i = 0; i < 160; i++) { const m = new T.Mesh(g, new T.MeshBasicMaterial({ color: 0x3b2a22, transparent: true, opacity: 0, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.visible = false; scene.add(m); SKIDS.push({ m, t: 9 }); }
   for (let i = 0; i < 40; i++) { const s = new T.Sprite(new T.SpriteMaterial({ map: glowTex(), color: 0xd9bd8a, transparent: true, opacity: 0, depthWrite: false })); s.visible = false; scene.add(s); DUST.push({ s, t: 9, life: 1 }); } }
 let skidI = 0, dustI = 0, skidAcc = 0, stunt = null, stuntCool = 4, stuntCount = 0;
-const STUNTS = { wheelie: ['Wheelie!', 1.8], jump: ['Tabletop jump!', 1.0], nohands: ['No hands!', 1.4], superman: ['Superman!', 1.3], whip: ['Whip!', .9] };
-function startStunt(type) {
-  stunt = { type, t: 0, dur: STUNTS[type][1] }; stuntCool = 5 + Math.random() * 5; stuntCount++;
+const STUNTS = { wheelie: ['Wheelie!', 1.8], nohands: ['No hands!', 1.5], tabletop: ['Tabletop!', 1], whip: ['Whip!', 1], superman: ['Superman!', 1], flip: ['BACKFLIP!', 1] };
+const AIR_TYPES = ['tabletop', 'whip', 'superman', 'nohands', 'flip'], GRAV = 20; let camShake = 0;
+const sstep = (a, b, x) => { const k = clamp((x - a) / (b - a), 0, 1); return k * k * (3 - 2 * k); };
+function startStunt(type, opt = {}) {
+  if (type === 'jump') type = 'tabletop';
+  stunt = { type, t: 0, air: !!opt.vy, arena: !!opt.arena, dur: STUNTS[type][1] }; stuntCool = 5 + Math.random() * 5; stuntCount++;
+  if (stunt.air) { stunt.vy = opt.vy; stunt.y0 = player.g.position.y; stunt.T = Math.max(.4, (stunt.vy + Math.sqrt(stunt.vy * stunt.vy + 2 * GRAV * Math.max(0, stunt.y0 - .23))) / GRAV); stunt.dur = stunt.T; }
   const el = $('stuntTxt'); el.textContent = STUNTS[type][0]; el.hidden = false; el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); beep(660, .1, 'triangle', .04); setTimeout(() => beep(990, .12, 'triangle', .04), 90);
 }
+function landStunt() {
+  const p = player.g.position, s = stunt, slip = Math.abs(player.slip || 0), clean = slip < .5; stunt = null;
+  player.body.rotation.x = 0; player.body.rotation.z = 0; $('stuntTxt').hidden = true; camShake = clean ? .35 : .8; poof(p.x, p.z, 0xd9bd8a);
+  for (let k = 0; k < 3; k++) { const D = DUST[dustI++ % DUST.length]; D.s.position.set(p.x + (Math.random() - .5), .3, p.z + (Math.random() - .5)); D.t = 0; D.life = .6; D.s.visible = true; }
+  beep(clean ? 180 : 110, .12, 'square', .04);
+  if (!clean) player.v *= .55;
+  if (s && s.arena) { if (clean) { ARENA.cheerT = 2; ARENA.combo++; ARENA.score += 100 * ARENA.combo + 50; arenaTrick(); if (ARENA.combo % 3 === 0) toast('Arena combo x' + ARENA.combo, 'Score ' + ARENA.score); } else { ARENA.combo = 0; toast('Sketchy landing', 'No points. Land straight to score.'); } }
+}
 function driftFx(dt, len, dh) {
-  const V = player.veh, p = player.g.position, isMoto = V.type === 'moto', slip = player.slip || 0;
+  const V = player.veh, p = player.g.position, isMoto = V.type === 'moto' && !player.onFoot, slip = player.slip || 0;
   // skid marks + dust while sliding
   if (isMoto && Math.abs(slip) > .16 && player.v > 4 && !stunt) {
     skidAcc += dt; while (skidAcc > .025) { skidAcc -= .025;
@@ -1025,23 +1179,32 @@ function driftFx(dt, len, dh) {
   for (const D of DUST) { if (!D.s.visible) continue; D.t += dt; const k = D.t / D.life; D.s.position.y += dt * .5; D.s.scale.setScalar(.4 + k * 1.6); D.s.material.opacity = .5 * (1 - k); if (k >= 1) D.s.visible = false; }
   // stunts
   stuntCool -= dt;
-  if (isMoto && !stunt && state.mode === 'explore' && !busy && stuntCool <= 0 && player.v > V.cfg.max * .65 && Math.abs(slip) < .12 && Math.random() < dt * .35) {
-    const keys_ = Object.keys(STUNTS); startStunt(keys_[Math.floor(Math.random() * keys_.length)]);
-  }
-  player.g.rotation.order = 'YXZ'; let pitch = 0, lift = 0;
+  if (isMoto && !stunt && state.mode === 'explore' && !busy && stuntCool <= 0 && player.v > V.cfg.max * .65 && Math.abs(slip) < .12 && Math.random() < dt * .35) startStunt(Math.random() < .6 ? 'wheelie' : 'nohands');
+  player.g.rotation.order = 'YXZ'; let pitch = 0, roll = 0, yaw = 0;
+  const rh = state.mode === 'explore' || state.mode === 'cut' ? rampH(p) : 0; let yy = .07 + rh;
+  if (isMoto && !stunt && rh > .17) { const f = .8, h2 = rampH({ x: p.x + Math.sin(player.heading) * f, z: p.z + Math.cos(player.heading) * f }); pitch = -Math.atan((h2 - rh) / f); }
   if (stunt) {
-    stunt.t += dt; const k = Math.min(1, stunt.t / stunt.dur), bell = Math.sin(Math.PI * k);
-    if (stunt.type === 'wheelie') { pitch = -.5 * Math.min(1, bell * 1.6); lift = .86 * Math.sin(-pitch) * player.g.scale.x; }
-    else if (stunt.type === 'jump') { lift = 1.6 * 4 * k * (1 - k); pitch = -.25 * Math.sin(2 * Math.PI * k); }
-    else if (stunt.type === 'whip') { lift = 1.1 * 4 * k * (1 - k); V.d.g.rotation.z += bell * .9; player.body.rotation.z += bell * .5; }
-    else if (stunt.type === 'nohands') { player.arms[0].rotation.x = player.arms[1].rotation.x = -1 - 1.9 * Math.min(1, bell * 2); }
-    else if (stunt.type === 'superman') { lift = .5 * 4 * k * (1 - k); const s = Math.min(1, bell * 2); player.legs[0].rotation.x = player.legs[1].rotation.x = -1.15 + 2.2 * s; player.body.rotation.x = -.5 * s; player.arms[0].rotation.x = player.arms[1].rotation.x = -1 - .9 * s; }
-    if (k >= 1) { stunt = null; player.body.rotation.x = 0; $('stuntTxt').hidden = true; if (lift < .05) poof(p.x, p.z, 0xd9bd8a); }
+    stunt.t += dt; const k = Math.min(1, stunt.t / stunt.dur), env = sstep(0, .2, k) * sstep(1, .8, k), bell = Math.sin(Math.PI * k);
+    if (stunt.air) {
+      const vyT = stunt.vy - GRAV * stunt.t, Y = stunt.y0 + stunt.vy * stunt.t - .5 * GRAV * stunt.t * stunt.t;
+      pitch = clamp(-Math.atan2(vyT, Math.max(3, player.v + 2)), -.55, .5) * (1 - env * .6);
+      if (stunt.type === 'tabletop') { roll = -1.4 * env; player.body.rotation.z = -.25 * env; pitch -= .12 * env; }
+      else if (stunt.type === 'whip') { roll = -.7 * env; yaw = .85 * Math.sin(Math.PI * k) * sstep(0, .3, k); player.body.rotation.z = -.2 * env; }
+      else if (stunt.type === 'superman') { const s = env; player.legs[0].rotation.x = player.legs[1].rotation.x = -1.15 + 2.3 * s; player.body.rotation.x = -.45 * s; player.arms[0].rotation.x = player.arms[1].rotation.x = -1 - .9 * s; pitch -= .1 * env; }
+      else if (stunt.type === 'nohands') { player.arms[0].rotation.x = player.arms[1].rotation.x = -1 - 1.9 * Math.min(1, env * 1.6); roll = Math.sin(stunt.t * 7) * .12 * env; }
+      else if (stunt.type === 'flip') { pitch = -Math.PI * 2 * sstep(.08, .92, k); player.arms[0].rotation.x = player.arms[1].rotation.x = -.6; }
+      if (stunt.t > .1 && Y <= yy && vyT < 0) { landStunt(); } else if (stunt.t > stunt.T + 1.4) { landStunt(); } else yy = Math.max(Y, yy);
+    } else {
+      if (stunt.type === 'wheelie') { pitch = -.5 * Math.min(1, bell * 1.6); yy += .86 * Math.sin(-pitch) * player.g.scale.x; }
+      else if (stunt.type === 'nohands') { player.arms[0].rotation.x = player.arms[1].rotation.x = -1 - 1.9 * Math.min(1, bell * 2); }
+      if (k >= 1) { stunt = null; $('stuntTxt').hidden = true; }
+    }
   }
-  if (isMoto || player.g.rotation.x) { player.g.rotation.x = lerp(player.g.rotation.x, pitch, Math.min(1, dt * 14)); player.g.position.y = .07 + lift; }
+  if (isMoto || player.g.rotation.x) { player.g.rotation.x = stunt && stunt.type === 'flip' ? pitch : lerp(player.g.rotation.x, pitch, Math.min(1, dt * 14)); player.g.position.y = yy; V.d.g.rotation.z += roll; V.d.g.rotation.y = lerp(V.d.g.rotation.y || 0, yaw, Math.min(1, dt * 12)); }
 }
 function lifeStep(t, dt) {
   const pp = player.g.position;
+  if (document.body.classList.contains('inOffice') !== !!player.inside) document.body.classList.toggle('inOffice', !!player.inside);
   for (const f of AMB) f(t, dt, pp);
   if (boostT > 0) boostT -= dt;
   if (state.mode !== 'explore') return;
@@ -1085,7 +1248,7 @@ function smokeStep(dt) {
   for (const P of SMOKE) { if (P.t >= P.life) { if (P.s.visible) P.s.visible = false; continue; } P.t += dt; const k = P.t / P.life; P.s.position.x += P.vx * dt; P.s.position.z += P.vz * dt; P.s.position.y += dt * .7; P.s.scale.setScalar(.25 + k * 1.1); P.s.material.opacity = .55 * (1 - k); }
 }
 // ---- map
-const MAPN = { ravi: 'Cricket · Ravi', thatha: 'Chess · Thatha', edu: 'B.I.T.', ach: 'Hackathon Hall', exp: 'Grootan', ibm: 'IBM PKV', ibb: 'IBB Istanbul', city: 'CityApp Worms', skills: 'Tool Shed', printer: 'Resume printer', claude: 'Claude Code', codex: 'Codex', astra: 'Astra', auto: 'Automation', ai: 'The AI tower' };
+const MAPN = { ravi: 'Cricket · Ravi', thatha: 'Chess · Thatha', edu: 'B.I.T.', ach: 'Hackathon Hall', office: 'Grootan Office', printer: 'Resume printer', claude: 'Claude Code', codex: 'Codex', astra: 'Astra', auto: 'Automation', ai: 'The AI tower' };
 let mapBig = false, mapAcc = 0;
 function drawMap(cv, big) {
   const x = cv.getContext('2d'), W = cv.width, H = cv.height, pp = player.g.position;
@@ -1208,8 +1371,8 @@ async function portal(midFn) {
   midFn(); await wait(250); el.classList.remove('on'); await wait(600);
 }
 function swapVehicle(v, silent) {
-  if (player.veh.type === v) return;
-  setVehicle(v); player.g.scale.setScalar(.01); poof(player.g.position.x, player.g.position.z, 0xffe9a8);
+  if (player.veh.type === v || player.onFoot || player.inside) return;
+  setVehicle(v); player.g.scale.setScalar(targetScale * .8); poof(player.g.position.x, player.g.position.z, 0xffe9a8);
   if (!silent) toast('New wheels', 'You swapped up to ' + VEHNAME[v] + '.');
 }
 async function resumePortal() {
@@ -1224,7 +1387,7 @@ async function resumePortal() {
   await portal(() => {
     player.g.position.set(PRINTER.stn.x, .07, PRINTER.stn.z); player.heading = Math.PI; player.v = 0; player.g.rotation.y = Math.PI;
     camera.position.set(PRINTER.stn.x, 12.5 * (.62 + .38 * targetScale), PRINTER.stn.z + 15 * (.62 + .38 * targetScale));
-    setVehicle('moto'); player.g.scale.setScalar(.01);
+    setVehicle('moto'); player.g.scale.setScalar(targetScale);
   });
   toast('Grootan Technologies', 'You are at the printer. Press E to print your resume. Click Resume again to head back.');
   busy = false;
@@ -1234,7 +1397,7 @@ async function returnFromPrinter() {
   await portal(() => {
     player.g.position.set(a.x, .07, a.z); player.heading = a.h; player.g.rotation.y = a.h; player.v = 0;
     camera.position.set(a.cx, camera.position.y, a.cz);
-    setVehicle(a.veh); player.g.scale.setScalar(.01);
+    setVehicle(a.veh); player.g.scale.setScalar(targetScale);
   });
   away = null; busy = false;
 }
@@ -1250,6 +1413,8 @@ async function printResume() {
 async function interactStation(s) {
   if (s.kind === 'print') { await printResume(); return; }
   if (s.kind === 'term') { openTerm(s.id); return; }
+  if (s.kind === 'door') { await enterOffice(); return; }
+  if (s.kind === 'exit') { await leaveOffice(); return; }
   if (s.kind === 'folio') { openFolio(s.id); return; }
   if (save.done.includes(s.act) && s.id !== 'ai') {
     if (s.id === 'ravi') {
@@ -1271,6 +1436,122 @@ function caption(t) {
   let i = -1; for (let k = 0; k < CAPS.length; k++) if (t >= CAPS[k][0]) i = k;
   if (i !== capI) { capI = i; if (i < 0) { $('cap').hidden = true; return; } $('capH').textContent = CAPS[i][1]; $('capP').textContent = CAPS[i][2]; $('cap').hidden = false; const c = $('cap'); c.classList.remove('in'); void c.offsetWidth; c.classList.add('in'); beep(500 + i * 70, .12, 'sine', .03); }
 }
+/* ---------------------------------------------------------- stunt arena challenge */
+function arSync() { $('arCount').textContent = AR.tricks + ' / ' + AR.goal; $('arTime').textContent = Math.max(0, Math.ceil(AR.limit - AR.t)) + 's'; $('arScore').textContent = ARENA.score; }
+function arBanner(txt, sub, ms) { const b = $('arBanner'); b.innerHTML = txt + (sub ? '<small>' + sub + '</small>' : ''); b.hidden = false; b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); if (ms) setTimeout(() => { b.hidden = true; }, ms); }
+function arenaTrick() { if (!AR.active) return; AR.tricks++; arSync(); if (AR.tricks >= AR.goal) arenaWin(); }
+function arenaCancel(msg) { if (!AR.active) return; AR.active = false; AR.cd = 12; $('arHud').hidden = true; ARENA.combo = 0; if (msg) toast('Stunt arena', msg); }
+async function arenaEnter() {
+  busy = true; const pick = await say([{ who: 'Arena', text: 'STUNT CHALLENGE. Land 8 tricks off the kickers in 60 seconds. Hit the ramps fast! Press Esc any time to quit.', choices: [{ label: 'Start the challenge', reply: [NAR('Engines on!')] }, { label: 'Just ride around', reply: [NAR('Free ride. The ramps always work.')] }] }]);
+  busy = false; if (pick !== 0) { AR.cd = 20; return; }
+  await arenaIntro(); ARENA.score = 0; ARENA.combo = 0; AR.t = 0; AR.tricks = 0; AR.active = true; $('arHud').hidden = false; arSync(); arBanner('GO!', '8 tricks · 60 s', 1400); beep(880, .2, 'triangle', .06);
+}
+async function arenaIntro() {
+  state.mode = 'cut'; busy = true; AR.skip = false; player.v = 0; const c = ARENA.center; let tt = 0; arBanner('STUNT ARENA', 'press any key to skip');
+  await new Promise(res => { ticker = dt => { tt += dt; const k = clamp(tt / 4.6, 0, 1), e = k * k * (3 - 2 * k), a = 4.2 - e * 1.5, R = lerp(52, 24, e), H = lerp(34, 12, e);
+    camera.position.set(c.x + Math.cos(a) * R, H, c.z + Math.sin(a) * R); camera.lookAt(c.x, 1.5, c.z);
+    if (tt > 1.8 && tt < 1.9) arBanner('8 TRICKS', 'in 60 seconds'); if (tt >= 4.6 || AR.skip) { ticker = null; res(); } }; });
+  $('arBanner').hidden = true; state.mode = 'explore'; busy = false;
+}
+async function arenaWin() {
+  ARENA.best = Math.max(ARENA.best || 0, ARENA.score); ARENA.cheerT = 6; AR.active = false; AR.cd = 30; $('arHud').hidden = true; state.mode = 'cut'; busy = true; player.v = 0; chime();
+  const p = player.g.position, c = ARENA.center; let tt = 0, fw = 0; arBanner('CHAMPION!', AR.tricks + ' tricks · score ' + ARENA.score);
+  await new Promise(res => { ticker = dt => { tt += dt; const a = tt * .45, R = 9 + Math.sin(tt) * 1.2;
+    camera.position.set(p.x + Math.cos(a) * R, 3.2 + tt * .45, p.z + Math.sin(a) * R); camera.lookAt(p.x, 1.2, p.z);
+    player.arms[0].rotation.x = player.arms[1].rotation.x = -2.8; if (ARENA.trophy) { ARENA.trophy.rotation.y += dt * 3; ARENA.trophy.scale.setScalar(1 + Math.sin(tt * 6) * .08); }
+    fw -= dt; if (fw <= 0) { fw = .22; const col = [0xffd36a, 0xff7a8a, 0x9be8ff, 0xb8ff9a][Math.floor(Math.random() * 4)], bx = c.x + (Math.random() - .5) * 18, bz = c.z + (Math.random() - .5) * 18, by = 5 + Math.random() * 6;
+      for (let q = 0; q < 14; q++) { const sp = new T.Sprite(new T.SpriteMaterial({ map: glowTex(), color: col, transparent: true, opacity: 1, depthWrite: false })); sp.position.set(bx, by, bz); sp.scale.setScalar(.7); scene.add(sp); const ang = q / 14 * 6.283; AR.parts.push({ sp, vx: Math.cos(ang) * 4, vy: Math.sin(ang) * 4 + 1, vz: (Math.random() - .5) * 4, life: 1.2 }); } beep(300 + Math.random() * 300, .12, 'sawtooth', .03); }
+    if (tt >= 5.2) { ticker = null; res(); } }; });
+  $('arBanner').hidden = true; state.mode = 'explore'; busy = false; player.arms[0].rotation.x = player.arms[1].rotation.x = 0; if (ARENA.trophy) ARENA.trophy.scale.setScalar(1);
+  toast('Arena conquered', 'Ride back through the gate to take the challenge again.');
+}
+function arenaStep(dt, pp, t) {
+  for (let i = AR.parts.length - 1; i >= 0; i--) { const q = AR.parts[i]; q.life -= dt; q.vy -= 5 * dt; q.sp.position.x += q.vx * dt; q.sp.position.y += q.vy * dt; q.sp.position.z += q.vz * dt; q.sp.material.opacity = Math.max(0, q.life / 1.2); if (q.life <= 0) { scene.remove(q.sp); AR.parts.splice(i, 1); } }
+  if (ARENA.trophy && state.mode !== 'cut') ARENA.trophy.rotation.y += dt * .6;
+  AR.cd -= dt;
+  if (AR.active) {
+    if (state.mode === 'explore') { AR.t += dt; arSync(); if (Math.hypot(pp.x - ARENA.center.x, pp.z - ARENA.center.z) > 40) arenaCancel('You left the arena. Challenge ended.'); else if (AR.t >= AR.limit) { arenaCancel(null); chime(); arBanner('TIME UP', AR.tricks + ' / ' + AR.goal + ' tricks', 2200); toast('So close', 'Ride back through the gate to try again.'); } }
+    return;
+  }
+  if (AR.cd <= 0 && state.mode === 'explore' && !busy && !away && ARENA.gate && Math.hypot(pp.x - ARENA.gate.x, pp.z - ARENA.gate.z) < 3.4) arenaEnter();
+}
+addEventListener('keydown', e => { if (e.code === 'Escape') { if (AR.active) arenaCancel('Challenge ended. Free ride.'); } if (state.mode === 'cut' && !e.repeat) AR.skip = true; });
+$('arExit').addEventListener('click', () => arenaCancel('Challenge ended. Free ride.'));
+
+
+/* ---------------------------------------------------------- Grootan office: park, walk in, slideshows */
+const FOOT = { max: 3.6, acc: 10, turn: 9, type: 'foot' }, INSIDE_IDS = ['ibm', 'ibb', 'city', 'skills', 'exp'];
+function walkAnim(dt, v) {
+  const sp = Math.min(1, v / 2.2); player.walkPh = (player.walkPh || 0) + dt * (2 + v * 2.4);
+  const s = Math.sin(player.walkPh) * .75 * sp; player.legs[0].rotation.x = s; player.legs[1].rotation.x = -s; player.arms[0].rotation.x = -s * .7; player.arms[1].rotation.x = s * .7;
+  player.body.position.y = Math.abs(Math.sin(player.walkPh)) * .035 * sp; player.body.rotation.z = Math.sin(player.walkPh) * .03 * sp;
+}
+function camFollow(dt) {
+  const pp = player.g.position, k = .62 + .38 * player.g.scale.x, wx = pp.x, wz = pp.z + 15 * k, f = 1 - Math.exp(-dt * 4);
+  camera.position.x = lerp(camera.position.x, wx, f); camera.position.z = lerp(camera.position.z, wz, f); camera.position.y = lerp(camera.position.y, 12.5 * k, f); camera.lookAt(camera.position.x, 1.2, camera.position.z - 14.5 * k);
+}
+function walkTo(x, z, speed) {
+  return new Promise(res => { ticker = dt => {
+    const p = player.g.position, dx = x - p.x, dz = z - p.z, d = Math.hypot(dx, dz);
+    if (d < .2) { ticker = null; player.v = 0; res(); return; }
+    player.heading = Math.atan2(dx, dz); const st = Math.min(d, speed * dt); p.x += dx / d * st; p.z += dz / d * st; player.v = speed; player.g.rotation.y = player.heading;
+    rideAnim(dt, speed); camFollow(dt); }; });
+}
+let parkedBike = null;
+async function enterOffice() {
+  busy = true; state.mode = 'cut'; const B = OFFICE.bay, Dr = OFFICE.door, vt = player.veh.type; OFFICE.veh = vt;
+  toast('Grootan Technologies', 'Parking the bike. Time to walk in.');
+  await walkTo(B.x + 1.6, B.z + 1.8, 7); await walkTo(B.x, B.z, 3);
+  player.heading = Math.PI; player.g.rotation.y = Math.PI; player.v = 0; await wait(250);
+  // park the bike on the bay and step off
+  parkedBike = VEH[vt].build(); parkedBike.g.position.set(B.x, .07, B.z); parkedBike.g.rotation.y = Math.PI; parkedBike.g.scale.setScalar(player.g.scale.x); world.add(parkedBike.g); poof(B.x, B.z, 0xffe9a8);
+  player.onFoot = true; hideVehicle(true); beep(320, .1, 'triangle', .04);
+  await walkTo(B.x - 2.4, Dr.z + .6, 2.8); await walkTo(Dr.x, Dr.z, 2.8);
+  await portal(() => {
+    player.g.position.set(INT.spawn.x, .11, INT.spawn.z); player.heading = Math.PI; player.g.rotation.y = Math.PI; player.v = 0; player.inside = true;
+    const k = .62 + .38 * player.g.scale.x; camera.position.set(INT.spawn.x, 12.5 * k, INT.spawn.z + 15 * k); camera.lookAt(camera.position.x, 1.2, camera.position.z - 14.5 * k);
+  });
+  state.mode = 'explore'; busy = false; chime();
+  toast('Welcome to Grootan', 'Walk to each glowing spot and press E. The big screens hold the project slides.');
+}
+async function leaveOffice() {
+  busy = true; state.mode = 'cut'; const B = OFFICE.bay, Dr = OFFICE.door;
+  await portal(() => {
+    player.inside = false; player.g.position.set(Dr.x, .07, Dr.z + .8); player.heading = 0; player.g.rotation.y = 0; player.v = 0;
+    const k = .62 + .38 * player.g.scale.x; camera.position.set(Dr.x, 12.5 * k, Dr.z + .8 + 15 * k); camera.lookAt(camera.position.x, 1.2, camera.position.z - 14.5 * k);
+  });
+  await walkTo(B.x - 1.6, B.z, 2.8); await walkTo(B.x, B.z, 2.4); await wait(200);
+  if (parkedBike) { world.remove(parkedBike.g); parkedBike = null; }
+  { const want = VBYRANK[Math.max(VRANK[OFFICE.veh] || 0, save.vrank || 0)]; player.onFoot = false; setVehicle(want); }
+  hideVehicle(false); player.legs.forEach(l => l.rotation.x = 0); player.arms.forEach(a => a.rotation.x = 0); player.heading = Math.PI * .5 + .3; player.g.rotation.y = player.heading; player.v = 0; poof(B.x, B.z, 0xffe9a8);
+  state.mode = 'explore'; busy = false; beep(520, .1, 'triangle', .05); toast('Back on the road', 'Ride on. The road still has a way to go.');
+}
+/* ---- project folios as slideshows */
+const SL = { slides: [], i: 0 };
+const DECK = ['exp', 'ibm', 'ibb', 'city', 'skills'];
+function slidesFor(id) {
+  const d = FOLIO[id], out = []; if (!d) return out;
+  out.push({ id, html: `<div class="slideCover">${d.photo ? '<img class="mePhoto" src="assets/me.jpg" alt="" onerror="this.remove()">' : ''}<div class="ficon big">${d.icon}</div><h2>${esc(d.title)}</h2><p>${esc(d.sub)}</p></div>` });
+  for (const b of d.blocks) out.push({ id, html: `<div class="slideBody"><div class="sTag">${d.icon} ${esc(d.title)}</div>${b.h ? `<h3>${esc(b.h)}</h3>` : ''}${b.meta ? `<small>${esc(b.meta)}</small>` : ''}<ul>${b.items.map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>` });
+  if (d.chips) out.push({ id, html: `<div class="slideBody"><div class="sTag">${d.icon} ${esc(d.title)}</div>${d.chips.map(([k, v]) => `<h3>${k}</h3><div class="chips">${v.map(x => `<span>${esc(x)}</span>`).join('')}</div>`).join('')}</div>` });
+  if (d.contact) out.push({ id, html: '<div class="slideBody"><div class="sTag">' + d.icon + ' ' + esc(d.title) + '</div>' + d.contact.map(([e, t, u]) => `<a class="clink" href="${u}">${e} ${esc(t)}</a>`).join('') + '</div>' });
+  return out;
+}
+function openFolio(id) {
+  if (!FOLIO[id]) return; SL.slides = []; SL.i = 0;
+  if (DECK.includes(id)) { for (const k of DECK) { if (k === id) SL.i = SL.slides.length; SL.slides.push(...slidesFor(k)); } }  // the whole Grootan deck, opened at this section
+  else SL.slides = slidesFor(id);
+  $('folio').hidden = false; state.mode = 'folio'; chime(); showSlide(SL.i);
+}
+function showSlide(n) {
+  SL.i = clamp(n, 0, SL.slides.length - 1); const S = SL.slides[SL.i], b = $('folioBody'); b.innerHTML = S.html; b.classList.remove('slideIn'); void b.offsetWidth; b.classList.add('slideIn'); b.scrollTop = 0;
+  if (!save.visited.includes(S.id)) { save.visited.push(S.id); save.xp += 40; persist(); refreshHud(); }
+  $('fDots').innerHTML = SL.slides.map((x, k) => `<i class="${k === SL.i ? 'on' : (k < SL.i ? 'seen' : '')}"></i>`).join(''); $('fCount').textContent = (SL.i + 1) + ' / ' + SL.slides.length;
+  $('fPrev').disabled = SL.i === 0; $('fNext').textContent = SL.i === SL.slides.length - 1 ? 'Done' : 'Next ›'; beep(520 + (SL.i % 8) * 40, .04, 'sine', .03);
+}
+function slideNext() { if (SL.i >= SL.slides.length - 1) closeFolio(); else showSlide(SL.i + 1); }
+$('fPrev').onclick = () => showSlide(SL.i - 1); $('fNext').onclick = slideNext;
+
 async function finale() { capI = -1;
   state.mode = 'cut'; $('hud').hidden = true; busy = true;
   const p0 = player.g.position.clone(), cam0 = camera.position.clone(); let t = 0;
@@ -1300,7 +1581,7 @@ function nearestInteract() {
   return best;
 }
 function movePlayer(dt) {
-  const V = player.veh, cfg = V.cfg, p = player.g.position;
+  const V = player.veh, cfg = player.onFoot ? FOOT : V.cfg, p = player.g.position;
   const ix = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0) + joy.x;
   const iz = (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0) - (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) + joy.z;
   const len = Math.hypot(ix, iz), drive = state.mode === 'explore' && !busy;
@@ -1313,7 +1594,7 @@ function movePlayer(dt) {
   }
   player.v += (target - player.v) * Math.min(1, dt * (target > player.v ? cfg.acc : cfg.acc * 1.8));
   if (target === 0 && player.v < .05) player.v = 0;
-  const isMoto = V.type === 'moto';
+  const isMoto = V.type === 'moto' && !player.onFoot;
   if (player.vdir === undefined || !isMoto) player.vdir = player.heading;
   let slip = Math.atan2(Math.sin(player.heading - player.vdir), Math.cos(player.heading - player.vdir));
   if (isMoto) { const sp = Math.min(1, player.v / cfg.max), grip = 1.6 + 7 * (1 - sp) + (len < .1 ? 3 : 0); player.vdir += slip * Math.min(1, dt * grip); slip = Math.atan2(Math.sin(player.heading - player.vdir), Math.cos(player.heading - player.vdir)); player.v *= 1 - Math.min(.5, Math.abs(slip)) * dt * .35; }
@@ -1322,7 +1603,8 @@ function movePlayer(dt) {
   const R = .5 * player.g.scale.x + .3;
   for (const w of walls) { const cx = clamp(p.x, w.x0, w.x1), cz = clamp(p.z, w.z0, w.z1), dx = p.x - cx, dz = p.z - cz, d = Math.hypot(dx, dz); if (d < R) { if (d > 1e-4) { p.x = cx + dx / d * R; p.z = cz + dz / d * R; } else p.x = w.x0 - R; } }
   for (const r of rounds) { const dx = p.x - r.x, dz = p.z - r.z, d = Math.hypot(dx, dz), m = r.r + R; if (d < m && d > 1e-4) { p.x = r.x + dx / d * m; p.z = r.z + dz / d * m; } }
-  const n = pathNear(p.x, p.z); if (n.d > CORR) { p.x = n.px + (p.x - n.px) / n.d * CORR; p.z = n.pz + (p.z - n.pz) / n.d * CORR; }
+  if (player.inside) { p.y = .11; p.x = clamp(p.x, INT.x - INT.W / 2 + 1, INT.x + INT.W / 2 - 1); p.z = clamp(p.z, INT.z - INT.D / 2 + 1.2, INT.z + INT.D / 2 - .9); }
+  const n = pathNear(p.x, p.z); if (!player.inside && n.d > CORR) { p.x = n.px + (p.x - n.px) / n.d * CORR; p.z = n.pz + (p.z - n.pz) / n.d * CORR; }
   if (Math.hypot(p.x - px, p.z - pz) > .02 + player.v * dt * .9 && player.v > 0) player.v *= .85;
   player.g.rotation.y = player.heading;
   player.lean = lerp(player.lean, clamp(-dh * .1 * (player.v / cfg.max), -.35, .35), Math.min(1, dt * 8));
@@ -1337,7 +1619,7 @@ function animate() {
   if (state.mode === 'chess') { ChessGame.update(dt); draw(ChessGame.scene, ChessGame.camera); return; }
   if (dlg && !dlg.full) { dlg.pos += dt * 55; const l = dlg.q[dlg.i]; const n = Math.floor(dlg.pos); $('dlgText').textContent = l.text.slice(0, n); if (n % 3 === 0) beep(300 + (n % 5) * 20, .02, 'square', .012); if (n >= l.text.length) finishText(); }
   if (state.mode === 'explore' && player.veh && !away) { const n = pathNear(player.g.position.x, player.g.position.z); if (n.d < 45 && n.s > (save.reach || 0)) { save.reach = n.s; const v = stageVeh(); if (v !== player.veh.type) { swapVehicle(v); persist(); } } }
-  const sc = lerp(player.g.scale.x, targetScale, 1 - Math.exp(-dt * 3)); player.g.scale.setScalar(sc);
+  const sc = lerp(player.g.scale.x, targetScale, 1 - Math.exp(-dt * 8)); player.g.scale.setScalar(sc);
   if (ticker) ticker(dt); else movePlayer(dt);
   const pp = player.g.position;
   const nr = pathNear(pp.x, pp.z), prog = nr.s / TOTAL;
@@ -1371,6 +1653,7 @@ function animate() {
   if (!ticker) {
     const k = .62 + .38 * sc, wantX = pp.x + Math.sin(player.heading) * player.v * .25, wantZ = pp.z + 15 * k + Math.cos(player.heading) * player.v * .25;
     camera.position.x = lerp(camera.position.x, wantX, 1 - Math.exp(-dt * 4)); camera.position.z = lerp(camera.position.z, wantZ, 1 - Math.exp(-dt * 4)); camera.position.y = lerp(camera.position.y, 12.5 * k, 1 - Math.exp(-dt * 4));
+    if (camShake > .01) { camera.position.x += (Math.random() - .5) * camShake; camera.position.y += (Math.random() - .5) * camShake * .6; camShake *= .86; }
     camera.lookAt(camera.position.x, 1.2, camera.position.z - 14.5 * k);
   }
   sun.position.set(pp.x - 22, 34, pp.z + 14); sun.target.position.set(pp.x, 0, pp.z);
@@ -1384,7 +1667,7 @@ function animate() {
   if (printT >= 0) { printT += dt; PRINTER.paper.position.z = Math.min(1.25, .3 + printT * .22); PRINTER.paper.position.y = .56 + Math.sin(printT * 9) * .004; }
   if (state.mode === 'explore') {
     const a = ACTS[cur]; let tg = null, bd = 1e9;
-    if (a) for (const s of STN) { if (!a.need.includes(s.id) || stationDone(s)) continue; const d = Math.hypot(s.x - pp.x, s.z - pp.z); if (d < bd) { bd = d; tg = [s.x, s.z]; } }
+    if (a) for (const s of STN) { let ok = a.need.includes(s.id) && !stationDone(s); if (INSIDE_IDS.includes(s.id)) { if (!player.inside) ok = false; } else if (s.id === 'office') ok = !player.inside && cur === 3 && !a.need.every(id => save.visited.includes(id)); if (!ok) continue; const d = Math.hypot(s.x - pp.x, s.z - pp.z); if (d < bd) { bd = d; tg = [s.x, s.z]; } }
     if (tg) { const dx = tg[0] - pp.x, dz = tg[1] - pp.z; $('qArrow').style.transform = `rotate(${Math.atan2(dx, -dz)}rad)`; $('qDist').textContent = `${Math.round(Math.hypot(dx, dz))} m away`; $('qArrowRow').hidden = false; } else $('qArrowRow').hidden = true;
   }
   if (toastT > 0) { toastT -= dt; if (toastT <= 0) $('toast').hidden = true; }
@@ -1396,9 +1679,9 @@ addEventListener('keydown', e => {
   if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
   if (e.repeat) { keys.add(e.code); return; }
   keys.add(e.code);
-  if (state.mode === 'folio') { if (['Escape', 'KeyE', 'Space', 'Enter'].includes(e.code)) closeFolio(); return; }
+  if (state.mode === 'folio') { if (['Escape', 'KeyE'].includes(e.code)) closeFolio(); else if (['ArrowRight', 'KeyD', 'Space', 'Enter'].includes(e.code)) slideNext(); else if (['ArrowLeft', 'KeyA'].includes(e.code)) showSlide(SL.i - 1); return; }
   if (state.mode === 'map') { if (['Escape', 'KeyM', 'KeyE', 'Space', 'Enter'].includes(e.code)) toggleMap(false); return; }
-  if (state.mode === 'explore' && !busy && e.code === 'KeyM') { toggleMap(true); return; }
+  if (state.mode === 'explore' && !busy && !player.inside && e.code === 'KeyM') { toggleMap(true); return; }
   if (state.mode === 'term') { if (['Escape', 'KeyE', 'Space', 'Enter'].includes(e.code)) termKey(); return; }
   if (state.mode === 'dialog') { if (e.code === 'Space' || e.code === 'Enter' || e.code === 'KeyE') advance(); else if (/^Digit[1-4]$/.test(e.code)) pick(+e.code.slice(5) - 1); }
   else if (state.mode === 'explore' && !busy) { if (e.code === 'KeyE' || e.code === 'Enter' || e.code === 'Space') interact(); }
@@ -1447,7 +1730,8 @@ on('mapBig', () => toggleMap(false));
 $('btnNew').onclick = () => begin(true);
 $('btnCont').onclick = () => begin(false);
 { const m = /act=(\d)/.exec(location.hash); if (m) { const n = +m[1]; save.done = [...Array(n).keys()]; if (n >= 3) save.visited.push('edu', 'ach'); if (n >= 4) save.visited.push('exp', 'ibm', 'ibb', 'city', 'skills'); window.__start = () => begin(false); } }
-window.__j = { ARENA, pointAt, CUM, startStunt, playCricket, state, save, player, camera, STN, GATES, SPIRE, interact, completeAct, get busy() { return busy; }, pathNear, TOTAL };
+window.__j = { get stunt() { return stunt; }, setVehicle, enterOffice, leaveOffice, openFolio, OFFICE, INT, get AR() { return AR; }, arenaTrick, ARENA, pointAt, CUM, startStunt, playCricket, state, save, player, camera, STN, GATES, SPIRE, interact, completeAct, get busy() { return busy; }, pathNear, TOTAL };
 refreshHud();
 animate();
 })();
+
