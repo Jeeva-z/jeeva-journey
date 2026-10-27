@@ -39,7 +39,7 @@
 #mapBig{position:fixed;inset:0;z-index:62;background:#2b1d1688;display:flex;align-items:center;justify-content:center;cursor:pointer}
 #mapBig .mapbox{background:var(--glass,#fdf6e3);border:2px solid #a77a4a77;border-radius:18px;padding:14px 18px 10px;box-shadow:0 20px 60px #0006;max-height:94vh;display:flex;flex-direction:column;align-items:center}
 #mapBig h3{margin:0 0 8px;font-family:var(--serif,Georgia,serif);color:#5a3a24}
-#mapBigCv{width:min(90vw,1100px);height:auto;aspect-ratio:1100/320;border-radius:12px;border:2px solid #3b2a22}
+#mapBigCv{width:min(90vw,1100px);height:auto;aspect-ratio:1100/431;border-radius:12px;border:2px solid #3b2a22}
 #mapBig p{margin:8px 0 0;font-size:12px;color:#5a4538}
 @media(max-width:760px){#miniMap{width:110px;height:110px;top:auto;bottom:150px}}
 #stuntTxt{position:fixed;left:50%;top:26%;transform:translateX(-50%);z-index:50;pointer-events:none;font:900 clamp(26px,4.4vw,44px)/1 var(--serif,Georgia,serif);font-style:italic;color:#fff;letter-spacing:.02em;text-shadow:0 3px 0 #1f86d8,0 6px 18px #0006}
@@ -149,7 +149,7 @@
 
 <div id="term" hidden><div class="tbar"><i></i><i></i><i></i><span id="termTitle"></span></div><div id="termBody"></div><div id="termHint">E · skip</div></div>
 <div id="cap" hidden><b id="capH"></b><span id="capP"></span></div>
-<div id="mapBig" hidden><div class="mapbox"><h3>The road so far</h3><canvas id="mapBigCv" width="1100" height="320"></canvas><p>M or click to close · <span style="color:#d8402a">●</span> stories <span style="color:#e8a33d">●</span> places <span style="color:#8f7cff">●</span> agent desks <span style="color:#2fb8a0">●</span> resume printer <span style="color:#c9a040">◆</span> memories · golden arrows on the road give a speed boost</p></div></div>
+<div id="mapBig" hidden><div class="mapbox"><h3>The road so far</h3><canvas id="mapBigCv" width="1100" height="431"></canvas><p>M or click to close · <span style="color:#d8402a">●</span> stories <span style="color:#e8a33d">●</span> places <span style="color:#8f7cff">●</span> agent desks <span style="color:#2fb8a0">●</span> resume printer <span style="color:#c9a040">◆</span> memories · golden arrows on the road give a speed boost</p></div></div>
 <div id="stuntTxt" hidden></div>
 <div id="arHud" hidden><b>STUNT CHALLENGE</b><span>Jump <b id="arCount">0 / 1</b></span><span>Time <b id="arTime">25s</b></span><span>Score <b id="arScore">0</b></span><button id="arExit" type="button">Exit · Esc</button></div>
 <div id="arBanner" hidden></div>

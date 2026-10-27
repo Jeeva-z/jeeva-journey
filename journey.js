@@ -291,7 +291,7 @@ function walkAnim(p, phase, amt) {
 /* ================================================================ THE JOURNEY */
 const PATH = [[0, 44], [0, 0], [24, -14], [10, -44], [-14, -76], [-22, -100], [-6, -130], [-8, -160], [46, -160], [52, -190], [50, -215], [-20, -215], [-20, -250], [0, -285], [0, -318]];
 const CUM = [0]; for (let i = 1; i < PATH.length; i++) CUM.push(CUM[i - 1] + Math.hypot(PATH[i][0] - PATH[i - 1][0], PATH[i][1] - PATH[i - 1][1]));
-const TOTAL = CUM[CUM.length - 1], CORR = 60;
+const TOTAL = CUM[CUM.length - 1], CORR = 56;
 function pathNear(x, z) {
   let best = { d: 1e9 };
   for (let i = 0; i < PATH.length - 1; i++) {
@@ -985,6 +985,198 @@ function rampH(p) {
     }
   });
 }
+/* ------------------------------------------------- beach: the edge of the map is a shore with cafes, boats and fish */
+{
+  const BY = .07, SAND0 = 44, SHORE = 58.5;   // sand starts 44 m from the road, the waterline is at 58.5 m (riders stop at CORR, on the wet sand)
+  let sd2 = 99; const r2 = () => (sd2 = (sd2 * 16807) % 2147483647) / 2147483647;
+
+  // ---- shoreline painted from the distance to the road: grass fringe, dry sand, wet sand, foam, shallows, deep water
+  const xs = PATH.map(p => p[0]), zs = PATH.map(p => p[1]), M = 110, PX = 1.5;
+  const X0 = Math.min(...xs) - M, X1 = Math.max(...xs) + M, Z0 = Math.min(...zs) - M, Z1 = Math.max(...zs) + M;
+  const CW = Math.ceil((X1 - X0) * PX), CH = Math.ceil((Z1 - Z0) * PX);
+  const SEG = []; for (let i = 0; i < PATH.length - 1; i++) { const [ax, az] = PATH[i], [bx, bz] = PATH[i + 1], dx = bx - ax, dz = bz - az; SEG.push([ax, az, dx, dz, dx * dx + dz * dz]); }
+  const distTo = (x, z) => { let best = 1e9; for (const [ax, az, dx, dz, L2] of SEG) { let u = ((x - ax) * dx + (z - az) * dz) / L2; u = u < 0 ? 0 : u > 1 ? 1 : u; const ex = x - ax - dx * u, ez = z - az - dz * u, d = ex * ex + ez * ez; if (d < best) best = d; } return Math.sqrt(best); };
+  const wob = (x, z) => 1.8 * Math.sin(x * .09 + z * .05) + 1.1 * Math.sin(z * .17 - x * .11) + .6 * Math.sin(x * .31 + z * .27);
+  const DN = new Float32Array(CW * CH);
+  for (let r = 0; r < CH; r++) for (let c = 0; c < CW; c++) { const x = X0 + (c + .5) / PX, z = Z0 + (r + .5) / PX, d = distTo(x, z); DN[r * CW + c] = d < 38 ? d : d + wob(x, z); }
+  const mkCanvas = () => { const c = document.createElement('canvas'); c.width = CW; c.height = CH; return c; };
+  const GRASS = [150, 200, 100], SAND = [242, 222, 170], SAND2 = [230, 205, 148], WET = [200, 172, 118], FOAMC = [248, 252, 250], SHAL = [120, 224, 212], MID = [48, 160, 205], DEEP = [22, 95, 160];
+  const col = [0, 0, 0], mix = (a, b, t) => { t = t < 0 ? 0 : t > 1 ? 1 : t; col[0] = a[0] + (b[0] - a[0]) * t; col[1] = a[1] + (b[1] - a[1]) * t; col[2] = a[2] + (b[2] - a[2]) * t; };
+  const baseC = mkCanvas(), bctx = baseC.getContext('2d'), img = bctx.createImageData(CW, CH), D = img.data;
+  for (let i = 0, n = CW * CH; i < n; i++) {
+    const dn = DN[i], rr = Math.random(); let a = 255;
+    if (dn < SAND0) { D[i * 4 + 3] = 0; continue; }
+    if (dn < 48.5) { const t = (dn - SAND0) / 4.5; mix(GRASS, SAND, t); a = clamp(t * 1.3 + (rr - .5) * .6, 0, 1) * 255; }
+    else if (dn < 54) { mix(SAND, SAND2, rr * .7); const sp = (rr - .5) * 14; col[0] += sp; col[1] += sp; col[2] += sp; }
+    else if (dn < 57.4) { mix(SAND2, WET, (dn - 54) / 3.4); const sp = (rr - .5) * 10; col[0] += sp; col[1] += sp; col[2] += sp; }
+    else if (dn < SHORE) mix(WET, FOAMC, (dn - 57.4) / 1.1);
+    else {
+      const w = dn - SHORE; if (w < 5) mix(SHAL, MID, w / 5); else mix(MID, DEEP, (w - 5) / 40);
+      const sh = clamp(1 - w / 2.6, 0, 1) * .55; col[0] += (WET[0] - col[0]) * sh; col[1] += (WET[1] - col[1]) * sh; col[2] += (WET[2] - col[2]) * sh;
+      const rip = 1 + .05 * Math.sin(dn * 1.7 + (i % CW) * .09) + (rr - .5) * .06; col[0] *= rip; col[1] *= rip; col[2] *= rip;
+      if (rr > .9985) { col[0] = col[1] = col[2] = 255; }
+    }
+    D[i * 4] = col[0]; D[i * 4 + 1] = col[1]; D[i * 4 + 2] = col[2]; D[i * 4 + 3] = a;
+  }
+  bctx.putImageData(img, 0, 0);
+  const mkTex = c => { const t = new T.CanvasTexture(c); t.colorSpace = T.SRGBColorSpace; t.anisotropy = 4; t.wrapS = t.wrapT = T.ClampToEdgeWrapping; return t; };
+  const PW = X1 - X0, PH = Z1 - Z0, pcx = (X0 + X1) / 2, pcz = (Z0 + Z1) / 2;
+  const sheet = (material, y) => { const m = new T.Mesh(new T.PlaneGeometry(PW, PH), material); m.rotation.x = -Math.PI / 2; m.position.set(pcx, y, pcz); m.renderOrder = 2; world.add(m); return m; };
+  const beachMat = new T.MeshToonMaterial({ map: mkTex(baseC), gradientMap: toonGrad, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+  sheet(beachMat, BY).receiveShadow = true;
+  // endless open sea around the painted sheet (same colour as the deep edge)
+  { const fm = new T.MeshToonMaterial({ color: new T.Color(0x165fa0), gradientMap: toonGrad, polygonOffset: true, polygonOffsetFactor: -2 }), FR = 1400;
+    for (const [w, h, x, z] of [[FR, PH + 2 * FR, X0 - FR / 2, pcz], [FR, PH + 2 * FR, X1 + FR / 2, pcz], [PW, FR, pcx, Z0 - FR / 2], [PW, FR, pcx, Z1 + FR / 2]]) { const m = new T.Mesh(new T.PlaneGeometry(w, h), fm); m.rotation.x = -Math.PI / 2; m.position.set(x, BY, z); world.add(m); } }
+  // waves lapping the shore: three foam bands that surge in turn
+  const foams = [-.2, 1.0, 2.3].map(off => {
+    const c = mkCanvas(), cx = c.getContext('2d'), im = cx.createImageData(CW, CH), d = im.data, o = SHORE + off;
+    for (let i = 0, n = CW * CH; i < n; i++) {
+      const band = 1 - Math.abs(DN[i] - o) / .9; if (band <= 0) continue;
+      const x = X0 + ((i % CW) + .5) / PX, z = Z0 + (((i / CW) | 0) + .5) / PX, lace = .55 + .45 * Math.sin(x * 1.1 + Math.sin(z * .6) * 2.2) * Math.sin(z * 1.3 + Math.sin(x * .5) * 1.7);
+      d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = 255; d[i * 4 + 3] = 255 * clamp(band * 1.3, 0, 1) * clamp(lace + (Math.random() - .5) * .5, 0, 1);
+    }
+    cx.putImageData(im, 0, 0);
+    const m = sheet(new T.MeshBasicMaterial({ map: mkTex(c), transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3 }), BY + .01); m.renderOrder = 3; return m;
+  });
+  AMB.push(t => foams.forEach((f, k) => { f.material.opacity = .9 * Math.pow(Math.max(0, Math.sin(t * 1.0 - k * 1.15)), 1.3); }));
+
+  // ---- helpers
+  const bm = (p, w, h, d, c, x, y, z) => add(p, new T.BoxGeometry(w, h, d), mat(c), x, y, z, false);
+  const cm = (p, rt, rb, h, c, x, y, z, seg = 8) => add(p, new T.CylinderGeometry(rt, rb, h, seg), mat(c), x, y, z, false);
+  const sm = (p, r, c, x, y, z) => add(p, new T.SphereGeometry(r, 10, 8), mat(c), x, y, z, false);
+  const glow = (p, c, x, y, z, r = .09) => { const m = new T.Mesh(new T.SphereGeometry(r, 8, 6), new T.MeshBasicMaterial({ color: c })); m.position.set(x, y, z); p.add(m); return m; };
+  const solid = (g, lx, lz, r) => { g.updateMatrixWorld(true); const w = g.localToWorld(new T.Vector3(lx, 0, lz)); rounds.push({ x: w.x, z: w.z, r }); };
+  // a spot on the sand `off` metres from the road, with the direction to the sea; null where scenery or another stretch of road is in the way
+  const spot = (s, side, off, loose) => {
+    const a = along(s, side * off), n = pathNear(a.x, a.z); if (Math.abs(n.d - off) > (loose ? 3 : 1.2)) return null;
+    if (!loose && (rounds.some(r => Math.hypot(r.x - a.x, r.z - a.z) < r.r + 7) || walls.some(w => a.x > w.x0 - 7 && a.x < w.x1 + 7 && a.z > w.z0 - 7 && a.z < w.z1 + 7) || STN.some(st => Math.hypot(st.x - a.x, st.z - a.z) < 12))) return null;
+    const ux = (a.x - n.px) / n.d, uz = (a.z - n.pz) / n.d; return { x: a.x, z: a.z, ux, uz, ry: Math.atan2(ux, uz) };
+  };
+  const at = (sp, y = BY) => { const g = new T.Group(); g.position.set(sp.x, y, sp.z); g.rotation.y = sp.ry; world.add(g); return g; };
+  const palms = [];
+  const palm = (p, x, z, sc = 1) => {
+    const g = new T.Group(); g.position.set(x, 0, z); g.scale.setScalar(sc); p.add(g); const lean = (r2() - .5) * .5; let px = 0;
+    for (let k = 0; k < 6; k++) { cm(g, .17 - k * .012, .21 - k * .012, 1.05, k % 2 ? 0x9a7048 : 0x8a6038, px, .52 + k * 1.0, 0, 7); px += lean * .2; }
+    const crown = new T.Group(); crown.position.set(px, 6.1, 0); g.add(crown);
+    for (let k = 0; k < 8; k++) { const arm = new T.Group(); arm.rotation.y = k * .785; crown.add(arm); const fr = bm(arm, 2.5, .05, .55, k % 2 ? 0x3f9a4c : 0x58b05a, 1.15, 0, 0); fr.rotation.z = -.42; }
+    sm(crown, .2, 0x6a4a2a, .15, -.3, .1); sm(crown, .2, 0x6a4a2a, -.12, -.32, -.1);
+    palms.push({ crown, ph: r2() * 6 });
+  };
+  const umbrella = (p, x, z, c) => { cm(p, .035, .035, 2.4, 0xe8e2d2, x, 1.2, z, 5); const cn = add(p, new T.CylinderGeometry(0, 1.5, .55, 10), mat(c), x, 2.5, z, false); cn.scale.set(1, 1, 1); sm(p, .07, 0xe8e2d2, x, 2.8, z); };
+  const lounger = (p, x, z, c, ry = 0) => { const g = new T.Group(); g.position.set(x, 0, z); g.rotation.y = ry; p.add(g); bm(g, .55, .08, 1.5, 0xf4f0e6, 0, .3, 0); const bk = bm(g, .55, .08, .7, 0xf4f0e6, 0, .55, -.75); bk.rotation.x = -.7; bm(g, .5, .02, 1.3, c, 0, .35, 0); for (const sx of [-.24, .24]) for (const sz of [-.65, .65]) cm(g, .025, .025, .3, 0xb8bcc4, sx, .15, sz, 4); };
+
+  // ---- cafes, huts, lifeguard towers, volleyball, palm groves along both edges of the road
+  const NAMES = ['SEA BREEZE CAFE', 'CHAI SHORE', 'FILTER COFFEE & WAVES', 'LIGHTHOUSE BAKERY', 'SALT & SUGAR', 'TIDE & TEA'];
+  let nameI = 0;
+  const cafe = sp => {
+    const g = at(sp), wall = [0xf6e3c0, 0xcfe8e0, 0xf6d0c0, 0xe8e0f0][nameI % 4], roof = [0x3f8f88, 0xd8402a, 0x4a5aa8, 0xe0a030][nameI % 4];
+    bm(g, 7, 3.2, 4.4, wall, 0, 1.6, 0); bm(g, 7.5, .3, 4.9, roof, 0, 3.35, 0); bm(g, 7.5, .5, .2, roof, 0, 3.75, 2.4);
+    signBoard(g, NAMES[nameI++ % NAMES.length], 5.6, 1.05, 0, 4.4, 2.3, 'espresso . chai . waves');
+    bm(g, 3.2, 1.3, .1, 0x2a2420, -1.4, 1.9, 2.23); bm(g, 3.6, .12, .6, 0x8a5a36, -1.4, 1.2, 2.55); bm(g, 1.2, 2.2, .1, 0x5a3a22, 2.4, 1.1, 2.23);
+    for (let k = 0; k < 8; k++) { const aw = bm(g, 1, .06, 1.5, k % 2 ? 0xf4f0e6 : 0xd8402a, -3.4 + k * .95 * .78 + .0, 2.75, 2.9); aw.rotation.x = .35; aw.scale.x = .82; }
+    bm(g, 8.6, .14, 5.4, 0xb98652, 0, .07, 4.7);
+    const tabs = [[-2.7, 5.6], [-.9, 7.3], [1.1, 5.6], [2.9, 7.3]], cols = [0xd8402a, 0x3f8f88, 0xe0a030, 0x4a5aa8];
+    tabs.forEach(([x, z], i) => { cm(g, .5, .5, .06, 0xf4f0e6, x, .86, z, 14); cm(g, .05, .05, .8, 0x6c7078, x, .45, z, 5); for (const sx of [-.8, .8]) { cm(g, .24, .24, .08, 0x8a5a36, x + sx, .5, z, 8); cm(g, .04, .04, .45, 0x6c7078, x + sx, .25, z, 4); } umbrella(g, x, z, cols[i]); });
+    for (const [x, z] of [[-3.9, 7.4], [3.9, 7.4], [-3.9, 2.4], [3.9, 2.4]]) cm(g, .06, .06, 3, 0x5c4028, x, 1.5, z, 5);
+    for (let k = 0; k <= 12; k++) { const u = k / 12; glow(g, 0xfff0b0, -3.9 + u * 7.8, 2.95 - Math.sin(Math.PI * u) * .35, 7.4); }
+    const cb = bm(g, .9, 1.2, .08, 0x2a2e2a, 3.3, .6, 3.4); cb.rotation.x = -.15; bm(g, 1, .06, .1, 0xb98652, 3.3, 1.22, 3.4);
+    for (const px of [-3.4, 3.4]) { cm(g, .25, .2, .5, 0xb5532b, px, .3, 3.2, 8); sm(g, .35, 0x4f9a52, px, .75, 3.2); }
+    const cust = (x, z, shirt, ry) => { const p = person({ shirt, pants: 0x35507a, scale: .85, hair: 'bun', hairColor: 0x2a1713 }); p.g.position.set(x, .42, z); p.g.rotation.y = ry; p.legs[0].rotation.x = p.legs[1].rotation.x = -1.4; g.add(p.g); };
+    cust(-.2, 7.3, 0xe0705a, 1.6); cust(1.9, 5.6, 0x6a7fd0, -1.6);
+    const bar = person({ shirt: 0xf4f0e6, pants: 0x222a3a, scale: .9, moustache: true }); bar.g.position.set(-1.4, 0, 1.2); bar.g.rotation.y = 0; g.add(bar.g);
+    solid(g, -1.8, 0, 2.3); solid(g, 1.8, 0, 2.3);
+  };
+  const hut = sp => {
+    const g = at(sp); bm(g, 3, 2.2, 2.6, 0xf4ead0, 0, 1.1, 0); const rf = add(g, new T.ConeGeometry(2.7, 1.5, 8), mat(0xc9a35a), 0, 2.95, 0, false); rf.rotation.y = .4;
+    bm(g, 1.6, 1.0, .1, 0x2a2420, 0, 1.4, 1.33); bm(g, 2, .1, .6, 0x8a5a36, 0, 0.95, 1.6); signBoard(g, 'SURF & ICE CREAM', 2.6, .6, 0, 2.5, 1.45);
+    [0xff7a2a, 0x3f8f88, 0xd8402a].forEach((c, i) => { const b = bm(g, .34, 1.9, .06, c, 2.1 + i * .38, 1.0, .2); b.rotation.z = -.12; });
+    solid(g, 0, 0, 2.1);
+  };
+  const lifeguard = sp => {
+    const g = at(sp); for (const sx of [-.8, .8]) for (const sz of [-.8, .8]) cm(g, .07, .07, 2.4, 0x8a6a4a, sx, 1.2, sz, 5);
+    bm(g, 2.2, .12, 2.2, 0xb98652, 0, 2.4, 0); bm(g, 1.6, 1.1, 1.6, 0xf4f0e6, 0, 3.0, 0); bm(g, 1.9, .14, 1.9, 0xd8402a, 0, 3.65, 0); bm(g, 1.2, .6, .1, 0xbfe3ea, 0, 3.1, .82);
+    cm(g, .03, .03, 1.4, 0x8a6a4a, .95, 4.2, .95, 4); bm(g, .6, .35, .03, 0xd8402a, 1.25, 4.7, .95);
+    const st = bm(g, .5, .08, 2.2, 0xb98652, 0, 1.1, 1.5); st.rotation.x = .75;
+    solid(g, 0, 0, 1.3);
+  };
+  const volley = sp => {
+    const g = at(sp); for (const sx of [-3, 3]) cm(g, .05, .05, 2.4, 0xe8e2d2, sx, 1.2, 0, 5);
+    const net = new T.Mesh(new T.PlaneGeometry(6, .9, 14, 3), new T.MeshBasicMaterial({ color: 0xf4f0e6, wireframe: true, side: T.DoubleSide })); net.position.set(0, 1.95, 0); g.add(net);
+    sm(g, .2, 0xffffff, 1.2, .2, 2.5); sm(g, .2, 0xd8402a, -2.4, .2, -2.2);
+  };
+  const umbrellas = sp => {
+    const g = at(sp), cs = [0xd8402a, 0x3f8f88, 0xe0a030, 0xe0705a, 0x6a7fd0]; const k0 = Math.floor(r2() * 5);
+    umbrella(g, -1.6, 0, cs[k0]); umbrella(g, 1.7, .6, cs[(k0 + 2) % 5]);
+    lounger(g, -1.6, 1.4, cs[(k0 + 1) % 5], .1); lounger(g, -.6, 1.5, cs[(k0 + 3) % 5], -.05); lounger(g, 1.7, 2.0, cs[(k0 + 4) % 5], .1);
+    bm(g, .9, .02, 1.6, cs[(k0 + 2) % 5], 3.2, .09, 1.2);
+    const cs2 = add(g, new T.ConeGeometry(.45, .5, 8), mat(0xe4c88a), 0, .25, 3.4, false); bm(g, .5, .35, .5, 0xe4c88a, .8, .18, 3.5);
+    solid(g, -1.6, 0, .35); solid(g, 1.7, .6, .35);
+  };
+  const grove = sp => { const g = at(sp); palm(g, -2.4, -.6, 1 + r2() * .3); palm(g, 0.6, 1.1, 1 + r2() * .3); palm(g, 3.2, -.4, .9 + r2() * .3); for (const [x, z] of [[-2.4, -.6], [.6, 1.1], [3.2, -.4]]) solid(g, x, z, .5); };
+  const KINDS = [cafe, grove, umbrellas, hut, grove, lifeguard, umbrellas, volley, grove, cafe, umbrellas, grove, hut, lifeguard];
+  const KOFF = new Map([[cafe, 47], [hut, 50], [lifeguard, 52], [volley, 51], [umbrellas, 50.5], [grove, 48.5]]);
+  { let ki = 0; for (let s = 16; s < TOTAL - 10; s += 15) for (const side of [1, -1]) { const kind = KINDS[ki++ % KINDS.length], sp = spot(s, side, KOFF.get(kind)); if (sp) kind(sp); } }
+  AMB.push(t => palms.forEach(p => { p.crown.rotation.z = Math.sin(t * .8 + p.ph) * .05; p.crown.rotation.x = Math.sin(t * .6 + p.ph * 1.3) * .03; }));
+
+  // ---- boats out on the water
+  const boats = [];
+  const mkBoat = kind => {
+    const g = new T.Group(), hullCol = [0xd8402a, 0x3f8f88, 0xe0a030, 0x4a5aa8, 0xf4f0e6][Math.floor(r2() * 5)];
+    const sh = new T.Shape(); sh.moveTo(-2.2, .6); sh.lineTo(-1.9, -.4); sh.lineTo(1.7, -.4); sh.lineTo(2.6, .8); sh.lineTo(-2.2, .6);
+    const geo = new T.ExtrudeGeometry(sh, { depth: 1.6, bevelEnabled: false }); geo.translate(0, 0, -.8); const hull = new T.Mesh(geo, mat(hullCol)); g.add(hull); outline(hull, 1.03);
+    bm(g, 4.3, .08, 1.5, 0xc9a878, -.25, .62, 0); bm(g, 4.4, .1, 1.68, 0xf4f0e6, -.2, .58, 0).scale.set(1, .5, 1);
+    if (kind === 'sail') {
+      cm(g, .06, .07, 4.6, 0x8a6a4a, .5, 2.9, 0, 6); const sl = new Shape2(0, 0, 0, 3.8, 2.2, 0); const sail = new T.Mesh(new T.ShapeGeometry(sl), new T.MeshToonMaterial({ color: 0xfaf4e6, gradientMap: toonGrad, side: T.DoubleSide })); sail.position.set(.45, 1.0, 0); g.add(sail);
+      const jb = new T.Mesh(new T.ShapeGeometry(new Shape2(0, 0, 0, 3.2, -1.6, 0)), new T.MeshToonMaterial({ color: hullCol === 0xf4f0e6 ? 0xd8402a : hullCol, gradientMap: toonGrad, side: T.DoubleSide })); jb.position.set(.55, 1.2, 0); g.add(jb);
+    } else if (kind === 'fish') {
+      bm(g, 1.4, 1.0, 1.2, 0xf4f0e6, -.9, 1.15, 0); bm(g, 1.6, .12, 1.4, hullCol, -.9, 1.7, 0); bm(g, .1, .5, .9, 0xbfe3ea, -.18, 1.3, 0);
+      cm(g, .05, .06, 2.4, 0x6a5a48, 1.0, 1.9, 0, 6); const bo = bm(g, 1.6, .04, .04, 0x6a5a48, 1.7, 2.9, 0); bo.rotation.z = -.5;
+      for (let k = 0; k < 3; k++) bm(g, .5, .3, .5, 0xb98652, 1.2 + k * .0, .85 + .0, -.4 + k * .4);
+      glow(g, 0xffd36a, -1.6, 2.0, .5, .12);
+    } else {
+      bm(g, .1, .04, 1.6, 0x8a6a4a, 0, .75, 0); for (const sz of [-1, 1]) { const oar = bm(g, 1.6, .04, .08, 0x8a6a4a, 0, .8, sz * 1.1); oar.rotation.y = sz * .5; }
+    }
+    return g;
+  };
+  // triangle sail helper (a Shape through three points)
+  function Shape2(x0, y0, x1, y1, x2, y2) { const s = new T.Shape(); s.moveTo(x0, y0); s.lineTo(x1, y1); s.lineTo(x2, y2); s.closePath(); return s; }
+  { const kinds = ['sail', 'fish', 'row', 'sail', 'fish']; let bi = 0;
+    for (let s = 24; s < TOTAL - 14; s += 41) for (const side of [1, -1]) { const off = 74 + r2() * 30, sp = spot(s + side * 9, side, off, true); if (!sp) continue;
+      const b = mkBoat(kinds[bi++ % kinds.length]), hd = Math.atan2(-sp.ux, -sp.uz) + (r2() < .5 ? 0 : Math.PI); b.position.set(sp.x, BY, sp.z); b.rotation.y = hd; b.scale.setScalar(1.1 + r2() * .4); world.add(b);
+      boats.push({ g: b, x: sp.x, z: sp.z, tx: Math.cos(-hd), tz: Math.sin(-hd), ph: r2() * 6 }); }
+    // buoys
+    for (let s = 30; s < TOTAL - 20; s += 46) for (const side of [1, -1]) { const sp = spot(s, side, 66 + r2() * 4, true); if (!sp) continue; const bu = new T.Group(); bu.position.set(sp.x, BY, sp.z); world.add(bu); cm(bu, .22, .3, .6, 0xd8402a, 0, .1, 0, 8); cm(bu, .23, .23, .16, 0xf4f0e6, 0, .22, 0, 8); sm(bu, .1, 0xfff0b0, 0, .62, 0); boats.push({ g: bu, x: sp.x, z: sp.z, tx: 0, tz: 0, ph: r2() * 6, buoy: true }); } }
+  AMB.push((t, dt, pp) => boats.forEach(b => { const near = Math.hypot(b.x - pp.x, b.z - pp.z) < 160; b.g.visible = near; if (!near) return; const k = b.buoy ? 1.6 : 1, drift = b.buoy ? 0 : Math.sin(t * .1 + b.ph) * 3;
+    b.g.position.set(b.x + b.tx * drift, BY + Math.sin(t * 1.2 * k + b.ph) * .06 * k, b.z + b.tz * drift); b.g.rotation.z = Math.sin(t * .9 * k + b.ph) * .04 * k; b.g.rotation.x = Math.sin(t * .7 * k + b.ph) * .03 * k; }));
+
+  // ---- fish: schools in the shallows and a few that leap
+  const fishMat = [0xff8a3a, 0x4aa8e8, 0xffd36a, 0xc9d6e0, 0xe0705a];
+  const mkFish = c => { const g = new T.Group(); const body = add(g, new T.SphereGeometry(1, 10, 8), mat(c), 0, 0, 0, false); body.scale.set(.36, .13, .1); const tail = add(g, new T.ConeGeometry(.12, .24, 4), mat(c), -.42, 0, 0, false); tail.rotation.z = Math.PI / 2; tail.scale.set(1, 1, .3); const fin = add(g, new T.ConeGeometry(.06, .16, 4), mat(c), 0, .13, 0, false); const eye = glow(g, 0x15181e, .24, .04, .07, .025); g.userData.tail = tail; return g; };
+  const schools = [];
+  for (let s = 20; s < TOTAL - 10; s += 52) for (const side of [1, -1]) { const sp = spot(s + (side > 0 ? 0 : 20), side, 62.5 + r2() * 2, true); if (!sp) continue;
+    const fishes = []; const n = 6; for (let i = 0; i < n; i++) { const f = mkFish(fishMat[(i + schools.length) % fishMat.length]); f.visible = false; f.scale.setScalar(1.2 + r2() * .5); world.add(f); fishes.push({ f, ph: i * .55 + r2() * .3, rr: .8 + r2() * .5 }); }
+    const rip = new T.Mesh(new T.RingGeometry(.4, .55, 20), new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .0, depthWrite: false, side: T.DoubleSide })); rip.rotation.x = -Math.PI / 2; rip.visible = false; world.add(rip);
+    schools.push({ x: sp.x, z: sp.z, r: 3 + r2() * 2, w: (r2() < .5 ? -1 : 1) * (.45 + r2() * .25), fishes, rip, ph: r2() * 6 }); }
+  // leaping fish: one hops near each few schools
+  const jumpers = schools.filter((_, i) => i % 2 === 0).map(s => ({ s, f: mkFish(0xc9d6e0), next: 2 + r2() * 8, u: -1, ang: r2() * 6.28, sp: r2() * 6 }));
+  jumpers.forEach(j => { j.f.visible = false; j.f.scale.setScalar(2.2); world.add(j.f); j.ring = new T.Mesh(new T.RingGeometry(.2, .32, 20), new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, side: T.DoubleSide })); j.ring.rotation.x = -Math.PI / 2; world.add(j.ring); });
+  AMB.push((t, dt, pp) => {
+    for (const S of schools) {
+      const near = Math.hypot(S.x - pp.x, S.z - pp.z) < 90; S.fishes.forEach(o => o.f.visible = near); S.rip.visible = near; if (!near) continue;
+      S.fishes.forEach((o, i) => { const a = t * S.w + o.ph * (S.w > 0 ? 1 : -1), rr = S.r * o.rr, vx = -Math.sin(a) * S.w, vz = Math.cos(a) * .7 * S.w;
+        o.f.position.set(S.x + Math.cos(a) * rr, BY + .03 + Math.sin(t * 3 + i) * .015, S.z + Math.sin(a) * rr * .7); o.f.rotation.y = -Math.atan2(vz, vx); o.f.rotation.z = Math.sin(t * 5 + i) * .08; o.f.userData.tail.rotation.y = Math.sin(t * 14 + i * 2) * .6; });
+      const pr = (t * .7 + S.ph) % 1; S.rip.position.set(S.x + Math.cos(t * S.w) * S.r * .9, BY + .02, S.z + Math.sin(t * S.w) * S.r * .6); S.rip.scale.setScalar(1 + pr * 3); S.rip.material.opacity = (1 - pr) * .45;
+    }
+    for (const J of jumpers) {
+      const near = Math.hypot(J.s.x - pp.x, J.s.z - pp.z) < 90; if (!near) { J.f.visible = false; continue; }
+      J.next -= dt; if (J.u < 0 && J.next <= 0) { J.u = 0; J.ang = Math.random() * 6.28; J.sp = 3 + Math.random() * 3; J.bx = J.s.x + (Math.random() - .5) * 8; J.bz = J.s.z + (Math.random() - .5) * 6; J.ring.position.set(J.bx, BY + .02, J.bz); J.rt = 0; }
+      if (J.u >= 0) { J.u += dt / .95; const u = J.u, x = J.bx + Math.cos(J.ang) * J.sp * u, z = J.bz + Math.sin(J.ang) * J.sp * u, h = 4.4 * u * (1 - u) * 1.1;
+        J.f.visible = u < 1; J.f.position.set(x, BY + h, z); J.f.rotation.y = -J.ang; J.f.rotation.z = (1 - 2 * u) * 1.1; J.f.userData.tail.rotation.y = Math.sin(t * 30) * .7;
+        if (u >= 1) { J.u = -1; J.next = 4 + Math.random() * 8; J.ring.position.set(x, BY + .02, z); J.rt = 0; J.f.visible = false; } }
+      if (J.rt !== undefined && J.rt < 1) { J.rt += dt / .9; J.ring.scale.setScalar(1 + J.rt * 5); J.ring.material.opacity = Math.max(0, 1 - J.rt) * .8; } else J.ring.material.opacity = 0;
+    }
+  });
+}
 // birds and butterflies live at fixed places in the world (they do not follow the camera)
 {
   const mkBird = () => { const b = new T.Group(); for (const sx of [-1, 1]) { const w = new T.Mesh(new T.BoxGeometry(.6, .03, .22), mat(0x3b2a22)); w.position.x = sx * .3; b.add(w); } b.visible = false; scene.add(b); return b; };
@@ -1297,7 +1489,7 @@ function lifeStep(t, dt) {
   for (const O of ORBS) { if (O.got) continue; if (Math.hypot(O.x - pp.x, O.z - pp.z) < 1.9) { O.got = true; O.g.visible = false; if (!save.orbs.includes(O.i)) save.orbs.push(O.i); persist(); poof(O.x, O.z, 0xffe9a8); chime(); toast(`Memory ${save.orbs.length} of ${ORBS.length}`, MEMS[O.i]); } }
 }
 // ---- realistic map: bake a top-down render of the world once
-const MAPB = { X0: -85, X1: 105, Z0: -400, Z1: 105, k: 3.5, img: null };
+const MAPB = { X0: -85, X1: 112, Z0: -400, Z1: 105, k: 3.5, img: null };
 function bakeMap() {
   try {
     const W = Math.round((MAPB.X1 - MAPB.X0) * MAPB.k), H = Math.round((MAPB.Z1 - MAPB.Z0) * MAPB.k);
@@ -1339,7 +1531,7 @@ function drawMap(cv, big) {
   // big map: road runs left to right (u = -z, v = x). minimap: north-up around the player (u = x, v = z).
   const U = big ? (wx, wz) => -wz : (wx, wz) => wx, Vv = big ? (wx, wz) => wx : (wx, wz) => wz;
   let u0, u1, v0, v1;
-  if (big) { u0 = -50; u1 = 385; v0 = -34; v1 = 98; } else { const R = 55; u0 = pp.x - R; u1 = pp.x + R; v0 = pp.z - R; v1 = pp.z + R; }
+  if (big) { u0 = -105; u1 = 380; v0 = -82; v1 = 108; } else { const R = 55; u0 = pp.x - R; u1 = pp.x + R; v0 = pp.z - R; v1 = pp.z + R; }
   const sc = Math.min(W / (u1 - u0), H / (v1 - v0)), ou = (W - (u1 - u0) * sc) / 2, ov = (H - (v1 - v0) * sc) / 2;
   const X = (wx, wz) => ou + (U(wx, wz) - u0) * sc, Y = (wx, wz) => ov + (Vv(wx, wz) - v0) * sc;
   x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, W, H); x.fillStyle = '#7fae5c'; x.fillRect(0, 0, W, H);
@@ -1374,7 +1566,7 @@ function drawMap(cv, big) {
     if (!P) continue; const sx = X(P.x, P.z), sy = Y(P.x, P.z), r = big ? 8 : 5;
     x.fillStyle = col; x.strokeStyle = '#ffffff'; x.lineWidth = 2; x.beginPath(); x.arc(sx, sy, r, 0, 7); x.fill(); x.stroke();
     x.fillStyle = '#ffffff'; x.font = '700 ' + (big ? 11 : 8) + 'px system-ui, sans-serif'; x.textAlign = 'center'; x.fillText(ch, sx, sy + (big ? 4 : 3));
-    if (big) { x.fillStyle = '#2b1d16'; x.font = '600 13px system-ui, sans-serif'; x.textAlign = nm === 'Iron Gym' ? 'left' : 'center'; x.fillText(nm, nm === 'Iron Gym' ? sx + 12 : sx, nm === 'Iron Gym' ? sy + 4 : sy + 24); }
+    if (big) { x.fillStyle = '#2b1d16'; x.font = '600 13px system-ui, sans-serif'; x.textAlign = nm === 'Iron Gym' ? 'left' : 'center'; x.fillText(nm, nm === 'Iron Gym' ? sx + 12 : sx, nm === 'Iron Gym' ? sy + 4 : sy + 40); }
   }
   const h = player.heading, px = X(pp.x, pp.z), pz = Y(pp.x, pp.z), L = big ? 12 : 9;
   const fx_ = Math.sin(h), fz_ = Math.cos(h), du = big ? -fz_ : fx_, dv = big ? fx_ : fz_;
