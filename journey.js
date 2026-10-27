@@ -489,7 +489,7 @@ function openGate(k) { const G = GATES[k]; if (!G || G.open) return; G.open = tr
 // ---- trees, lanterns and crystals along the way
 {
   const stn = STN.map(s => [s.x, s.z]);
-  const RESV = [[CUM[3] + 14, 7.5, 5], [CUM[5] + 12, -8, 3.5], [CUM[5] + 17, -11, 3.5], [CUM[5] + 22, 8.5, 3.5], [CUM[6] + 20, 4.6, 3.5], [CUM[1] - 14, -9, 3], [CUM[11] + 16, -11, 8.5], [CUM[9] + 12, 26, 24]].map(([ss, off, r]) => { const p = pointAt(ss); return [p.x - p.tz * off, p.z + p.tx * off, r]; });
+  const RESV = [[CUM[3] + 14, 7.5, 5], [CUM[5] + 12, -8, 3.5], [CUM[5] + 17, -11, 3.5], [CUM[5] + 22, 8.5, 3.5], [CUM[6] + 20, 4.6, 3.5], [CUM[1] - 14, -9, 3], [CUM[11] + 16, -11, 8.5], [CUM[9] - 4, 12, 32]].map(([ss, off, r]) => { const p = pointAt(ss); return [p.x - p.tz * off, p.z + p.tx * off, r]; });
   const blocked = (x, z) => RESV.some(([a, b, r]) => Math.hypot(a - x, b - z) < r + 2.5) || walls.some(w => x > w.x0 - 4 && x < w.x1 + 4 && z > w.z0 - 4 && z < w.z1 + 4) || rounds.some(r => Math.hypot(r.x - x, r.z - z) < r.r + 3.5 && !r.gate) || stn.some(([a, b]) => Math.hypot(a - x, b - z) < 5) || Math.hypot(x - PITCH.cx, z - PITCH.cz) < PITCH.R + 4 || Math.hypot(x, z + 334) < 16;
   for (let s = 5; s < TOTAL - 20; s += 6.5) {
     for (const side of [-1, 1]) {
@@ -812,36 +812,57 @@ for (const [frac, txt] of [[.2, 'CHESS AHEAD'], [.4, 'COLLEGE AHEAD'], [.58, 'WO
     if (d > 30) greeted = false;
   });
 }
-// stunt arena and gym off the road (ramps trigger tricks, the lifter keeps pumping)
-const AR = { active: false, t: 0, tricks: 0, goal: 8, limit: 60, cd: 0, skip: false, parts: [] };
+// stunt lane: one-way track that peels off the road (entry curve), launches over a gap jump (stunt) and rejoins the road (exit curve)
+const AR = { active: false, t: 0, tricks: 0, goal: 1, limit: 25, dir: 0, cd: 0, skip: false, parts: [] };
 const ARENA = { ramps: [], score: 0, combo: 0 }; const _rv = new T.Vector3();
 // height of the ramp surface under a world point (the bike climbs the kickers)
 function rampH(p) {
-  for (const R of ARENA.ramps) { if (!R.len) continue; _rv.set(p.x, 0, p.z); R.r.worldToLocal(_rv); const u = (_rv.x + R.len / 2) / R.len; if (u < 0 || u > 1 || Math.abs(_rv.z) > R.w / 2) continue; return .16 + R.h * Math.pow(u, 1.9) * .95; }
-  return ARENA.center && Math.hypot(p.x - ARENA.center.x, p.z - ARENA.center.z) < 21.4 ? .16 : 0;
+  for (const R of ARENA.ramps) { if (!R.len) continue; _rv.set(p.x, 0, p.z); R.r.worldToLocal(_rv); const u = (_rv.x + R.len / 2) / R.len; if (u < 0 || u > 1 || Math.abs(_rv.z) > R.w / 2) continue; return R.h * Math.pow(u, 1.9) * .95; }
+  return 0;
 }
 {
-  const q = along(CUM[9] + 12, 26), g = new T.Group(); g.position.set(q.x, 0, q.z); g.rotation.y = q.ry - Math.PI / 2; world.add(g);
-  // concrete skate-park surface with painted lanes
-  const cc = document.createElement('canvas'); cc.width = cc.height = 512; { const x = cc.getContext('2d'); x.fillStyle = '#9a9ca2'; x.fillRect(0, 0, 512, 512); for (let k = 0; k < 2600; k++) { x.fillStyle = `rgba(${60 + Math.random() * 90|0},${60 + Math.random() * 90|0},${66 + Math.random() * 90|0},.18)`; x.fillRect(Math.random() * 512, Math.random() * 512, 2 + Math.random() * 6, 2 + Math.random() * 4); } x.strokeStyle = '#6c6e74'; x.lineWidth = 2; for (let k = 0; k <= 512; k += 128) { x.beginPath(); x.moveTo(k, 0); x.lineTo(k, 512); x.moveTo(0, k); x.lineTo(512, k); x.stroke(); } }
-  const ctex = new T.CanvasTexture(cc); ctex.wrapS = ctex.wrapT = T.RepeatWrapping; ctex.repeat.set(5, 5);
-  const flat = new T.Mesh(new T.CylinderGeometry(21, 21.6, .16, 56), new T.MeshToonMaterial({ map: ctex, gradientMap: toonGrad })); flat.position.y = .08; flat.receiveShadow = true; g.add(flat);
-  const ring = (rr, col, w) => { const m = new T.Mesh(new T.RingGeometry(rr, rr + w, 64), new T.MeshBasicMaterial({ color: col, side: T.DoubleSide })); m.rotation.x = -Math.PI / 2; m.position.y = .17; g.add(m); };
-  ring(18.8, 0xf4f0e6, .25); ring(12.2, 0xffc93a, .2); ring(5.2, 0xf4f0e6, .18);
-  for (let k = -2; k <= 2; k++) box(g, .3, .01, 3, 0xf4f0e6, k * 1.6, .17, 14.5, false);
-  // tyre barriers, chain-link fence and floodlights around the rim
-  for (let k = 0; k < 40; k++) { const a = k / 40 * 6.283, cx0 = Math.cos(a) * 20.5, cz0 = Math.sin(a) * 20.5; if (Math.sin(a) > .83 && Math.abs(Math.cos(a)) < .2) continue;
-    for (let h = 0; h < 2; h++) { const paint = h === 1 && k % 4 === 0, tr = new T.Mesh(new T.TorusGeometry(.4, .17, 8, 16), mat(paint ? 0xe8e2d2 : 0x24262b)); tr.position.set(cx0, .24 + h * .3, cz0); tr.rotation.x = Math.PI / 2; tr.rotation.z = a; tr.castShadow = true; g.add(tr); }
-    const cap = cyl(g, .38, .38, .03, 0x24262b, cx0, .64, cz0, 14); }
-  for (let k = 0; k < 24; k++) { const a = k / 24 * 6.283 + .13; if (Math.sin(a) > .86) continue; cyl(g, .05, .05, 2.4, 0x6c7078, Math.cos(a) * 22, 1.3, Math.sin(a) * 22, 6); }
-  for (let k = 0; k < 24; k++) { const a0 = k / 24 * 6.283 + .13, a1 = (k + 1) / 24 * 6.283 + .13, am = (a0 + a1) / 2; if (Math.sin(am) > .86) continue; const fm = new T.Mesh(new T.PlaneGeometry(2 * 22 * Math.sin((a1 - a0) / 2), 1.9), new T.MeshBasicMaterial({ color: 0xcfd6dd, transparent: true, opacity: .22, side: T.DoubleSide })); fm.position.set(Math.cos(am) * 22, 1.35, Math.sin(am) * 22); fm.rotation.y = -am + Math.PI / 2; g.add(fm); box(g, 2 * 22 * Math.sin((a1 - a0) / 2), .06, .06, 0x6c7078, Math.cos(am) * 22, 2.35, Math.sin(am) * 22, false).rotation.y = -am + Math.PI / 2; }
-  for (const a of [.9, 2.3, 3.9, 5.4]) { const fx = Math.cos(a) * 19.5, fz = Math.sin(a) * 19.5; cyl(g, .12, .2, 9, 0x5c6068, fx, 4.5, fz, 8); const hd = box(g, 1.6, .4, .9, 0x2a2e36, fx, 9.1, fz); hd.rotation.y = -a; const gl = box(g, 1.4, .08, .7, 0xfff4c0, fx, 8.85, fz, false); gl.material = new T.MeshBasicMaterial({ color: 0xfff1b0 }); gl.rotation.y = -a; const hs = new T.Sprite(new T.SpriteMaterial({ map: glowTex(), color: 0xfff1b0, transparent: true, opacity: .5, depthWrite: false })); hs.position.set(fx, 8.6, fz); hs.scale.set(5, 5, 1); g.add(hs); }
-  // entrance arch with banner + start gate
-  for (const sx of [-3.2, 3.2]) cyl(g, .18, .22, 5.2, 0xd8402a, sx, 2.6, 17.6, 8); box(g, 7.2, .5, .4, 0xd8402a, 0, 5.2, 17.6);
-  signBoard(g, 'STUNT ARENA', 5.4, 1.1, 0, 6.3, 17.6, 'ride fast . land clean'); signBoard(g, 'GOAL: 8 TRICKS IN 60 SEC', 5.0, .8, 0, 4.5, 17.4);
-  // bleachers and hay bales
-  for (let r = 0; r < 3; r++) box(g, 8, .4, 1, r % 2 ? 0x6a5a48 : 0x8a7358, -8, .5 + r * .6, 24.2 + r * .9); box(g, 8.2, 2.6, .12, 0x4a3a2a, -8, 1.4, 27.2);
-  for (let k = 0; k < 4; k++) { const hb = cyl(g, .5, .5, .9, 0xd8b24a, 12 + k * 1.1, .5, 21.6, 10); hb.rotation.z = Math.PI / 2; }
+  // local frame: origin on the road, -x along the road (direction of travel), +z towards the open side; the lane runs at z = LANE
+  const q = along(CUM[9] + 12, 0), g = new T.Group(); g.position.set(q.x, 0, q.z); g.rotation.y = q.ry + Math.PI / 2; world.add(g); world.updateMatrixWorld(true);
+  const LANE = 12, LY = .068, LW = 5.6, S0 = -38, S1 = 8;
+  const roadAt = (s, off = 0) => { const a = along(CUM[9] + 12 + s, off); return g.worldToLocal(new T.Vector3(a.x, 0, a.z)); };
+  const bez = (p0, p1, p2, p3, n = 30) => Array.from({ length: n + 1 }, (_, i) => { const u = i / n, v = 1 - u, a = v * v * v, b = 3 * v * v * u, c = 3 * v * u * u, d = u * u * u; return { x: a * p0.x + b * p1.x + c * p2.x + d * p3.x, z: a * p0.z + b * p1.z + c * p2.z + d * p3.z }; });
+  const ribbon = (pts, w, off, y, material, tile = 4) => {
+    const pos = [], uv = [], idx = []; let acc = 0;
+    pts.forEach((p, i) => {
+      const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)], dx = b.x - a.x, dz = b.z - a.z, l = Math.hypot(dx, dz) || 1, nx = -dz / l, nz = dx / l;
+      if (i) acc += Math.hypot(p.x - pts[i - 1].x, p.z - pts[i - 1].z);
+      for (const s of [-1, 1]) { pos.push(p.x + nx * (off + s * w / 2), y, p.z + nz * (off + s * w / 2)); uv.push(s < 0 ? 0 : 1, acc / tile); }
+      if (i) { const k = i * 2; idx.push(k - 2, k - 1, k, k - 1, k + 1, k); }
+    });
+    const geo = new T.BufferGeometry(); geo.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new T.Float32BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals();
+    const m = new T.Mesh(geo, material); m.receiveShadow = true; g.add(m); return m;
+  };
+  const solid = (x, z, r, ground) => { const w = g.localToWorld(new T.Vector3(x, 0, z)); rounds.push({ x: w.x, z: w.z, r, ground }); }; // ground: only blocks riders on the ground, not ones in the air
+
+  // lane geometry: entry curve, straight stunt section, exit curve
+  const P0 = roadAt(S0), P0b = roadAt(S0 + 2), d0 = { x: P0b.x - P0.x, z: P0b.z - P0.z }, dl = Math.hypot(d0.x, d0.z); d0.x /= dl; d0.z /= dl;
+  const P3 = roadAt(S1), P3b = roadAt(S1 - 2), d3 = { x: P3.x - P3b.x, z: P3.z - P3b.z }, el = Math.hypot(d3.x, d3.z); d3.x /= el; d3.z /= el;
+  const XA = 28, XB = 4.5;
+  const entry = bez(P0, { x: P0.x + d0.x * 5.5, z: P0.z + d0.z * 5.5 }, { x: XA + 5.5, z: LANE }, { x: XA, z: LANE });
+  const exit = bez({ x: XB, z: LANE }, { x: XB - 5.5, z: LANE }, { x: P3.x - d3.x * 5.5, z: P3.z - d3.z * 5.5 }, P3);
+  const straight = [{ x: XA, z: LANE }, { x: XB, z: LANE }];
+  const lanePts = entry.concat(exit);
+  // concrete surface (painted with edge lines)
+  const cc = document.createElement('canvas'); cc.width = cc.height = 256; { const x = cc.getContext('2d'); x.fillStyle = '#9a9ca2'; x.fillRect(0, 0, 256, 256); for (let k = 0; k < 1400; k++) { x.fillStyle = `rgba(${60 + Math.random() * 90 | 0},${60 + Math.random() * 90 | 0},${66 + Math.random() * 90 | 0},.18)`; x.fillRect(Math.random() * 256, Math.random() * 256, 2 + Math.random() * 6, 2 + Math.random() * 4); } x.strokeStyle = '#6c6e74'; x.lineWidth = 2; x.strokeRect(0, 0, 256, 256); }
+  const ctex = new T.CanvasTexture(cc); ctex.wrapS = ctex.wrapT = T.RepeatWrapping; ctex.colorSpace = T.SRGBColorSpace;
+  const laneMat = new T.MeshToonMaterial({ map: ctex, gradientMap: toonGrad, side: T.DoubleSide });
+  const edgeMat = new T.MeshBasicMaterial({ color: 0xf4f0e6, side: T.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2 });
+  const full = entry.concat(straight.slice(1), exit);
+  ribbon(full, LW, 0, LY, laneMat, 5.6);
+  for (const sd of [-1, 1]) ribbon(full, .16, sd * (LW / 2 - .35), LY + .012, edgeMat);
+  { const mid = new T.MeshBasicMaterial({ color: 0xffc93a, side: T.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2 }); ribbon(entry.filter((_, i) => i % 4 < 2), .12, 0, LY + .012, mid); ribbon(exit.filter((_, i) => i % 4 < 2), .12, 0, LY + .012, mid); }
+  // weathered concrete: oil stains and expansion joints
+  for (let k = 0; k < 8; k++) { const sx = XA - 2 - k * 2.8, st = new T.Mesh(new T.CircleGeometry(.4 + (k % 3) * .22, 14), new T.MeshBasicMaterial({ color: 0x25272c, transparent: true, opacity: .26 + (k % 3) * .06, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3 }));
+    st.rotation.x = -Math.PI / 2; st.scale.set(1.5, 1, 1); st.position.set(sx, LY + .014, LANE + ((k * 37 % 5) - 2) * .8); g.add(st); }
+  for (let k = 0; k <= 5; k++) box(g, .07, .01, LW - .3, 0x4e5056, XA - 1 - k * 4, LY + .015, LANE, false);
+  // tyre skid marks leading into the ramp
+  for (let k = 0; k < 6; k++) { const sm = box(g, 3 + (k % 3), .01, .2, 0x55575e, XA - 3 - k * 1.6, LY + .016, LANE + (k % 2 ? .9 : -.9), false); sm.material = new T.MeshBasicMaterial({ color: 0x55575e, transparent: true, opacity: .4, polygonOffset: true, polygonOffsetFactor: -3 }); }
+
   // wedge builder: solid side profile (concave lip) extruded across the width
   const wedge = (len, h, w, col) => {
     const sh = new T.Shape(); sh.moveTo(0, 0); sh.lineTo(len, 0); sh.lineTo(len, h); sh.quadraticCurveTo(len * .45, h * .12, 0, 0);
@@ -849,71 +870,109 @@ function rampH(p) {
     const m = new T.Mesh(geo, new T.MeshToonMaterial({ color: col, gradientMap: toonGrad })); m.castShadow = m.receiveShadow = true; outline(m, 1.02); return m;
   };
   const mkRamp = (x, z, ry, col, len, h, w, opt = {}) => {
-    const r = new T.Group(); r.position.set(x, .16, z); r.rotation.y = ry; g.add(r);
+    const r = new T.Group(); r.position.set(x, LY, z); r.rotation.y = ry; g.add(r);
     r.add(wedge(len, h, w, col));
     for (const sz of [-1, 1]) { const rail = box(r, len * .98, .08, .1, 0xf4f0e6, 0, h * .55, sz * w / 2); rail.rotation.z = Math.atan2(h, len) * .82; }
     for (let k = 0; k < 4; k++) box(r, .05, .02, w * .94, 0xf4f0e6, -len / 2 + len * (.2 + k * .2), .01 + h * .16 * (k * .2 + .2) * 2, 0, false);
     ARENA.ramps.push({ r, x: 0, z: 0, cool: 0, lx: len / 2 - .6, len, h, w, trig: opt.trig !== false, big: !!opt.big });
   };
-  mkRamp(-8, 8, -.6, 0xf2a03a, 6, 1.5, 3.4); mkRamp(9, 7, 3.9, 0x3f8f88, 6, 1.5, 3.4); mkRamp(-7, -4, 1.6, 0xd8402a, 7, 1.9, 3.6); mkRamp(12, -3, 2.6, 0x6a7fd0, 5, 1.2, 3.0);
-  // mega gap jump: launch ramp, a 6 m gap and a landing table
-  mkRamp(11, -13, Math.PI, 0xff7a2a, 7, 2.6, 3.8, { big: true }); mkRamp(-1, -13, 0, 0x6a7fd0, 7, 2.2, 3.8, { trig: false });
-  box(g, 6.2, .06, 3.8, 0x1c2230, 5, .19, -13, false); for (let k = 0; k < 6; k++) box(g, 1, .02, .5, k % 2 ? 0xffffff : 0x1c2230, 2.5 + k * 1, .23, -11.4, false);
-  // real quarter-pipe: curved transition with coping and deck
-  { const qs = new T.Shape(); qs.moveTo(0, 0); qs.lineTo(4, 0); qs.lineTo(4, 3.2); qs.lineTo(3.4, 3.2); qs.absarc(0, 3.2, 3.4, 0, -Math.PI / 2, true); const qg = new T.ExtrudeGeometry(qs, { depth: 7, bevelEnabled: false });
-    const q2 = new T.Mesh(qg, new T.MeshToonMaterial({ color: 0x8c9098, gradientMap: toonGrad })); q2.position.set(-17, .16, -3.5); q2.rotation.y = Math.PI / 2; q2.castShadow = q2.receiveShadow = true; g.add(q2); const cop = cyl(g, .1, .1, 7, 0xdadde2, -17, 3.4, 0, 8); cop.rotation.x = Math.PI / 2; }
-  // trophy podium at the centre (lights up when the challenge is won)
-  box(g, 3, .5, 3, 0xd8d0c0, 0, .42, 0); box(g, 2.2, .5, 2.2, 0xe8e2d2, 0, .92, 0);
-  const trophy = new T.Group(); trophy.position.set(0, 1.2, 0); g.add(trophy);
-  cyl(trophy, .3, .12, .5, 0xe8b84a, 0, .45, 0, 12); cyl(trophy, .06, .06, .3, 0xe8b84a, 0, .15, 0, 8); cyl(trophy, .28, .28, .06, 0xe8b84a, 0, 0, 0, 12); sph(trophy, .22, 0xffd36a, 0, .78, 0);
-  ARENA.trophy = trophy;
-  // grind rail and funbox
-  { const rl = box(g, 5, .08, .08, 0xd8d8de, 4, 1.0, 12); for (const sx of [-2, 0, 2]) box(g, .08, 1, .08, 0x777, 4 + sx, .5, 12); box(g, 4, .9, 3, 0x5a6a8a, 15, .6, 5); }
-  // scoreboard tower (live tricks / time / score)
+  const RW = LW - .6;
+  mkRamp(20.5, LANE, Math.PI, 0xff7a2a, 7, 2.6, RW, { big: true });    // kicker, lip at x = 17 (it is also the landing for riders coming the other way)
+  mkRamp(8.5, LANE, 0, 0xff7a2a, 7, 2.6, RW, { big: true });          // matching kicker from the other side, lip at x = 12
+  box(g, 5, .02, RW, 0x1c2230, 14.5, LY + .014, LANE, false); for (let k = 0; k < 5; k++) box(g, 1, .02, .5, k % 2 ? 0xffffff : 0x1c2230, 16.5 - k, LY + .028, LANE - RW / 2 + .5, false);
+
+  // an arch with sign + start lights at each end: the lane runs both ways
+  const mkArch = (ax, ry) => {
+    const arch = new T.Group(); arch.position.set(ax, 0, LANE); arch.rotation.y = ry; g.add(arch);
+    for (const sx of [-3.4, 3.4]) cyl(arch, .18, .22, 5.2, 0xd8402a, sx, 2.6, 0, 8); box(arch, 7.4, .5, .4, 0xd8402a, 0, 5.2, 0);
+    signBoard(arch, 'STUNT LANE', 5.4, 1.1, 0, 6.3, 0, 'ride fast . land clean'); signBoard(arch, 'LAND THE JUMP', 5.0, .8, 0, 4.5, -.2);
+    for (const sx of [-2.4, 2.4]) { box(arch, .5, 1.2, .3, 0x15181e, sx, 3.45, .1); [0xe03a2a, 0xffc93a, 0x4fd070].forEach((c, i) => { const l = new T.Mesh(new T.SphereGeometry(.13, 10, 8), new T.MeshBasicMaterial({ color: c })); l.position.set(sx, 3.8 - i * .36, .28); arch.add(l); }); }
+    solid(ax, LANE - 3.4, .5); solid(ax, LANE + 3.4, .5);
+  };
+  mkArch(XA + 1.5, Math.PI / 2); mkArch(XB - 1.5, -Math.PI / 2);
+
+  // sponsor boards along both sides of the stunt section
+  const banner = (txt, c1, c2) => { const c = document.createElement('canvas'); c.width = 512; c.height = 160; const x = c.getContext('2d'); x.fillStyle = c1; x.fillRect(0, 0, 512, 160); x.fillStyle = c2; x.fillRect(0, 0, 512, 14); x.fillRect(0, 146, 512, 14);
+    x.fillStyle = '#fff'; x.textAlign = 'center'; x.textBaseline = 'middle'; let fs = 78; x.font = `900 ${fs}px system-ui, sans-serif`; while (x.measureText(txt).width > 450) { fs -= 3; x.font = `900 ${fs}px system-ui, sans-serif`; } x.fillText(txt, 256, 82);
+    x.fillStyle = 'rgba(0,0,0,.18)'; for (let i = 0; i < 90; i++) x.fillRect(Math.random() * 512, Math.random() * 160, 1 + Math.random() * 3, 1 + Math.random() * 2);
+    const t = new T.CanvasTexture(c); t.colorSpace = T.SRGBColorSpace; t.anisotropy = 4; return t; };
+  const adTex = [['GROOTAN', '#0f5c4c', '#7fe8a0'], ['NITRO ENERGY', '#b5321f', '#ffd36a'], ['B.I.T.', '#3a4a8a', '#ffffff'], ['GULLY CRICKET', '#2f7a40', '#f4f0e6'], ['CHAI & CO', '#6a3f22', '#e8b84a'], ['IRON GYM', '#2c3556', '#ffc93a']].map(a => banner(...a));
+  for (const side of [1, -1]) for (let k = 0; k < 11; k++) {
+    const bx = 27.1 - k * 2.2, bz = LANE + side * 3.5; box(g, 2.2, .8, .3, 0xb8b9bd, bx, .45, bz); box(g, 2.2, .1, .34, k % 2 ? 0xd8402a : 0xf4f0e6, bx, .02 + LY, bz, false);
+    const ad = new T.Mesh(new T.PlaneGeometry(2.05, .62), new T.MeshBasicMaterial({ map: adTex[(k + (side > 0 ? 0 : 3)) % adTex.length] })); ad.position.set(bx, .45, bz - side * .16); ad.rotation.y = side > 0 ? Math.PI : 0; g.add(ad);
+  }
+
+  // the lane is only enterable through its two curves: solid side walls behind the boards, and the gap itself is blocked on the ground (jumping over it still works)
+  for (let x = 28.2; x >= 3.9; x -= .8) for (const sd of [-1, 1]) solid(x, LANE + sd * 3.5, .5);
+  for (const x of [15.7, 13.3]) for (let z = -2.4; z <= 2.5; z += .8) solid(x, LANE + z, .5, true);
+  // stands behind the boards: posts, rail, steps and a shade roof, with the cheering crowd
+  const stands = new T.Group(); stands.position.set(19, 0, LANE + 6.2); g.add(stands);
+  for (let r = 0; r < 3; r++) { box(stands, 8, .4, 1, r % 2 ? 0x6a5a48 : 0x8a7358, 0, .5 + r * .6, r * .9); box(stands, 8, .05, .5, 0xc9ccd2, 0, .74 + r * .6, r * .9 - .1, false); }
+  box(stands, 8.2, 2.6, .12, 0x4a3a2a, 0, 1.4, 3); box(stands, 8.2, .1, 4.6, 0x3f8f88, 0, 4.25, 1.2); box(stands, 8.2, .1, .1, 0x2c6a66, 0, 4.18, -1.1);
+  for (const sx of [-3.9, 3.9]) for (const sz of [-.5, 2.9]) cyl(stands, .07, .07, 4.2, 0x8d939c, sx, 2.1, sz, 6);
+  for (let k = 0; k <= 8; k++) cyl(stands, .025, .025, 1, 0xb8bcc4, -4 + k, 1.0, -.8, 5); box(stands, 8, .06, .06, 0xb8bcc4, 0, 1.45, -.8, false);
+  for (let s = 0; s < 3; s++) box(stands, 1, .2, .45, 0x7a7e86, -4.5, .15 + s * .3, -.6 + s * .55);
+  solid(19, LANE + 8, 4.6);
+  const crowd = [], cs = [0xe0705a, 0x4a9a6a, 0xd0a040, 0x6a7fd0, 0xb06ad0, 0xf4f0e6, 0x3f8f88];
+  const addFan = (px, py, pz, i) => { const f = person({ shirt: cs[i % cs.length], pants: i % 2 ? 0x2a3042 : 0x6a5a48, scale: .8 + (i % 3) * .05, hair: i % 4 === 0 ? 'none' : 'bun', hairColor: [0x2a1713, 0x4a3020, 0x1a1a1a][i % 3] }); f.g.position.set(px, py, pz); f.g.rotation.y = Math.PI; stands.add(f.g); crowd.push({ f, base: py, ph: i * 1.7 }); };
+  for (let r = 0; r < 3; r++) for (let k = 0; k < 4; k++) addFan(-3 + k * 2, .78 + r * .6, r * .9 + .2, r * 4 + k);
+
+  // scoreboard (live jump / time / score), posts and floodlights
   const sbc = document.createElement('canvas'); sbc.width = 640; sbc.height = 320; const sbx = sbc.getContext('2d'), sbt = new T.CanvasTexture(sbc); sbt.colorSpace = T.SRGBColorSpace; let sbKey = '';
-  for (const sx of [-4.4, 4.4]) cyl(g, .16, .2, 7.2, 0x4a4e58, sx, 3.6, -24, 8); box(g, 10.2, 5.6, .5, 0x1c2230, 0, 6.2, -24); box(g, 10.6, .25, .7, 0xd8402a, 0, 9.1, -24);
-  const sbm = new T.Mesh(new T.PlaneGeometry(9.6, 4.8), new T.MeshBasicMaterial({ map: sbt })); sbm.position.set(0, 6.2, -23.72); g.add(sbm);
+  const SBX = 6.5, SBZ = LANE + 7.5;
+  for (const sx of [-2.6, 2.6]) cyl(g, .14, .18, 5.4, 0x4a4e58, SBX + sx, 2.7, SBZ, 8); box(g, 6.2, 3.4, .4, 0x1c2230, SBX, 4.8, SBZ); box(g, 6.5, .2, .55, 0xd8402a, SBX, 6.6, SBZ);
+  const sbm = new T.Mesh(new T.PlaneGeometry(5.8, 2.9), new T.MeshBasicMaterial({ map: sbt })); sbm.position.set(SBX, 4.8, SBZ - .21); sbm.rotation.y = Math.PI; g.add(sbm);
+  solid(SBX - 2.6, SBZ, .5); solid(SBX + 2.6, SBZ, .5);
   const sbDraw = () => {
     const act = AR.active, key = act ? [AR.tricks, Math.ceil(AR.limit - AR.t), ARENA.score].join() : 'idle' + (ARENA.best || 0); if (key === sbKey) return; sbKey = key;
-    sbx.fillStyle = '#0d1220'; sbx.fillRect(0, 0, 640, 320); sbx.textAlign = 'center'; sbx.fillStyle = '#ffd36a'; sbx.font = '800 40px system-ui, sans-serif'; sbx.fillText('STUNT ARENA', 320, 56);
+    sbx.fillStyle = '#0d1220'; sbx.fillRect(0, 0, 640, 320); sbx.textAlign = 'center'; sbx.fillStyle = '#ffd36a'; sbx.font = '800 40px system-ui, sans-serif'; sbx.fillText('STUNT LANE', 320, 56);
     sbx.strokeStyle = '#ffffff22'; sbx.lineWidth = 3; sbx.beginPath(); sbx.moveTo(40, 76); sbx.lineTo(600, 76); sbx.stroke();
-    if (act) { sbx.fillStyle = '#7fe8a0'; sbx.font = '800 120px system-ui, sans-serif'; sbx.fillText(AR.tricks + ' / ' + AR.goal, 320, 190); sbx.fillStyle = '#fff'; sbx.font = '700 42px system-ui, sans-serif'; sbx.fillText('TIME ' + Math.max(0, Math.ceil(AR.limit - AR.t)) + 's   ·   SCORE ' + ARENA.score, 320, 268); }
-    else { sbx.fillStyle = '#fff'; sbx.font = '800 56px system-ui, sans-serif'; sbx.fillText('GOAL: 8 TRICKS', 320, 156); sbx.fillText('IN 60 SECONDS', 320, 222); sbx.fillStyle = '#9be8ff'; sbx.font = '600 30px system-ui, sans-serif'; sbx.fillText(ARENA.best ? 'BEST SCORE ' + ARENA.best : 'RIDE THROUGH THE GATE TO START', 320, 285); }
+    if (act) { sbx.fillStyle = '#7fe8a0'; sbx.font = '800 100px system-ui, sans-serif'; sbx.fillText(AR.tricks ? 'LANDED' : 'GO GO GO', 320, 180); sbx.fillStyle = '#fff'; sbx.font = '700 42px system-ui, sans-serif'; sbx.fillText('TIME ' + Math.max(0, Math.ceil(AR.limit - AR.t)) + 's   ·   SCORE ' + ARENA.score, 320, 268); }
+    else { sbx.fillStyle = '#fff'; sbx.font = '800 56px system-ui, sans-serif'; sbx.fillText('LAND THE JUMP', 320, 160); sbx.fillStyle = '#9be8ff'; sbx.font = '600 30px system-ui, sans-serif'; sbx.fillText(ARENA.best ? 'BEST SCORE ' + ARENA.best : 'RIDE UP THE LANE TO START', 320, 255); }
     sbt.needsUpdate = true; };
   sbDraw();
-  // cheering crowd on the bleachers and around the rim
-  const crowd = [], cs = [0xe0705a, 0x4a9a6a, 0xd0a040, 0x6a7fd0, 0xb06ad0, 0xf4f0e6, 0x3f8f88];
-  const addFan = (px, py, pz, i) => { const f = person({ shirt: cs[i % cs.length], pants: i % 2 ? 0x2a3042 : 0x6a5a48, scale: .8 + (i % 3) * .05, hair: i % 4 === 0 ? 'none' : 'bun', hairColor: [0x2a1713, 0x4a3020, 0x1a1a1a][i % 3] }); f.g.position.set(px, py, pz); f.g.rotation.y = Math.atan2(-px, -pz); g.add(f.g); crowd.push({ f, base: py, ph: i * 1.7 }); };
-  for (let r = 0; r < 3; r++) for (let k = 0; k < 4; k++) addFan(-11 + k * 1.9, .78 + r * .6, 24.4 + r * .9, r * 4 + k);
-  for (let k = 0; k < 8; k++) { const a = 3.4 + k * .3; addFan(Math.cos(a) * 23.6, .07, Math.sin(a) * 23.6, 12 + k); }
-  // bunting between the floodlights
-  const LA = [.9, 2.3, 3.9, 5.4]; for (let i = 0; i < 4; i++) { const a1 = LA[i], a2 = LA[(i + 1) % 4], p1 = [Math.cos(a1) * 19.5, Math.sin(a1) * 19.5], p2 = [Math.cos(a2) * 19.5, Math.sin(a2) * 19.5];
-    for (let k = 1; k < 15; k++) { const u = k / 15, px = lerp(p1[0], p2[0], u), pz = lerp(p1[1], p2[1], u), py = 8.8 - Math.sin(Math.PI * u) * 1.7; const pn = box(g, .3, .42, .03, [0xd8402a, 0xffd36a, 0xffffff, 0x4f9a52, 0x6a7fd0][k % 5], px, py - .22, pz, false); pn.rotation.y = -Math.atan2(p2[1] - p1[1], p2[0] - p1[0]); pn.rotation.z = Math.PI; } }
-  // tyre skid marks on the concrete
-  for (let k = 0; k < 16; k++) { const a = k * 2.1, rr = 4 + (k * 37 % 13), sm = box(g, .22, .01, 2.4 + (k % 4), 0x55575e, Math.cos(a) * rr, .165, Math.sin(a) * rr, false); sm.rotation.y = a * 1.7; sm.material = new T.MeshBasicMaterial({ color: 0x55575e, transparent: true, opacity: .45 }); }
+  for (const fx of [30, 2]) { const fz = LANE + 6; cyl(g, .12, .2, 9, 0x5c6068, fx, 4.5, fz, 8); const hd = box(g, 1.6, .4, .9, 0x2a2e36, fx, 9.1, fz); const gl = box(g, 1.4, .08, .7, 0xfff4c0, fx, 8.85, fz, false); gl.material = new T.MeshBasicMaterial({ color: 0xfff1b0 }); const hs = new T.Sprite(new T.SpriteMaterial({ map: glowTex(), color: 0xfff1b0, transparent: true, opacity: .5, depthWrite: false })); hs.position.set(fx, 8.6, fz); hs.scale.set(5, 5, 1); g.add(hs); solid(fx, fz, .5); }
+
+  // trophy podium (lights up when the jump is landed)
+  const pod = new T.Group(); pod.position.set(12.8, 0, LANE + 6.6); g.add(pod); box(pod, 2.2, .5, 2.2, 0xd8d0c0, 0, .3, 0); box(pod, 1.6, .5, 1.6, 0xe8e2d2, 0, .8, 0);
+  const trophy = new T.Group(); trophy.position.set(0, 1.1, 0); pod.add(trophy);
+  cyl(trophy, .3, .12, .5, 0xe8b84a, 0, .45, 0, 12); cyl(trophy, .06, .06, .3, 0xe8b84a, 0, .15, 0, 8); cyl(trophy, .28, .28, .06, 0xe8b84a, 0, 0, 0, 12); sph(trophy, .22, 0xffd36a, 0, .78, 0);
+  ARENA.trophy = trophy; solid(12.8, LANE + 6.6, 1.4);
+
+  // paddock tent with table, cooler, spare tyres
+  { const tn = new T.Group(); tn.position.set(31, 0, LANE + 10); g.add(tn);
+    for (const [px, pz] of [[-2, -1.6], [2, -1.6], [-2, 1.6], [2, 1.6]]) cyl(tn, .05, .05, 2.6, 0xc9ccd2, px, 1.3, pz, 6);
+    const rf = new T.Mesh(new T.ConeGeometry(3.4, 1.1, 4), mat(0xf4f0e6)); rf.position.y = 3.15; rf.rotation.y = Math.PI / 4; rf.scale.set(1.0, 1, .8); rf.castShadow = true; tn.add(rf);
+    box(tn, 4.4, .5, .05, 0xd8402a, 0, 2.35, -1.72, false); box(tn, 2.4, .08, .9, 0x9a7a52, 0, .85, .9); for (const px of [-1, 1]) cyl(tn, .05, .05, .8, 0x6c7078, px, .42, .9, 5);
+    box(tn, .6, .5, .5, 0x3a78c8, 1.5, .25, -.6); box(tn, .62, .08, .52, 0xf4f0e6, 1.5, .52, -.6);
+    for (let t = 0; t < 3; t++) { const ty = new T.Mesh(new T.TorusGeometry(.38, .16, 8, 16), mat(0x24262b)); ty.position.set(-1.5, .17 + t * .3, -.8); ty.rotation.x = Math.PI / 2; ty.castShadow = true; tn.add(ty); }
+    solid(31, LANE + 10, 2.8); }
+  // camera crew on tripods beside the gap
+  for (const [cx1, cz1, cr] of [[14.5, LANE - 5.4, Math.PI / 2 + .3], [14.5, LANE + 5.2, -Math.PI / 2 - .3]]) { const tr = new T.Group(); tr.position.set(cx1, LY, cz1); tr.rotation.y = cr; g.add(tr);
+    for (let l = 0; l < 3; l++) { const la = l * 2.094, lg = cyl(tr, .02, .02, 1.5, 0x15181e, Math.cos(la) * .3, .7, Math.sin(la) * .3, 5); lg.rotation.set(Math.sin(la) * .2, 0, -Math.cos(la) * .2); }
+    box(tr, .3, .25, .55, 0x1c2230, 0, 1.5, 0); cyl(tr, .08, .1, .3, 0x15181e, 0, 1.5, .4, 8).rotation.x = Math.PI / 2; }
+
   AMB.push((t, dt) => { sbDraw(); const ch = ARENA.cheerT > 0; if (ch) ARENA.cheerT -= dt;
     crowd.forEach(c => { const f = c.f; f.g.position.y = c.base + (ch ? Math.abs(Math.sin(t * 9 + c.ph)) * .22 : Math.sin(t * 2 + c.ph) * .01); const up = ch ? -2.7 + Math.sin(t * 12 + c.ph) * .3 : -.15 + Math.sin(t * 1.5 + c.ph) * .05; f.arms[0].rotation.x = up; f.arms[1].rotation.x = ch ? up + .2 : up; }); });
-  // cones slalom
-  for (let k = 0; k < 6; k++) cyl(g, .05, .3, .6, k % 2 ? 0xffffff : 0xff7a2a, 2 + k * 2.2, .3, 0 + (k % 2 ? 1.2 : -1.2), 8);
-  // gym building + yard
-  const gy = new T.Group(); gy.position.set(7, 0, -15.5); g.add(gy);
-  box(gy, 7, 3.4, 4.5, 0x4a5a8a, 0, 1.7, 0); box(gy, 7.4, .3, 4.9, 0x2c3556, 0, 3.55, 0); box(gy, 2, 2.4, .1, 0x1e2540, 0, 1.2, 2.3);
-  signBoard(gy, 'IRON GYM', 3.4, .8, 0, 4.4, 2.5);
-  for (let k = 0; k < 5; k++) { const dx = 4.4 + k * .75; const d = new T.Group(); d.position.set(-3.4 + k * .75, .25, 3.4); gy.add(d); const bar = cyl(d, .04, .04, .7, 0x333333, 0, 0, 0, 6); bar.rotation.z = Math.PI / 2; sph(d, .17 + k * .02, 0x222222, -.35, 0, 0); sph(d, .17 + k * .02, 0x222222, .35, 0, 0); }
-  box(gy, 2.4, .4, .6, 0x333333, 4.8, .55, 1.6); box(gy, 2.2, .06, .45, 0xb3382c, 4.8, .8, 1.6);
-  const bar = cyl(gy, .04, .04, 2.8, 0xaaaaaa, 4.8, 1.8, 1.6, 6); bar.rotation.z = Math.PI / 2; for (const sx of [-1.3, 1.3]) cyl(gy, .3, .3, .12, 0x222222, 4.8 + sx, 1.8, 1.6, 10).rotation.z = Math.PI / 2;
-  const lifter = person({ shirt: 0xe0e0e0, pants: 0x222a3a, scale: .9, skin: 0xb07a52 }); lifter.g.position.set(4.8, .75, 1.6); lifter.g.rotation.x = -Math.PI / 2 + .0; lifter.g.rotation.z = 0; gy.add(lifter.g);
-  const trainer = person({ shirt: 0xd8402a, pants: 0x222a3a, scale: .9, moustache: true }); trainer.g.position.set(-1.6, 0, 3.6); trainer.g.rotation.y = .6; gy.add(trainer.g);
-  const dbell = new T.Group(); dbell.position.set(0, 0, 0); trainer.arms[0].add(dbell);
+
+  // world anchors: challenge trigger on the entry curve, finish line after the landing
   world.updateMatrixWorld(true);
-  const wp = g.localToWorld(new T.Vector3(0, 0, 0)); let greeted = false;
-  { const gp = gy.localToWorld(new T.Vector3(0, 0, 0)); rounds.push({ x: gp.x, z: gp.z, r: 4.2 }); ARENA.gym = gp; ARENA.center = wp; ARENA.gate = g.localToWorld(new T.Vector3(0, 0, 19.5)); rounds.push({ x: wp.x, z: wp.z, r: 2.2 }); }
+  const W = (x, z) => g.localToWorld(new T.Vector3(x, 0, z)), gp = entry[Math.floor(entry.length * .7)], gq = exit[Math.floor(exit.length * .3)];
+  ARENA.center = W(14.5, LANE); ARENA.gates = [W(gp.x, gp.z), W(gq.x, gq.z)];
+  ARENA.fins = [[3, 2], [25, 26]].map(([a, b]) => { const f0 = W(a, LANE), f1 = W(b, LANE); return { x: f0.x, z: f0.z, dx: f1.x - f0.x, dz: f1.z - f0.z }; }); // past the landing, per direction of travel
   for (const R of ARENA.ramps) { const v = R.r.localToWorld(new T.Vector3(R.lx, 0, 0)), w0 = R.r.localToWorld(new T.Vector3(0, 0, 0)), w1 = R.r.localToWorld(new T.Vector3(1, 0, 0)); R.x = v.x; R.z = v.z; R.dx = w1.x - w0.x; R.dz = w1.z - w0.z; }
+  // booster pads on both curves so nobody reaches a kicker too slowly to clear the gap
+  for (const [pts, i, sgn] of [[entry, Math.floor(entry.length * .88), 1], [exit, Math.floor(exit.length * .12), -1]]) {
+    const c = pts[i], n = pts[i + sgn], fx = n.x - c.x, fz = n.z - c.z; // arrows point up the curve towards the kicker
+    const pg = new T.Group(); pg.position.set(c.x, LY + .012, c.z); pg.rotation.y = Math.atan2(fx, fz); g.add(pg);
+    const bm = new T.MeshBasicMaterial({ color: new T.Color(0xffc24a).multiplyScalar(1.3), transparent: true, opacity: .85, depthWrite: false });
+    for (let k = 0; k < 3; k++) { const sh = new T.Shape(); sh.moveTo(-.9, 0); sh.lineTo(0, -.7); sh.lineTo(.9, 0); sh.lineTo(.9, .35); sh.lineTo(0, -.35); sh.lineTo(-.9, .35); sh.closePath(); const mm = bm.clone(); mm.side = T.DoubleSide; const ar = new T.Mesh(new T.ShapeGeometry(sh), mm); ar.rotation.x = -Math.PI / 2; ar.position.z = (k - 1) * .85; pg.add(ar); }
+    const w = W(c.x, c.z); PADS.push({ x: w.x, z: w.z, g: pg, cool: 0 });
+  }
+  let greeted = false;
   AMB.push((t, dt, pp) => {
-    trainer.arms[0].rotation.x = -1.3 - Math.abs(Math.sin(t * 2.4)) * 1.1; trainer.arms[1].rotation.x = -1.3 - Math.abs(Math.sin(t * 2.4 + 1.5)) * 1.1;
-    lifter.arms[0].rotation.x = lifter.arms[1].rotation.x = -.2 - Math.abs(Math.sin(t * 2)) * 1.6;
-    const d = Math.hypot(wp.x - pp.x, wp.z - pp.z);
-    if (d < 26 && !greeted) { greeted = true; toast('STUNT ARENA + IRON GYM', 'Hit the orange kickers at speed for jumps, whips and supermen. The gym crew keeps lifting.'); }
+    const d = Math.hypot(ARENA.center.x - pp.x, ARENA.center.z - pp.z);
+    if (d < 30 && !greeted) { greeted = true; toast('STUNT LANE', 'Take the curve, hit the orange kicker at speed and land it clean.'); }
     if (d > 60) greeted = false;
     arenaStep(dt, pp, t);
     for (const R of ARENA.ramps) {
@@ -1157,6 +1216,30 @@ function startStunt(type, opt = {}) {
   if (stunt.air) { stunt.vy = opt.vy; stunt.y0 = player.g.position.y; stunt.T = Math.max(.4, (stunt.vy + Math.sqrt(stunt.vy * stunt.vy + 2 * GRAV * Math.max(0, stunt.y0 - .23))) / GRAV); stunt.dur = stunt.T; }
   const el = $('stuntTxt'); el.textContent = STUNTS[type][0]; el.hidden = false; el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); beep(660, .1, 'triangle', .04); setTimeout(() => beep(990, .12, 'triangle', .04), 90);
 }
+// photo moment at the top of an arena jump: shutter sound, flash, and the captured frame as a polaroid
+let snapReq = null, snapTimer = 0;
+function snapSound() {
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    const click = (at, vol, hp) => {
+      const n = Math.floor(ac.sampleRate * .07), b = ac.createBuffer(1, n, ac.sampleRate), d = b.getChannelData(0); for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3);
+      const s = ac.createBufferSource(), f = ac.createBiquadFilter(), gn = ac.createGain(); s.buffer = b; f.type = 'highpass'; f.frequency.value = hp; gn.gain.value = vol; s.connect(f); f.connect(gn); gn.connect(ac.destination); s.start(ac.currentTime + at);
+    };
+    click(0, .7, 1500); click(.075, .5, 900); beep(2400, .03, 'square', .03); setTimeout(() => beep(160, .05, 'square', .05), 70);
+  } catch (e) { }
+}
+function snapShot(label) {
+  snapSound(); snapReq = label;
+  const fl = $('flash'); fl.classList.remove('go'); void fl.offsetWidth; fl.classList.add('go');
+}
+function snapGrab() {
+  const label = snapReq; snapReq = null; let url = '';
+  try { url = renderer.domElement.toDataURL('image/jpeg', .85); } catch (e) { }
+  if (!url) return;
+  $('snapImg').src = url; $('snapCap').textContent = label.replace(/!$/, '') + ' · caught mid-air';
+  const el = $('snap'); el.hidden = false; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+  clearTimeout(snapTimer); snapTimer = setTimeout(() => { el.hidden = true; }, 1100);
+}
 function landStunt() {
   const p = player.g.position, s = stunt, slip = Math.abs(player.slip || 0), clean = slip < .5; stunt = null;
   player.body.rotation.x = 0; player.body.rotation.z = 0; $('stuntTxt').hidden = true; camShake = clean ? .35 : .8; poof(p.x, p.z, 0xd9bd8a);
@@ -1187,6 +1270,7 @@ function driftFx(dt, len, dh) {
     stunt.t += dt; const k = Math.min(1, stunt.t / stunt.dur), env = sstep(0, .2, k) * sstep(1, .8, k), bell = Math.sin(Math.PI * k);
     if (stunt.air) {
       const vyT = stunt.vy - GRAV * stunt.t, Y = stunt.y0 + stunt.vy * stunt.t - .5 * GRAV * stunt.t * stunt.t;
+      if (stunt.arena && !stunt.snapped && stunt.t >= stunt.T * .5) { stunt.snapped = true; snapShot(STUNTS[stunt.type][0]); }
       pitch = clamp(-Math.atan2(vyT, Math.max(3, player.v + 2)), -.55, .5) * (1 - env * .6);
       if (stunt.type === 'tabletop') { roll = -1.4 * env; player.body.rotation.z = -.25 * env; pitch -= .12 * env; }
       else if (stunt.type === 'whip') { roll = -.7 * env; yaw = .85 * Math.sin(Math.PI * k) * sstep(0, .3, k); player.body.rotation.z = -.2 * env; }
@@ -1286,7 +1370,7 @@ function drawMap(cv, big) {
       else { x.textAlign = 'center'; x.fillText(MAPN[s.id], sx, sy + (dy < 0 ? -11 : 20)); }
     }
   }
-  for (const [P, nm, col, ch] of [[ARENA.center, 'Stunt Arena', '#ff7a2a', '\u2605'], [ARENA.gym, 'Iron Gym', '#4a5aa8', 'G']]) {
+  for (const [P, nm, col, ch] of [[ARENA.center, 'Stunt Arena', '#ff7a2a', '\u2605']]) {
     if (!P) continue; const sx = X(P.x, P.z), sy = Y(P.x, P.z), r = big ? 8 : 5;
     x.fillStyle = col; x.strokeStyle = '#ffffff'; x.lineWidth = 2; x.beginPath(); x.arc(sx, sy, r, 0, 7); x.fill(); x.stroke();
     x.fillStyle = '#ffffff'; x.font = '700 ' + (big ? 11 : 8) + 'px system-ui, sans-serif'; x.textAlign = 'center'; x.fillText(ch, sx, sy + (big ? 4 : 3));
@@ -1442,15 +1526,15 @@ function arBanner(txt, sub, ms) { const b = $('arBanner'); b.innerHTML = txt + (
 function arenaTrick() { if (!AR.active) return; AR.tricks++; arSync(); if (AR.tricks >= AR.goal) arenaWin(); }
 function arenaCancel(msg) { if (!AR.active) return; AR.active = false; AR.cd = 12; $('arHud').hidden = true; ARENA.combo = 0; if (msg) toast('Stunt arena', msg); }
 async function arenaEnter() {
-  busy = true; const pick = await say([{ who: 'Arena', text: 'STUNT CHALLENGE. Land 8 tricks off the kickers in 60 seconds. Hit the ramps fast! Press Esc any time to quit.', choices: [{ label: 'Start the challenge', reply: [NAR('Engines on!')] }, { label: 'Just ride around', reply: [NAR('Free ride. The ramps always work.')] }] }]);
+  busy = true; const pick = await say([{ who: 'Arena', text: 'STUNT CHALLENGE. Take the curve, hit the orange kicker fast and land the jump clean within 25 seconds. Press Esc any time to quit.', choices: [{ label: 'Start the challenge', reply: [NAR('Engines on!')] }, { label: 'Just ride through', reply: [NAR('Free ride. The kicker always works.')] }] }]);
   busy = false; if (pick !== 0) { AR.cd = 20; return; }
-  await arenaIntro(); ARENA.score = 0; ARENA.combo = 0; AR.t = 0; AR.tricks = 0; AR.active = true; $('arHud').hidden = false; arSync(); arBanner('GO!', '8 tricks · 60 s', 1400); beep(880, .2, 'triangle', .06);
+  await arenaIntro(); ARENA.score = 0; ARENA.combo = 0; AR.t = 0; AR.tricks = 0; AR.active = true; $('arHud').hidden = false; arSync(); arBanner('GO!', 'land the jump · 25 s', 1400); beep(880, .2, 'triangle', .06);
 }
 async function arenaIntro() {
-  state.mode = 'cut'; busy = true; AR.skip = false; player.v = 0; const c = ARENA.center; let tt = 0; arBanner('STUNT ARENA', 'press any key to skip');
+  state.mode = 'cut'; busy = true; AR.skip = false; player.v = 0; const c = ARENA.center; let tt = 0; arBanner('STUNT LANE', 'press any key to skip');
   await new Promise(res => { ticker = dt => { tt += dt; const k = clamp(tt / 4.6, 0, 1), e = k * k * (3 - 2 * k), a = 4.2 - e * 1.5, R = lerp(52, 24, e), H = lerp(34, 12, e);
     camera.position.set(c.x + Math.cos(a) * R, H, c.z + Math.sin(a) * R); camera.lookAt(c.x, 1.5, c.z);
-    if (tt > 1.8 && tt < 1.9) arBanner('8 TRICKS', 'in 60 seconds'); if (tt >= 4.6 || AR.skip) { ticker = null; res(); } }; });
+    if (tt > 1.8 && tt < 1.9) arBanner('ONE JUMP', 'land it clean'); if (tt >= 4.6 || AR.skip) { ticker = null; res(); } }; });
   $('arBanner').hidden = true; state.mode = 'explore'; busy = false;
 }
 async function arenaWin() {
@@ -1463,17 +1547,17 @@ async function arenaWin() {
       for (let q = 0; q < 14; q++) { const sp = new T.Sprite(new T.SpriteMaterial({ map: glowTex(), color: col, transparent: true, opacity: 1, depthWrite: false })); sp.position.set(bx, by, bz); sp.scale.setScalar(.7); scene.add(sp); const ang = q / 14 * 6.283; AR.parts.push({ sp, vx: Math.cos(ang) * 4, vy: Math.sin(ang) * 4 + 1, vz: (Math.random() - .5) * 4, life: 1.2 }); } beep(300 + Math.random() * 300, .12, 'sawtooth', .03); }
     if (tt >= 5.2) { ticker = null; res(); } }; });
   $('arBanner').hidden = true; state.mode = 'explore'; busy = false; player.arms[0].rotation.x = player.arms[1].rotation.x = 0; if (ARENA.trophy) ARENA.trophy.scale.setScalar(1);
-  toast('Arena conquered', 'Ride back through the gate to take the challenge again.');
+  toast('Jump landed', 'Ride the lane again to take the challenge again.');
 }
 function arenaStep(dt, pp, t) {
   for (let i = AR.parts.length - 1; i >= 0; i--) { const q = AR.parts[i]; q.life -= dt; q.vy -= 5 * dt; q.sp.position.x += q.vx * dt; q.sp.position.y += q.vy * dt; q.sp.position.z += q.vz * dt; q.sp.material.opacity = Math.max(0, q.life / 1.2); if (q.life <= 0) { scene.remove(q.sp); AR.parts.splice(i, 1); } }
   if (ARENA.trophy && state.mode !== 'cut') ARENA.trophy.rotation.y += dt * .6;
   AR.cd -= dt;
   if (AR.active) {
-    if (state.mode === 'explore') { AR.t += dt; arSync(); if (Math.hypot(pp.x - ARENA.center.x, pp.z - ARENA.center.z) > 40) arenaCancel('You left the arena. Challenge ended.'); else if (AR.t >= AR.limit) { arenaCancel(null); chime(); arBanner('TIME UP', AR.tricks + ' / ' + AR.goal + ' tricks', 2200); toast('So close', 'Ride back through the gate to try again.'); } }
+    if (state.mode === 'explore') { AR.t += dt; arSync(); if (Math.hypot(pp.x - ARENA.center.x, pp.z - ARENA.center.z) > 40) arenaCancel('You left the lane. Challenge ended.'); else if ((pp.x - ARENA.fins[AR.dir].x) * ARENA.fins[AR.dir].dx + (pp.z - ARENA.fins[AR.dir].z) * ARENA.fins[AR.dir].dz > 0) arenaCancel('Missed the landing. Ride the lane again.'); else if (AR.t >= AR.limit) { arenaCancel(null); chime(); arBanner('TIME UP', AR.tricks + ' / ' + AR.goal + ' tricks', 2200); toast('So close', 'Ride the lane again to try again.'); } }
     return;
   }
-  if (AR.cd <= 0 && state.mode === 'explore' && !busy && !away && ARENA.gate && Math.hypot(pp.x - ARENA.gate.x, pp.z - ARENA.gate.z) < 3.4) arenaEnter();
+  if (AR.cd <= 0 && state.mode === 'explore' && !busy && !away && ARENA.gates) { const gi = ARENA.gates.findIndex(G => Math.hypot(pp.x - G.x, pp.z - G.z) < 2.8); if (gi >= 0) { AR.dir = gi; arenaEnter(); } }
 }
 addEventListener('keydown', e => { if (e.code === 'Escape') { if (AR.active) arenaCancel('Challenge ended. Free ride.'); } if (state.mode === 'cut' && !e.repeat) AR.skip = true; });
 $('arExit').addEventListener('click', () => arenaCancel('Challenge ended. Free ride.'));
@@ -1602,7 +1686,7 @@ function movePlayer(dt) {
   const px = p.x, pz = p.z; p.x += Math.sin(player.vdir) * player.v * dt; p.z += Math.cos(player.vdir) * player.v * dt;
   const R = .5 * player.g.scale.x + .3;
   for (const w of walls) { const cx = clamp(p.x, w.x0, w.x1), cz = clamp(p.z, w.z0, w.z1), dx = p.x - cx, dz = p.z - cz, d = Math.hypot(dx, dz); if (d < R) { if (d > 1e-4) { p.x = cx + dx / d * R; p.z = cz + dz / d * R; } else p.x = w.x0 - R; } }
-  for (const r of rounds) { const dx = p.x - r.x, dz = p.z - r.z, d = Math.hypot(dx, dz), m = r.r + R; if (d < m && d > 1e-4) { p.x = r.x + dx / d * m; p.z = r.z + dz / d * m; } }
+  for (const r of rounds) { if (r.ground && stunt && stunt.air) continue; const dx = p.x - r.x, dz = p.z - r.z, d = Math.hypot(dx, dz), m = r.r + R; if (d < m && d > 1e-4) { p.x = r.x + dx / d * m; p.z = r.z + dz / d * m; } }
   if (player.inside) { p.y = .11; p.x = clamp(p.x, INT.x - INT.W / 2 + 1, INT.x + INT.W / 2 - 1); p.z = clamp(p.z, INT.z - INT.D / 2 + 1.2, INT.z + INT.D / 2 - .9); }
   const n = pathNear(p.x, p.z); if (!player.inside && n.d > CORR) { p.x = n.px + (p.x - n.px) / n.d * CORR; p.z = n.pz + (p.z - n.pz) / n.d * CORR; }
   if (Math.hypot(p.x - px, p.z - pz) > .02 + player.v * dt * .9 && player.v > 0) player.v *= .85;
@@ -1672,6 +1756,7 @@ function animate() {
   }
   if (toastT > 0) { toastT -= dt; if (toastT <= 0) $('toast').hidden = true; }
   draw(scene, camera);
+  if (snapReq) snapGrab();
 }
 
 /* ---- input */
