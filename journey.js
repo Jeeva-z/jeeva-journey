@@ -939,9 +939,19 @@ function rampH(p) {
     for (let k = 0; k < 3; k++) { const sh = new T.Shape(); sh.moveTo(-.9, 0); sh.lineTo(0, -.7); sh.lineTo(.9, 0); sh.lineTo(.9, .35); sh.lineTo(0, -.35); sh.lineTo(-.9, .35); sh.closePath(); const mm = bm.clone(); mm.side = T.DoubleSide; const ar = new T.Mesh(new T.ShapeGeometry(sh), mm); ar.rotation.x = -Math.PI / 2; ar.position.z = (k - 1) * .85; pg.add(ar); }
     const w = W(c.x, c.z); PADS.push({ x: w.x, z: w.z, g: pg, cool: 0 });
   }
+  const _pv = new T.Vector3(), EXD = (() => { const e0 = W(0, LANE), e1 = W(1, LANE); return { x: e1.x - e0.x, z: e1.z - e0.z }; })();
   let greeted = false;
   AMB.push((t, dt, pp) => {
     const d = Math.hypot(ARENA.center.x - pp.x, ARENA.center.z - pp.z);
+    // landed short? nobody stays in the gap: whoever drops into it is set back on the lane, past the far kicker, going the way they were heading
+    if (state.mode === 'explore' && !busy && !(stunt && stunt.air)) {
+      const lp = g.worldToLocal(_pv.set(pp.x, 0, pp.z));
+      if (lp.x > 12.3 && lp.x < 16.7 && Math.abs(lp.z - LANE) < 3.6) {
+        const fwd = Math.sin(player.heading) * EXD.x + Math.cos(player.heading) * EXD.z, tw = W(fwd > 0 ? 25.6 : 3.4, LANE);
+        player.g.position.x = tw.x; player.g.position.z = tw.z; player.v = Math.min(player.v, 6); player.vdir = player.heading;
+        if (AR.active) arenaCancel('Landed short. Ride the lane again.'); else toast('Back on the lane', 'You landed short of the far kicker. Carry some speed.');
+      }
+    }
     if (d < 30 && !greeted) { greeted = true; toast('STUNT LANE', 'Take the curve, hit the orange kicker at speed and land it clean.'); }
     if (d > 60) greeted = false;
     arenaStep(dt, pp, t);
