@@ -306,14 +306,7 @@ function pointAt(s) {
   const [ax, az] = PATH[i], [bx, bz] = PATH[i + 1], L = CUM[i + 1] - CUM[i], u = (s - CUM[i]) / L;
   return { x: ax + (bx - ax) * u, z: az + (bz - az) * u, tx: (bx - ax) / L, tz: (bz - az) / L };
 }
-// dirt road
-for (let i = 0; i < PATH.length - 1; i++) {
-  const [ax, az] = PATH[i], [bx, bz] = PATH[i + 1], L = CUM[i + 1] - CUM[i];
-  const t = dirtTex.clone(); t.needsUpdate = true; t.repeat.set(L / 5, 1);
-  const m = add(world, new T.BoxGeometry(L, .06, 4.6), new T.MeshToonMaterial({ map: t, gradientMap: toonGrad }), (ax + bx) / 2, .03, (az + bz) / 2, false);
-  m.rotation.y = -Math.atan2(bz - az, bx - ax); m.castShadow = false;
-}
-for (const [x, z] of PATH) add(world, new T.CylinderGeometry(2.3, 2.3, .06, 20), new T.MeshToonMaterial({ map: dirtTex, gradientMap: toonGrad }), x, .03, z, false).castShadow = false;
+// the dirt road, office forecourt and stunt lane are painted as one soft decal (see 'ground paint' further down)
 // golden stepping dots along the road
 const DOTS = []; {
   const n = Math.floor(TOTAL / 3.2), im = new T.InstancedMesh(new T.CircleGeometry(.26, 12), new T.MeshBasicMaterial({ color: 0xfff1b8, transparent: true, opacity: .9, depthWrite: false }), n);
@@ -361,7 +354,7 @@ const OFFICE = { x: 24, z: -223, w: 26, d: 11 };
 {
   const { x, z, w, d } = OFFICE, g = new T.Group(); g.position.set(x, 0, z); world.add(g);
   const mk = (c, tex) => new T.MeshToonMaterial({ color: c, gradientMap: toonGrad });
-  const slab = box(g, w + 10, .09, d + 17, 0xc4c8d0, 0, .045, 4.2, false); slab.receiveShadow = true; box(g, w + 10.6, .12, .3, 0x8a8f9a, 0, .06, 4.2 + (d + 17) / 2, false); box(g, .3, .12, d + 17, 0x8a8f9a, -(w + 10) / 2, .06, 4.2, false); box(g, .3, .12, d + 17, 0x8a8f9a, (w + 10) / 2, .06, 4.2, false);
+  // forecourt paving is part of the ground paint decal
   box(g, w, 9, d, 0xdfe6ee, 0, 4.5, 0); box(g, w + .6, 1.4, d + .6, 0x4f6fa8, 0, 9.5, 0);
   box(g, w * .6, 3, d * .66, 0xcdd7e3, -w * .12, 11.7, -.8); box(g, w * .6 + .5, .35, d * .66 + .5, 0x3c5788, -w * .12, 13.35, -.8);
   for (const y of [3.05, 5.95]) box(g, w + .3, .22, d + .3, 0xaab6c6, 0, y, 0, false);
@@ -826,17 +819,6 @@ function rampH(p) {
   const LANE = 12, LY = .068, LW = 5.6, S0 = -38, S1 = 8;
   const roadAt = (s, off = 0) => { const a = along(CUM[9] + 12 + s, off); return g.worldToLocal(new T.Vector3(a.x, 0, a.z)); };
   const bez = (p0, p1, p2, p3, n = 30) => Array.from({ length: n + 1 }, (_, i) => { const u = i / n, v = 1 - u, a = v * v * v, b = 3 * v * v * u, c = 3 * v * u * u, d = u * u * u; return { x: a * p0.x + b * p1.x + c * p2.x + d * p3.x, z: a * p0.z + b * p1.z + c * p2.z + d * p3.z }; });
-  const ribbon = (pts, w, off, y, material, tile = 4) => {
-    const pos = [], uv = [], idx = []; let acc = 0;
-    pts.forEach((p, i) => {
-      const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)], dx = b.x - a.x, dz = b.z - a.z, l = Math.hypot(dx, dz) || 1, nx = -dz / l, nz = dx / l;
-      if (i) acc += Math.hypot(p.x - pts[i - 1].x, p.z - pts[i - 1].z);
-      for (const s of [-1, 1]) { pos.push(p.x + nx * (off + s * w / 2), y, p.z + nz * (off + s * w / 2)); uv.push(s < 0 ? 0 : 1, acc / tile); }
-      if (i) { const k = i * 2; idx.push(k - 2, k - 1, k, k - 1, k + 1, k); }
-    });
-    const geo = new T.BufferGeometry(); geo.setAttribute('position', new T.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new T.Float32BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals();
-    const m = new T.Mesh(geo, material); m.receiveShadow = true; g.add(m); return m;
-  };
   const solid = (x, z, r, ground) => { const w = g.localToWorld(new T.Vector3(x, 0, z)); rounds.push({ x: w.x, z: w.z, r, ground }); }; // ground: only blocks riders on the ground, not ones in the air
 
   // lane geometry: entry curve, straight stunt section, exit curve
@@ -846,16 +828,8 @@ function rampH(p) {
   const entry = bez(P0, { x: P0.x + d0.x * 5.5, z: P0.z + d0.z * 5.5 }, { x: XA + 5.5, z: LANE }, { x: XA, z: LANE });
   const exit = bez({ x: XB, z: LANE }, { x: XB - 5.5, z: LANE }, { x: P3.x - d3.x * 5.5, z: P3.z - d3.z * 5.5 }, P3);
   const straight = [{ x: XA, z: LANE }, { x: XB, z: LANE }];
-  const lanePts = entry.concat(exit);
-  // concrete surface (painted with edge lines)
-  const cc = document.createElement('canvas'); cc.width = cc.height = 256; { const x = cc.getContext('2d'); x.fillStyle = '#9a9ca2'; x.fillRect(0, 0, 256, 256); for (let k = 0; k < 1400; k++) { x.fillStyle = `rgba(${60 + Math.random() * 90 | 0},${60 + Math.random() * 90 | 0},${66 + Math.random() * 90 | 0},.18)`; x.fillRect(Math.random() * 256, Math.random() * 256, 2 + Math.random() * 6, 2 + Math.random() * 4); } x.strokeStyle = '#6c6e74'; x.lineWidth = 2; x.strokeRect(0, 0, 256, 256); }
-  const ctex = new T.CanvasTexture(cc); ctex.wrapS = ctex.wrapT = T.RepeatWrapping; ctex.colorSpace = T.SRGBColorSpace;
-  const laneMat = new T.MeshToonMaterial({ map: ctex, gradientMap: toonGrad, side: T.DoubleSide });
-  const edgeMat = new T.MeshBasicMaterial({ color: 0xf4f0e6, side: T.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2 });
+  // the lane surface itself is painted in the ground decal; only its centre line is kept (ARENA.lane, set below)
   const full = entry.concat(straight.slice(1), exit);
-  ribbon(full, LW, 0, LY, laneMat, 5.6);
-  for (const sd of [-1, 1]) ribbon(full, .16, sd * (LW / 2 - .35), LY + .012, edgeMat);
-  { const mid = new T.MeshBasicMaterial({ color: 0xffc93a, side: T.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2 }); ribbon(entry.filter((_, i) => i % 4 < 2), .12, 0, LY + .012, mid); ribbon(exit.filter((_, i) => i % 4 < 2), .12, 0, LY + .012, mid); }
   // weathered concrete: oil stains and expansion joints
   for (let k = 0; k < 8; k++) { const sx = XA - 2 - k * 2.8, st = new T.Mesh(new T.CircleGeometry(.4 + (k % 3) * .22, 14), new T.MeshBasicMaterial({ color: 0x25272c, transparent: true, opacity: .26 + (k % 3) * .06, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3 }));
     st.rotation.x = -Math.PI / 2; st.scale.set(1.5, 1, 1); st.position.set(sx, LY + .014, LANE + ((k * 37 % 5) - 2) * .8); g.add(st); }
@@ -933,11 +907,6 @@ function rampH(p) {
   sbDraw();
   for (const fx of [30, 2]) { const fz = LANE + 6; cyl(g, .12, .2, 9, 0x5c6068, fx, 4.5, fz, 8); const hd = box(g, 1.6, .4, .9, 0x2a2e36, fx, 9.1, fz); const gl = box(g, 1.4, .08, .7, 0xfff4c0, fx, 8.85, fz, false); gl.material = new T.MeshBasicMaterial({ color: 0xfff1b0 }); const hs = new T.Sprite(new T.SpriteMaterial({ map: glowTex(), color: 0xfff1b0, transparent: true, opacity: .5, depthWrite: false })); hs.position.set(fx, 8.6, fz); hs.scale.set(5, 5, 1); g.add(hs); solid(fx, fz, .5); }
 
-  // trophy podium (lights up when the jump is landed)
-  const pod = new T.Group(); pod.position.set(12.8, 0, LANE + 6.6); g.add(pod); box(pod, 2.2, .5, 2.2, 0xd8d0c0, 0, .3, 0); box(pod, 1.6, .5, 1.6, 0xe8e2d2, 0, .8, 0);
-  const trophy = new T.Group(); trophy.position.set(0, 1.1, 0); pod.add(trophy);
-  cyl(trophy, .3, .12, .5, 0xe8b84a, 0, .45, 0, 12); cyl(trophy, .06, .06, .3, 0xe8b84a, 0, .15, 0, 8); cyl(trophy, .28, .28, .06, 0xe8b84a, 0, 0, 0, 12); sph(trophy, .22, 0xffd36a, 0, .78, 0);
-  ARENA.trophy = trophy; solid(12.8, LANE + 6.6, 1.4);
 
   // paddock tent with table, cooler, spare tyres
   { const tn = new T.Group(); tn.position.set(31, 0, LANE + 10); g.add(tn);
@@ -958,7 +927,8 @@ function rampH(p) {
   // world anchors: challenge trigger on the entry curve, finish line after the landing
   world.updateMatrixWorld(true);
   const W = (x, z) => g.localToWorld(new T.Vector3(x, 0, z)), gp = entry[Math.floor(entry.length * .7)], gq = exit[Math.floor(exit.length * .3)];
-  ARENA.center = W(14.5, LANE); ARENA.gates = [W(gp.x, gp.z), W(gq.x, gq.z)];
+  ARENA.center = W(14.5, LANE); ARENA.lane = { pts: full.map(p => { const w = W(p.x, p.z); return [w.x, w.z]; }), w: LW };
+  ARENA.gates = [W(gp.x, gp.z), W(gq.x, gq.z)];
   ARENA.fins = [[3, 2], [25, 26]].map(([a, b]) => { const f0 = W(a, LANE), f1 = W(b, LANE); return { x: f0.x, z: f0.z, dx: f1.x - f0.x, dz: f1.z - f0.z }; }); // past the landing, per direction of travel
   for (const R of ARENA.ramps) { const v = R.r.localToWorld(new T.Vector3(R.lx, 0, 0)), w0 = R.r.localToWorld(new T.Vector3(0, 0, 0)), w1 = R.r.localToWorld(new T.Vector3(1, 0, 0)); R.x = v.x; R.z = v.z; R.dx = w1.x - w0.x; R.dz = w1.z - w0.z; }
   // booster pads on both curves so nobody reaches a kicker too slowly to clear the gap
@@ -985,6 +955,7 @@ function rampH(p) {
     }
   });
 }
+const RAY = { camp: null, stn: null, npc: null, greeted: false };   // Beedi Rayappan's beach club (set up in the beach block)
 /* ------------------------------------------------- beach: the edge of the map is a shore with cafes, boats and fish */
 {
   const BY = .07, SAND0 = 44, SHORE = 58.5;   // sand starts 44 m from the road, the waterline is at 58.5 m (riders stop at CORR, on the wet sand)
@@ -1113,9 +1084,61 @@ function rampH(p) {
     solid(g, -1.6, 0, .35); solid(g, 1.7, .6, .35);
   };
   const grove = sp => { const g = at(sp); palm(g, -2.4, -.6, 1 + r2() * .3); palm(g, 0.6, 1.1, 1 + r2() * .3); palm(g, 3.2, -.4, .9 + r2() * .3); for (const [x, z] of [[-2.4, -.6], [.6, 1.1], [3.2, -.4]]) solid(g, x, z, .5); };
+  // ---- Beedi Rayappan's beach boxing club (side quest: catch crabs, first person)
+  const rayCamp = sp => {
+    const g = at(sp);
+    // boxing ring on the sand
+    const rg = new T.Group(); rg.position.set(-1.5, 0, 3.6); g.add(rg);
+    bm(rg, 5.4, .45, 5.4, 0x8a5a36, 0, .22, 0); bm(rg, 5.0, .06, 5.0, 0x3f6aa8, 0, .48, 0); bm(rg, 1.0, .07, 5.0, 0xf4f0e6, 0, .5, 0); bm(rg, 1.4, .2, .7, 0x6a4a2a, 0, .1, 3.0);
+    for (const [px, pz, c] of [[-2.5, -2.5, 0xd8402a], [2.5, -2.5, 0x3a78c8], [-2.5, 2.5, 0x3a78c8], [2.5, 2.5, 0xd8402a]]) { cm(rg, .09, .09, 1.55, 0x3a3e48, px, 1.25, pz, 6); bm(rg, .26, .9, .26, c, px, 1.05, pz); }
+    for (const [h, c] of [[.85, 0xf4f0e6], [1.15, 0xd8402a], [1.45, 0xf4f0e6]]) { for (const sz of [-2.5, 2.5]) bm(rg, 5.0, .05, .05, c, 0, h, sz); for (const sx of [-2.5, 2.5]) bm(rg, .05, .05, 5.0, c, sx, h, 0); }
+    solid(g, -1.5, 3.6, 3.3);
+    // heavy bag frame, speed bag, tyres
+    const fr = new T.Group(); fr.position.set(-8.2, 0, 1.2); g.add(fr);
+    for (const sx of [-1.5, 1.5]) cm(fr, .09, .09, 3.4, 0x6a4a2a, sx, 1.7, 0, 6); bm(fr, 3.2, .14, .14, 0x6a4a2a, 0, 3.4, 0);
+    const bag = new T.Group(); bag.position.set(-.4, 3.4, 0); fr.add(bag); cm(bag, .02, .02, .6, 0x8a8e96, 0, -.3, 0, 4); cm(bag, .32, .32, 1.25, 0xb5322a, 0, -1.2, 0, 12); cm(bag, .33, .33, .12, 0x6a1a14, 0, -.62, 0, 12);
+    const spd = new T.Group(); spd.position.set(1.0, 3.4, 0); fr.add(spd); cm(spd, .015, .015, .5, 0x8a8e96, 0, -.25, 0, 4); sm(spd, .16, 0xd8a030, 0, -.62, 0);
+    solid(g, -9.7, 1.2, .35); solid(g, -6.7, 1.2, .35);
+    for (let k = 0; k < 4; k++) { const ty = new T.Mesh(new T.TorusGeometry(.4, .17, 8, 14), mat(0x24262b)); ty.position.set(-5.4, .2 + (k % 3) * .3, -1.6 + (k > 2 ? .9 : 0)); ty.rotation.x = Math.PI / 2; g.add(ty); }
+    // sign, chalkboard, glove rack, crab bucket
+    for (const sx of [-1.2, 3.4]) cm(g, .07, .07, 3.0, 0x6a4a2a, sx, 1.5, -2.6, 6);
+    signBoard(g, 'RAYAPPAN BOXING CLUB', 4.9, 1.0, 1.1, 3.0, -2.6, 'north madras style');
+    { const cc = document.createElement('canvas'); cc.width = 256; cc.height = 192; const x = cc.getContext('2d'); x.fillStyle = '#2a2e2a'; x.fillRect(0, 0, 256, 192); x.strokeStyle = '#b98652'; x.lineWidth = 8; x.strokeRect(4, 4, 248, 184);
+      x.fillStyle = '#f4f0e6'; x.textAlign = 'center'; x.font = '700 30px Georgia, serif'; x.fillText('TODAY\'S TRAINING', 128, 52); x.fillStyle = '#ffd36a'; x.font = '800 40px Georgia, serif'; x.fillText('CATCH 3 CRABS', 128, 104); x.fillStyle = '#f4f0e6'; x.font = 'italic 26px Georgia, serif'; x.fillText('in 60 seconds', 128, 146);
+      const t = new T.CanvasTexture(cc); t.colorSpace = T.SRGBColorSpace; const cb = new T.Mesh(new T.PlaneGeometry(1.5, 1.12), new T.MeshBasicMaterial({ map: t })); cb.position.set(5.4, 1.15, -1.2); cb.rotation.y = -.25; g.add(cb); for (const dx of [-.5, .5]) cm(g, .04, .04, 1.2, 0x6a4a2a, 5.4 + dx, .6, -1.28, 5); }
+    bm(g, 1.6, .08, .12, 0x6a4a2a, 7.2, 1.6, -1.8); for (const [k, c] of [[0, 0xd8202a], [1, 0xd8202a], [2, 0x3a78c8]]) { sm(g, .17, c, 6.7 + k * .5, 1.38, -1.8).scale.set(1, 1.1, 1); }
+    cm(g, .3, .24, .5, 0x3a78c8, 4.4, .27, 1.0, 12); for (let k = 0; k < 3; k++) { const dc = mkCrab(.5); dc.position.set(4.4 + (k - 1) * .13, .55, 1.0 + (k % 2) * .08); dc.rotation.y = k * 2; g.add(dc); }
+    // Beedi Rayappan himself
+    const rp = g.localToWorld(new T.Vector3(3.6, 0, -.6));
+    const n = npc('Beedi Rayappan', rp.x, rp.z, { shirt: 0xe8e4d8, pants: 0x2f5fa8, dress: true, skin: 0x8a5c3c, brow: true, hair: 'bald', beard: true, glasses: true, hairColor: 0xe9e6df, scale: 1.02, shoe: 0x3a2a1a }), P = n.p;
+    P.g.position.y = BY; P.g.rotation.y = sp.ry + Math.PI; P.body.rotation.x = .14; P.head.position.z = .08;
+    const hd = P.head, WH = 0xeeeae2;
+    bm(hd, .3, .06, .08, WH, 0, -.085, .27); for (const sg of [-1, 1]) { const w = bm(hd, .12, .045, .07, WH, sg * .14, -.12, .262); w.rotation.z = sg * .5; const br = bm(hd, .13, .035, .05, WH, sg * .1, .085, .275); br.rotation.z = sg * -.15; const tf = sph(hd, .075, WH, sg * .285, .02, 0); tf.scale.set(.6, 1.3, .9); }
+    for (const sg of [-1, 1]) { bm(hd, .12, .008, .02, 0x5a3a24, sg * .1, .15, .28); bm(hd, .1, .008, .02, 0x5a3a24, sg * .1, .125, .285); bm(hd, .07, .008, .02, 0x5a3a24, sg * .17, -.02, .27).rotation.z = sg * .6; }
+    const bd = add(hd, new T.CylinderGeometry(.013, .013, .15, 6), mat(0x8a6a44), .075, -.125, .36, false); bd.rotation.x = Math.PI / 2;
+    const ember = glow(hd, 0xff6a1a, .075, -.125, .44, .02);
+    bm(P.body, .62, .1, .32, 0xf4f0e6, 0, 1.64, 0); cm(P.body, .34, .34, .1, 0xf4f0e6, 0, .98, 0, 12);
+    { const ap = P.arms[1]; ap.rotation.x = -.1; cm(ap, .028, .034, 1.3, 0x6a4a2a, 0, -1.02, .08, 6); const hk = cm(ap, .03, .03, .22, 0x6a4a2a, 0, -.4, .08, 6); hk.rotation.x = Math.PI / 2; hk.position.set(0, -.36, .0); }
+    for (const sg of [-1, 1]) { cm(P.body, .01, .01, .3, 0x6a5a48, sg * .3, .92, .22, 4); sm(P.body, .13, 0xd8202a, sg * .3, .72, .22).scale.set(1, 1.1, .9); }
+    const smoke = [0, 1, 2].map(i => { const s = new T.Sprite(new T.SpriteMaterial({ map: glowTex(), color: 0xd8d8d8, transparent: true, opacity: 0, depthWrite: false })); world.add(s); return { s, ph: i / 3 }; });
+    solid(g, 3.6, -.6, .55);
+    // the interaction ring sits a few steps in front of him, towards the road
+    const sw = g.localToWorld(new T.Vector3(3.6, 0, -3.1)), rr = ringAt(sw.x, sw.z, 0xff8a2a);
+    STN.push({ id: 'rayappan', x: sw.x, z: sw.z, label: 'Talk · Beedi Rayappan (training)', kind: 'side', ...rr });
+    RAY.camp = { x: sp.x, z: sp.z, ux: sp.ux, uz: sp.uz, ry: sp.ry }; RAY.stn = { x: sw.x, z: sw.z }; RAY.npc = n;
+    AMB.push((t, dt, pp) => {
+      bag.rotation.z = Math.sin(t * 1.3) * .06; bag.rotation.x = Math.sin(t * .9) * .03; spd.rotation.z = Math.sin(t * 9) * .05;
+      ember.material.color.setHex(Math.sin(t * 3) > .2 ? 0xff7a2a : 0xc84a14);
+      const hp = P.g.localToWorld(new T.Vector3(.075, 1.95 - .125, .5));
+      smoke.forEach(m => { const u = (t * .35 + m.ph) % 1; m.s.position.set(hp.x + Math.sin(u * 5 + m.ph * 6) * .12, hp.y + u * 1.1, hp.z + Math.cos(u * 4 + m.ph * 6) * .1); m.s.scale.setScalar(.12 + u * .5); m.s.material.opacity = (1 - u) * .22; });
+      if (Math.hypot(RAY.stn.x - pp.x, RAY.stn.z - pp.z) < 34 && !RAY.greeted && state.mode === 'explore') { RAY.greeted = true; toast('RAYAPPAN BOXING CLUB', 'Beedi Rayappan runs a training club on the beach. Walk up and talk to him.'); }
+    });
+  };
+  let campSp = null;
+  search: for (const s of [46, 62, 78, 94, 110, 126, 142, 158, 174, 190]) for (const side of [-1, 1]) { const sp = spot(s, side, 50); if (sp) { campSp = sp; rayCamp(sp); break search; } }
   const KINDS = [cafe, grove, umbrellas, hut, grove, lifeguard, umbrellas, volley, grove, cafe, umbrellas, grove, hut, lifeguard];
   const KOFF = new Map([[cafe, 47], [hut, 50], [lifeguard, 52], [volley, 51], [umbrellas, 50.5], [grove, 48.5]]);
-  { let ki = 0; for (let s = 16; s < TOTAL - 10; s += 15) for (const side of [1, -1]) { const kind = KINDS[ki++ % KINDS.length], sp = spot(s, side, KOFF.get(kind)); if (sp) kind(sp); } }
+  { let ki = 0; for (let s = 16; s < TOTAL - 10; s += 15) for (const side of [1, -1]) { const kind = KINDS[ki++ % KINDS.length], sp = spot(s, side, KOFF.get(kind)); if (sp && !(campSp && Math.hypot(sp.x - campSp.x, sp.z - campSp.z) < 24)) kind(sp); } }
   AMB.push(t => palms.forEach(p => { p.crown.rotation.z = Math.sin(t * .8 + p.ph) * .05; p.crown.rotation.x = Math.sin(t * .6 + p.ph * 1.3) * .03; }));
 
   // ---- boats out on the water
@@ -1149,17 +1172,79 @@ function rampH(p) {
   AMB.push((t, dt, pp) => boats.forEach(b => { const near = Math.hypot(b.x - pp.x, b.z - pp.z) < 160; b.g.visible = near; if (!near) return; const k = b.buoy ? 1.6 : 1, drift = b.buoy ? 0 : Math.sin(t * .1 + b.ph) * 3;
     b.g.position.set(b.x + b.tx * drift, BY + Math.sin(t * 1.2 * k + b.ph) * .06 * k, b.z + b.tz * drift); b.g.rotation.z = Math.sin(t * .9 * k + b.ph) * .04 * k; b.g.rotation.x = Math.sin(t * .7 * k + b.ph) * .03 * k; }));
 
-  // ---- fish: schools in the shallows and a few that leap
-  const fishMat = [0xff8a3a, 0x4aa8e8, 0xffd36a, 0xc9d6e0, 0xe0705a];
-  const mkFish = c => { const g = new T.Group(); const body = add(g, new T.SphereGeometry(1, 10, 8), mat(c), 0, 0, 0, false); body.scale.set(.36, .13, .1); const tail = add(g, new T.ConeGeometry(.12, .24, 4), mat(c), -.42, 0, 0, false); tail.rotation.z = Math.PI / 2; tail.scale.set(1, 1, .3); const fin = add(g, new T.ConeGeometry(.06, .16, 4), mat(c), 0, .13, 0, false); const eye = glow(g, 0x15181e, .24, .04, .07, .025); g.userData.tail = tail; return g; };
+  // ---- fish: shaped, two-tone bodies with fins and a forked tail (kinds: tuna-blue, clownfish, tang, silver)
+  const FISH = [{ back: 0x2f6fae, belly: 0xe2ecf2, fin: 0x2a5f9a, eye: 0xffffff }, { back: 0xff7a2a, belly: 0xffb870, fin: 0xff9a4a, eye: 0xffffff, stripes: true }, { back: 0xffd23a, belly: 0xfff2a8, fin: 0xffb000, eye: 0xffffff }, { back: 0x7f9bb0, belly: 0xf4f8fa, fin: 0x6f8aa0, eye: 0xffffff }];
+  const FS = (a, b, x) => { const k = clamp((x - a) / (b - a), 0, 1); return k * k * (3 - 2 * k); };
+  const fishParts = FISH.map(F => {
+    const geo = new T.SphereGeometry(1, 16, 12), pos = geo.attributes.position, cols = new Float32Array(pos.count * 3), cb = new T.Color(F.back), cl = new T.Color(F.belly), cw = new T.Color(0xffffff), cc = new T.Color();
+    for (let i = 0; i < pos.count; i++) {
+      let x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i); const taper = (1 - .62 * FS(0, 1, -x)) * (1 - .3 * x * x * (x > 0 ? 1 : 0)); pos.setY(i, y * taper); pos.setZ(i, z * taper);
+      cc.lerpColors(cb, cl, FS(.15, -.35, y)); if (F.stripes && (Math.abs(x - .32) < .1 || Math.abs(x + .3) < .07)) cc.lerp(cw, .9); cols.set([cc.r, cc.g, cc.b], i * 3);
+    }
+    geo.setAttribute('color', new T.BufferAttribute(cols, 3)); geo.computeVertexNormals();
+    const fs = (...p) => { const s = new T.Shape(); s.moveTo(p[0], p[1]); for (let i = 2; i < p.length; i += 2) s.lineTo(p[i], p[i + 1]); s.closePath(); return new T.ShapeGeometry(s); };
+    return { geo, bodyMat: new T.MeshToonMaterial({ vertexColors: true, gradientMap: toonGrad }), finMat: new T.MeshToonMaterial({ color: F.fin, gradientMap: toonGrad, side: T.DoubleSide, transparent: true, opacity: .92 }),
+      tail: fs(0, 0, -.2, .2, -.13, 0, -.2, -.2), dorsal: fs(.18, 0, -.02, .2, -.26, 0), pect: fs(0, 0, -.14, .02, -.02, -.1), eyeMat: new T.MeshBasicMaterial({ color: F.eye }) };
+  });
+  const pupilMat = new T.MeshBasicMaterial({ color: 0x15100d }), eyeGeo = new T.SphereGeometry(.035, 8, 6), pupGeo = new T.SphereGeometry(.018, 6, 5);
+  const mkFish = kind => {
+    const P0 = fishParts[kind % 4], g = new T.Group(), body = new T.Mesh(P0.geo, P0.bodyMat); body.scale.set(.42, .15, .11); g.add(body);
+    const tail = new T.Group(); tail.position.set(-.38, 0, 0); g.add(tail); tail.add(new T.Mesh(P0.tail, P0.finMat));
+    const dor = new T.Mesh(P0.dorsal, P0.finMat); dor.position.set(0, .12, 0); g.add(dor);
+    for (const s of [-1, 1]) { const pf = new T.Mesh(P0.pect, P0.finMat); pf.position.set(.1, -.03, s * .1); pf.rotation.y = s * .9; g.add(pf); const e = new T.Mesh(eyeGeo, P0.eyeMat); e.position.set(.28, .04, s * .085); g.add(e); const pu = new T.Mesh(pupGeo, pupilMat); pu.position.set(.298, .042, s * .1); g.add(pu); }
+    g.userData.tail = tail; return g;
+  };
   const schools = [];
   for (let s = 20; s < TOTAL - 10; s += 52) for (const side of [1, -1]) { const sp = spot(s + (side > 0 ? 0 : 20), side, 62.5 + r2() * 2, true); if (!sp) continue;
-    const fishes = []; const n = 6; for (let i = 0; i < n; i++) { const f = mkFish(fishMat[(i + schools.length) % fishMat.length]); f.visible = false; f.scale.setScalar(1.2 + r2() * .5); world.add(f); fishes.push({ f, ph: i * .55 + r2() * .3, rr: .8 + r2() * .5 }); }
+    const fishes = []; const n = 6; for (let i = 0; i < n; i++) { const f = mkFish(i + schools.length); f.visible = false; f.scale.setScalar(1.2 + r2() * .5); world.add(f); fishes.push({ f, ph: i * .55 + r2() * .3, rr: .8 + r2() * .5 }); }
     const rip = new T.Mesh(new T.RingGeometry(.4, .55, 20), new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .0, depthWrite: false, side: T.DoubleSide })); rip.rotation.x = -Math.PI / 2; rip.visible = false; world.add(rip);
     schools.push({ x: sp.x, z: sp.z, r: 3 + r2() * 2, w: (r2() < .5 ? -1 : 1) * (.45 + r2() * .25), fishes, rip, ph: r2() * 6 }); }
   // leaping fish: one hops near each few schools
-  const jumpers = schools.filter((_, i) => i % 2 === 0).map(s => ({ s, f: mkFish(0xc9d6e0), next: 2 + r2() * 8, u: -1, ang: r2() * 6.28, sp: r2() * 6 }));
+  const jumpers = schools.filter((_, i) => i % 2 === 0).map(s => ({ s, f: mkFish(3), next: 2 + r2() * 8, u: -1, ang: r2() * 6.28, sp: r2() * 6 }));
   jumpers.forEach(j => { j.f.visible = false; j.f.scale.setScalar(2.2); world.add(j.f); j.ring = new T.Mesh(new T.RingGeometry(.2, .32, 20), new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, side: T.DoubleSide })); j.ring.rotation.x = -Math.PI / 2; world.add(j.ring); });
+  // ---- dolphins leaping far out at sea
+  const dolBody = (() => {
+    const pr = [[0, 1.45], [.05, 1.36], [.085, 1.2], [.1, 1.08], [.17, .95], [.27, .72], [.33, .3], [.34, -.05], [.3, -.5], [.22, -.9], [.13, -1.22], [.08, -1.45], [.05, -1.62], [0, -1.7]];
+    const geo = new T.LatheGeometry(pr.map(([r, y]) => new T.Vector2(r, y)), 18); geo.rotateZ(-Math.PI / 2); const pos = geo.attributes.position, cols = new Float32Array(pos.count * 3), cb = new T.Color(0x56728c), cl = new T.Color(0xe6eef2), cc = new T.Color();
+    for (let i = 0; i < pos.count; i++) { pos.setZ(i, pos.getZ(i) * .85); cc.lerpColors(cb, cl, FS(.12, -.16, pos.getY(i))); cols.set([cc.r, cc.g, cc.b], i * 3); }
+    geo.setAttribute('color', new T.BufferAttribute(cols, 3)); geo.computeVertexNormals(); return geo;
+  })();
+  const dolFin = (...p) => { const s = new T.Shape(); s.moveTo(p[0], p[1]); for (let i = 2; i < p.length; i += 2) s.quadraticCurveTo(p[i], p[i + 1], p[i + 2], p[i + 3]), i += 2; s.closePath(); return new T.ShapeGeometry(s); };
+  const dolMat = new T.MeshToonMaterial({ vertexColors: true, gradientMap: toonGrad }), dolFinMat = new T.MeshToonMaterial({ color: 0x4a6680, gradientMap: toonGrad, side: T.DoubleSide });
+  const dorsalG = dolFin(.25, 0, .02, .1, -.18, .5, -.55, 0, -.55, 0), flipG = dolFin(0, 0, -.1, -.2, -.4, -.5, -.3, -.04, -.3, -.04), flukeG = (() => { const s = new T.Shape(); s.moveTo(0, 0); s.quadraticCurveTo(-.2, .2, -.6, .55); s.quadraticCurveTo(-.55, .15, -.42, 0); s.quadraticCurveTo(-.55, -.15, -.6, -.55); s.quadraticCurveTo(-.2, -.2, 0, 0); return new T.ShapeGeometry(s); })();
+  const mkDolphin = () => {
+    const g = new T.Group(), b = new T.Mesh(dolBody, dolMat); b.castShadow = false; g.add(b);
+    const d = new T.Mesh(dorsalG, dolFinMat); d.position.set(-.1, .3, 0); g.add(d);
+    for (const s of [-1, 1]) { const f = new T.Mesh(flipG, dolFinMat); f.position.set(.55, -.15, s * .26); f.rotation.set(s * .9, s * -.4, 0); g.add(f); const e = new T.Mesh(pupGeo, pupilMat); e.scale.setScalar(1.7); e.position.set(.98, .1, s * .12); g.add(e); }
+    const tail = new T.Group(); tail.position.set(-1.45, 0, 0); g.add(tail); const fl = new T.Mesh(flukeG, dolFinMat); fl.rotation.x = -Math.PI / 2; tail.add(fl);
+    g.userData.tail = tail; return g;
+  };
+  const pods = [], drops = [];
+  for (let k = 0; k < 40; k++) { const sp = new T.Sprite(new T.SpriteMaterial({ map: glowTex(), color: 0xffffff, transparent: true, opacity: 0, depthWrite: false })); sp.visible = false; world.add(sp); drops.push({ sp, life: 0, vx: 0, vy: 0, vz: 0 }); }
+  const splash = (x, z, n = 8) => { let c = 0; for (const D of drops) { if (D.life > 0) continue; D.life = .9; D.sp.position.set(x, BY + .1, z); D.vx = (Math.random() - .5) * 4; D.vy = 3 + Math.random() * 3; D.vz = (Math.random() - .5) * 4; D.sp.visible = true; D.sp.scale.setScalar(.35 + Math.random() * .3); if (++c >= n) break; } };
+  for (let s = 30; s < TOTAL - 10; s += 60) for (const side of [1, -1]) { const sh = spot(s + (side > 0 ? 0 : 30), side, 57, true); if (!sh) continue; const dd = 40 + r2() * 26, sp = { x: sh.x + sh.ux * dd, z: sh.z + sh.uz * dd }; if (pathNear(sp.x, sp.z).d < 90) continue;
+    const dols = [0, 1, 2].map(i => { const g = mkDolphin(); g.scale.setScalar(1.9 - i * .22); g.visible = false; world.add(g); return { g, delay: i * .28 + r2() * .1, u: -1, ring: null }; });
+    const rings = [0, 1, 2, 3].map(() => { const m = new T.Mesh(new T.RingGeometry(.3, .5, 24), new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, side: T.DoubleSide })); m.rotation.x = -Math.PI / 2; m.position.y = BY + .02; world.add(m); return { m, t: 1 }; });
+    pods.push({ x: sp.x, z: sp.z, ang: r2() * 6.28, next: 2 + r2() * 9, t: -1, dols, rings, ri: 0 }); }
+  RAY.pods = pods; RAY.schools = schools;
+  AMB.push((t, dt, pp) => {
+    for (const D of drops) { if (D.life <= 0) continue; D.life -= dt; D.vy -= 9 * dt; D.sp.position.x += D.vx * dt; D.sp.position.y += D.vy * dt; D.sp.position.z += D.vz * dt; D.sp.material.opacity = Math.max(0, D.life / .9) * .8; if (D.life <= 0 || D.sp.position.y < BY) { D.life = 0; D.sp.visible = false; } }
+    for (const P of pods) {
+      for (const R of P.rings) if (R.t < 1) { R.t += dt / 1.1; R.m.scale.setScalar(1 + R.t * 6); R.m.material.opacity = (1 - R.t) * .7; }
+      if (Math.hypot(P.x - pp.x, P.z - pp.z) > 230) { P.dols.forEach(d => { d.g.visible = false; d.u = -1; }); P.t = -1; continue; }
+      P.next -= dt;
+      if (P.t < 0 && P.next <= 0) { P.t = 0; P.ang = Math.random() * 6.28; P.dols.forEach(d => { d.u = -1; d.fired = false; d.landed = false; }); }
+      if (P.t >= 0) {
+        P.t += dt; const L = 10, H = 3.4, DUR = 1.7; let any = false;
+        P.dols.forEach((d, i) => { const u = (P.t - d.delay) / DUR; if (u < 0) { any = true; return; } if (u >= 1) { d.g.visible = false; if (!d.landed) { d.landed = true; } return; } any = true;
+          const ox = Math.cos(P.ang + 1.57) * (i - 1) * 3.2, oz = Math.sin(P.ang + 1.57) * (i - 1) * 3.2, x = P.x + ox + Math.cos(P.ang) * (u - .5) * L, z = P.z + oz + Math.sin(P.ang) * (u - .5) * L, y = BY - .5 + (4 * u * (1 - u)) * (H + .5) - .0;
+          const slope = 4 * (1 - 2 * u) * (H + .5) / L; d.g.visible = y > BY - .45; d.g.position.set(x, y, z); d.g.rotation.set(0, -P.ang, Math.atan(slope) + .0); d.g.userData.tail.rotation.z = Math.sin(t * 16 + i) * .35;
+          if (!d.fired && u > .02) { d.fired = true; const R = P.rings[P.ri++ % 4]; R.m.position.set(x, BY + .02, z); R.t = 0; splash(x, z, 7); }
+          if (u > .94 && !d.landed) { d.landed = true; const R = P.rings[P.ri++ % 4]; R.m.position.set(x, BY + .02, z); R.t = 0; splash(x, z, 9); } });
+        if (!any) { P.t = -1; P.next = 6 + Math.random() * 9; }
+      }
+    }
+  });
   AMB.push((t, dt, pp) => {
     for (const S of schools) {
       const near = Math.hypot(S.x - pp.x, S.z - pp.z) < 90; S.fishes.forEach(o => o.f.visible = near); S.rip.visible = near; if (!near) continue;
@@ -1176,6 +1261,54 @@ function rampH(p) {
       if (J.rt !== undefined && J.rt < 1) { J.rt += dt / .9; J.ring.scale.setScalar(1 + J.rt * 5); J.ring.material.opacity = Math.max(0, 1 - J.rt) * .8; } else J.ring.material.opacity = 0;
     }
   });
+}
+/* ------------------------------------------------- ground paint: dirt road, office forecourt and stunt lane share one soft-edged decal */
+{
+  const PX = 5, X0 = Math.min(...PATH.map(p => p[0])) - 8, X1 = Math.max(...PATH.map(p => p[0])) + 8, Z0 = Math.min(...PATH.map(p => p[1])) - 8, Z1 = Math.max(...PATH.map(p => p[1])) + 8;
+  const CW = Math.ceil((X1 - X0) * PX), CH = Math.ceil((Z1 - Z0) * PX);
+  const sst = (a, b, x) => { const k = clamp((x - a) / (b - a), 0, 1); return k * k * (3 - 2 * k); };
+  const SEG = []; for (let i = 0; i < PATH.length - 1; i++) { const [ax, az] = PATH[i], [bx, bz] = PATH[i + 1], dx = bx - ax, dz = bz - az, L = Math.hypot(dx, dz); SEG.push([ax, az, dx, dz, L * L, L]); }
+  // stunt lane centre line (world), with the distance walked along it so the paving can fade into dirt at both ends
+  const LN = ARENA.lane, LS = []; let LT = 0;
+  if (LN) for (let i = 0; i < LN.pts.length - 1; i++) { const [ax, az] = LN.pts[i], [bx, bz] = LN.pts[i + 1], dx = bx - ax, dz = bz - az, L = Math.hypot(dx, dz); if (L < 1e-4) continue; LS.push([ax, az, dx, dz, L * L, L, LT]); LT += L; }
+  const lx0 = LN ? Math.min(...LN.pts.map(p => p[0])) - LN.w : 0, lx1 = LN ? Math.max(...LN.pts.map(p => p[0])) + LN.w : 0, lz0 = LN ? Math.min(...LN.pts.map(p => p[1])) - LN.w : 0, lz1 = LN ? Math.max(...LN.pts.map(p => p[1])) + LN.w : 0;
+  const PL = { cx: OFFICE.x, cz: OFFICE.z + 4.2, hx: (OFFICE.w + 10) / 2, hz: (OFFICE.d + 17) / 2, r: 2.6 };
+  const c = document.createElement('canvas'); c.width = CW; c.height = CH; const cx = c.getContext('2d'), img = cx.createImageData(CW, CH), D = img.data;
+  const DIRT = [228, 198, 146], PAVE = [203, 206, 213], CONC = [152, 154, 160];
+  for (let r = 0; r < CH; r++) for (let q = 0; q < CW; q++) {
+    const x = X0 + (q + .5) / PX, z = Z0 + (r + .5) / PX, n = Math.random(); let pr = 0, pg = 0, pb = 0, A = 0;
+    const over = (R, G, B, a) => { if (a <= 0) return; pr = R * a + pr * (1 - a); pg = G * a + pg * (1 - a); pb = B * a + pb * (1 - a); A = a + A * (1 - a); };
+    // dirt road
+    let best = 1e9, lat = 0; for (const [ax, az, dx, dz, L2, L] of SEG) { const u = clamp(((x - ax) * dx + (z - az) * dz) / L2, 0, 1), ex = x - ax - dx * u, ez = z - az - dz * u, d2 = ex * ex + ez * ez; if (d2 < best) { best = d2; lat = (dx * ez - dz * ex) / L; } }
+    const d = Math.sqrt(best), edge = 2.3 + .25 * Math.sin(x * .9 + z * .7) + .2 * Math.sin(z * 1.7 - x * .5);
+    if (d < edge + .6) {
+      let a = 1 - sst(edge - .5, edge + .45, d); a *= clamp(1 - n * clamp((d - (edge - .9)) / .9, 0, 1) * .75, 0, 1);
+      const sp = (n - .5) * 26, trk = clamp(1 - Math.abs(Math.abs(lat) - .85) / .3, 0, 1) * .1, ed = clamp((d - (edge - 1.1)) / 1.1, 0, 1) * .5, k = 1 - trk;
+      over((DIRT[0] + sp) * k * (1 - ed) + 150 * ed, (DIRT[1] + sp) * k * (1 - ed) + 150 * ed, (DIRT[2] + sp) * k * (1 - ed) + 92 * ed, a);
+    }
+    // office forecourt: paving with a curb, feathered into the dirt and the grass
+    { const qx = Math.abs(x - PL.cx) - (PL.hx - PL.r), qz = Math.abs(z - PL.cz) - (PL.hz - PL.r), sdf = Math.hypot(Math.max(qx, 0), Math.max(qz, 0)) + Math.min(Math.max(qx, qz), 0) - PL.r;
+      if (sdf < .4) { const a = sst(0, 1.6, -sdf - (n - .5) * .5);
+        if (a > 0) { const gx = (x - PL.cx + PL.hx) % 2.6, gz = (z - PL.cz + PL.hz) % 2.6, line = (gx < .07 || gz < .07) ? 1 : 0, sp = (n - .5) * 10, curb = clamp(1 - Math.abs(-sdf - .45) / .22, 0, 1), t = line * .35 + curb * .5;
+          over((PAVE[0] + sp) * (1 - t) + 146 * t, (PAVE[1] + sp) * (1 - t) + 152 * t, (PAVE[2] + sp) * (1 - t) + 164 * t, a); } } }
+    // stunt lane: dusty concrete that fades into the road's dirt at both ends, with white edge lines
+    if (LS.length && x > lx0 && x < lx1 && z > lz0 && z < lz1) {
+      let lb = 1e9, ls = 0; for (const [ax, az, dx, dz, L2, L, s0] of LS) { const u = clamp(((x - ax) * dx + (z - az) * dz) / L2, 0, 1), ex = x - ax - dx * u, ez = z - az - dz * u, d2 = ex * ex + ez * ez; if (d2 < lb) { lb = d2; ls = s0 + u * L; } }
+      const ld = Math.sqrt(lb), half = LN.w / 2;
+      if (ld < half + .3) {
+        let a = 1 - sst(half - .45, half + .15, ld); a *= clamp(1 - n * clamp((ld - (half - .6)) / .6, 0, 1) * .7, 0, 1);
+        const we = sst(0, 11, Math.min(ls, LT - ls)), sp = (n - .5) * 22, patch = Math.sin(x * .7 + z * .4) * Math.sin(z * .9 - x * .3) * 8, cc = [CONC[0] + sp + patch, CONC[1] + sp + patch, CONC[2] + sp + patch], dd = [DIRT[0] + sp, DIRT[1] + sp, DIRT[2] + sp], m = (1 - we) * .9;
+        let R = cc[0] * (1 - m) + dd[0] * m, G = cc[1] * (1 - m) + dd[1] * m, B = cc[2] * (1 - m) + dd[2] * m;
+        const ln = clamp(1 - Math.abs(ld - (half - .55)) / .09, 0, 1) * .9 * we; R = R * (1 - ln) + 244 * ln; G = G * (1 - ln) + 240 * ln; B = B * (1 - ln) + 230 * ln;
+        over(R, G, B, a);
+      }
+    }
+    const i = (r * CW + q) * 4; if (A > 0) { D[i] = pr / A; D[i + 1] = pg / A; D[i + 2] = pb / A; D[i + 3] = A * 255; }
+  }
+  cx.putImageData(img, 0, 0);
+  const tex = new T.CanvasTexture(c); tex.colorSpace = T.SRGBColorSpace; tex.anisotropy = 8; tex.wrapS = tex.wrapT = T.ClampToEdgeWrapping;
+  const m = new T.Mesh(new T.PlaneGeometry(X1 - X0, Z1 - Z0), new T.MeshToonMaterial({ map: tex, gradientMap: toonGrad, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1 }));
+  m.rotation.x = -Math.PI / 2; m.position.set((X0 + X1) / 2, .045, (Z0 + Z1) / 2); m.receiveShadow = true; m.renderOrder = 1; world.add(m);
 }
 // birds and butterflies live at fixed places in the world (they do not follow the camera)
 {
@@ -1443,7 +1576,7 @@ function landStunt() {
 function driftFx(dt, len, dh) {
   const V = player.veh, p = player.g.position, isMoto = V.type === 'moto' && !player.onFoot, slip = player.slip || 0;
   // skid marks + dust while sliding
-  if (isMoto && Math.abs(slip) > .16 && player.v > 4 && !stunt) {
+  if (isMoto && Math.abs(slip) > .26 && player.v > 4 && !stunt) {
     skidAcc += dt; while (skidAcc > .025) { skidAcc -= .025;
       _w.set(0, .02, -.86 * player.g.scale.x); _w.applyAxisAngle(new T.Vector3(0, 1, 0), player.heading); _w.add(p);
       const S = SKIDS[skidI++ % SKIDS.length]; S.m.position.set(_w.x, .085, _w.z); S.m.rotation.z = -player.vdir; S.t = 0; S.m.visible = true;
@@ -1524,7 +1657,7 @@ function smokeStep(dt) {
   for (const P of SMOKE) { if (P.t >= P.life) { if (P.s.visible) P.s.visible = false; continue; } P.t += dt; const k = P.t / P.life; P.s.position.x += P.vx * dt; P.s.position.z += P.vz * dt; P.s.position.y += dt * .7; P.s.scale.setScalar(.25 + k * 1.1); P.s.material.opacity = .55 * (1 - k); }
 }
 // ---- map
-const MAPN = { ravi: 'Cricket · Ravi', thatha: 'Chess · Thatha', edu: 'B.I.T.', ach: 'Hackathon Hall', office: 'Grootan Office', printer: 'Resume printer', claude: 'Claude Code', codex: 'Codex', astra: 'Astra', auto: 'Automation', ai: 'The AI tower' };
+const MAPN = { ravi: 'Cricket · Ravi', thatha: 'Chess · Thatha', edu: 'B.I.T.', ach: 'Hackathon Hall', office: 'Grootan Office', printer: 'Resume printer', claude: 'Claude Code', codex: 'Codex', astra: 'Astra', auto: 'Automation', ai: 'The AI tower', rayappan: 'Beedi Rayappan · crab training' };
 let mapBig = false, mapAcc = 0;
 function drawMap(cv, big) {
   const x = cv.getContext('2d'), W = cv.width, H = cv.height, pp = player.g.position;
@@ -1549,7 +1682,7 @@ function drawMap(cv, big) {
   const cur = curAct(), a = ACTS[cur];
   for (const s of STN) {
     const done = stationDone(s), want = a && a.need.includes(s.id) && !done;
-    const col = s.kind === 'term' ? '#8f7cff' : s.kind === 'print' ? '#2fb8a0' : s.kind === 'folio' ? '#e8a33d' : '#d8402a';
+    const col = s.kind === 'side' ? '#ff8a2a' : s.kind === 'term' ? '#8f7cff' : s.kind === 'print' ? '#2fb8a0' : s.kind === 'folio' ? '#e8a33d' : '#d8402a';
     const sx = X(s.x, s.z), sy = Y(s.x, s.z), r = big ? 5.5 : 3.5;
     x.fillStyle = done ? '#ffffffaa' : col; x.strokeStyle = '#3b2a22'; x.lineWidth = 1.5; x.beginPath(); x.arc(sx, sy, want ? r + 2 : r, 0, 7); x.fill(); x.stroke();
     if (want) { x.strokeStyle = '#ffffff'; x.lineWidth = 2; x.beginPath(); x.arc(sx, sy, r + 5 + Math.sin(performance.now() / 200) * 1.5, 0, 7); x.stroke(); }
@@ -1686,7 +1819,156 @@ async function printResume() {
   await wait(1200); PRINTER.led.material.color.set(0x6fe3c1); printT = -1; PRINTER.paper.visible = false; busy = false;
   await wait(900); if (away) await returnFromPrinter();
 }
+
+/* ---- side quest: Beedi Rayappan's crab training (first person, along the beach) */
+function mkCrab(sc = 1) {
+  const g = new T.Group(), shell = 0xe0502e, dark = 0xa8321c, legs = [], claws = [];
+  const body = add(g, new T.SphereGeometry(.2, 12, 8), mat(shell), 0, .16, 0, false); body.scale.set(1.35, .55, 1); outline(body, 1.08);
+  const top = add(g, new T.SphereGeometry(.14, 10, 6), mat(0xf27a4a), 0, .24, -.01, false); top.scale.set(1.3, .45, .9);
+  for (const s of [-1, 1]) {
+    add(g, new T.CylinderGeometry(.015, .015, .1, 5), mat(dark), s * .08, .3, .15, false); add(g, new T.SphereGeometry(.035, 8, 6), new T.MeshBasicMaterial({ color: 0x15100d }), s * .08, .36, .15, false);
+    const arm = new T.Group(); arm.position.set(s * .27, .2, .13); g.add(arm); const up = add(arm, new T.CylinderGeometry(.022, .022, .18, 5), mat(dark), s * .06, .03, .08, false); up.rotation.z = s * -1.0; up.rotation.x = .5;
+    const cl = new T.Group(); cl.position.set(s * .12, .08, .17); arm.add(cl); const palm = add(cl, new T.SphereGeometry(.075, 8, 6), mat(shell), 0, 0, 0, false); palm.scale.set(1, .8, 1.1);
+    for (const p of [-1, 1]) { const pin = add(cl, new T.BoxGeometry(.03, .03, .1), mat(dark), p * .03, 0, .08, false); pin.rotation.y = -p * .25; }
+    claws.push(arm);
+    for (let k = 0; k < 3; k++) { const lp = new T.Group(); lp.position.set(s * .22, .14, -.07 + k * .08); g.add(lp); const lg = add(lp, new T.CylinderGeometry(.012, .012, .22, 4), mat(dark), s * .1, -.02, 0, false); lg.rotation.z = s * -1.2; legs.push({ g: lp, s, k }); }
+  }
+  g.scale.setScalar(sc); g.userData = { legs, claws }; return g;
+}
+let crabCtl = null;
+const lockPtr = cv => { try { const r = cv.requestPointerLock(); if (r && r.catch) r.catch(() => { }); } catch (er) { } };
+function crabQuit() { if (crabCtl) crabCtl.end(false, true); }
+function crabGrab() { if (crabCtl) crabCtl.grab(); }
+function crabGame() {
+  return new Promise(resolve => {
+    const C = RAY.camp, GOAL = 3, LIMIT = 60, canvas = renderer.domElement;
+    const pg = player.g, saved = { pos: pg.position.clone(), vis: pg.visible, fov: camera.fov, near: camera.near, zoom: camera.zoom, order: camera.rotation.order };
+    const sx0 = RAY.npc.p.g.position.x + C.ux * 3.2 + C.uz * 1.4, sz0 = RAY.npc.p.g.position.z + C.uz * 3.2 - C.ux * 1.4;
+    const P = { x: sx0, z: sz0, yaw: Math.atan2(-C.ux, -C.uz), pitch: -.12, vx: 0, vz: 0, step: 0, stam: 1, lock: 0 };
+    state.mode = 'crab'; busy = true; $('hud').hidden = true; $('crabHud').hidden = false; $('prompt').hidden = true;
+    pg.visible = false; camera.fov = 72; camera.zoom = 1; camera.near = .05; camera.updateProjectionMatrix(); camera.rotation.order = 'YXZ'; scene.add(camera);
+    // Jeeva's gloved hands (Rayappan lent them for training)
+    const hands = new T.Group(); camera.add(hands); const hand = [];
+    for (const s of [-1, 1]) {
+      const h = new T.Group(); h.position.set(s * .3, -.42, -.72); h.rotation.y = -s * .14; hands.add(h);
+      const fa = add(h, new T.CylinderGeometry(.05, .06, .55, 8), mat(0xf0b98a), 0, 0, .32, false); fa.rotation.x = Math.PI / 2;
+      add(h, new T.CylinderGeometry(.075, .075, .14, 10), mat(0xf4f0e6), 0, 0, .08, false).rotation.x = Math.PI / 2;
+      const gl = add(h, new T.SphereGeometry(.13, 12, 10), mat(0xd8202a), 0, 0, -.06, false); gl.scale.set(1, .9, 1.15); add(h, new T.SphereGeometry(.07, 8, 6), mat(0xd8202a), s * -.1, .03, -.02, false);
+      hand.push(h);
+    }
+    // crabs scuttling along the sand
+    const crabs = [], tangent = { x: C.uz, z: -C.ux };
+    const bandPoint = () => { for (let k = 0; k < 60; k++) { const off = (Math.random() - .5) * 40, bx = C.x + tangent.x * off + C.ux * 4, bz = C.z + tangent.z * off + C.uz * 4, n = pathNear(bx, bz); if (n.d < 1) continue;
+      const d = 49 + Math.random() * 6, ux = (bx - n.px) / n.d, uz = (bz - n.pz) / n.d, x = n.px + ux * d, z = n.pz + uz * d;
+      if (rounds.some(r => Math.hypot(r.x - x, r.z - z) < r.r + 1) || Math.hypot(x - P.x, z - P.z) < 9) continue; return { x, z }; } return { x: C.x + C.ux * 6, z: C.z + C.uz * 6 }; };
+    for (let i = 0; i < GOAL + 1; i++) { const p = bandPoint(), g = mkCrab(1.0); g.position.set(p.x, BY_SAND, p.z); scene.add(g); crabs.push({ g, x: p.x, z: p.z, side: 1, jit: 0, pause: 0, spook: 0, ph: Math.random() * 6, dead: 0, dir: { x: 0, z: 0 }, sp: 0 }); }
+    const st = { t: 0, caught: 0, grabCd: 0, grabT: 1, msgT: 0, done: false };
+    const msg = (txt, col = '#fff') => { const m = $('cbMsg'); m.textContent = txt; m.style.color = col; m.classList.remove('pop'); void m.offsetWidth; m.classList.add('pop'); };
+    const onMove = e => { const lock = document.pointerLockElement === canvas; if (lock || (e.buttons & 1)) { P.yaw -= (e.movementX || 0) * .0023; P.pitch = clamp(P.pitch - (e.movementY || 0) * .0023, -1.25, 1.25); } };
+    const onDown = e => { if (e.pointerType === 'touch') return; if (document.pointerLockElement !== canvas) lockPtr(canvas); else crabGrab(); };
+    let tx = null; const onTS = e => { if (e.pointerType === 'touch' && e.clientX > innerWidth * .4) tx = { x: e.clientX, y: e.clientY }; }, onTM = e => { if (tx && e.pointerType === 'touch') { P.yaw -= (e.clientX - tx.x) * .006; P.pitch = clamp(P.pitch - (e.clientY - tx.y) * .004, -1.25, 1.25); tx = { x: e.clientX, y: e.clientY }; } }, onTE = () => { tx = null; };
+    addEventListener('mousemove', onMove); canvas.addEventListener('pointerdown', onDown); canvas.addEventListener('pointerdown', onTS); addEventListener('pointermove', onTM); addEventListener('pointerup', onTE);
+    lockPtr(canvas);
+    msg('Catch ' + GOAL + ' crabs!', '#ffd36a'); beep(660, .12, 'triangle', .05);
+    crabCtl = {
+      crabs, P,
+      grab() {
+        if (st.done || st.grabCd > 0) return; st.grabCd = .55; st.grabT = 0;
+        const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw); let best = null, bd = 1.9;
+        for (const c of crabs) { if (c.dead) continue; const dx = c.x - P.x, dz = c.z - P.z, d = Math.hypot(dx, dz); if (d < bd && (dx * fx + dz * fz) / (d || 1) > .5) { bd = d; best = c; } }
+        if (best) { best.dead = .001; st.caught++; chime(); msg('CAUGHT! ' + st.caught + ' / ' + GOAL, '#9ff0b0'); poof(best.x, best.z, 0xffd36a); if (st.caught >= GOAL) this.end(true); }
+        else { beep(180, .09, 'square', .04); msg('Missed! Get closer, face the crab.', '#ffb0a0'); for (const c of crabs) if (!c.dead && Math.hypot(c.x - P.x, c.z - P.z) < 5) c.spook = 1.2; }
+      },
+      end(won, quit) {
+        if (st.done) return; st.done = true; crabCtl = null;
+        removeEventListener('mousemove', onMove); canvas.removeEventListener('pointerdown', onDown); canvas.removeEventListener('pointerdown', onTS); removeEventListener('pointermove', onTM); removeEventListener('pointerup', onTE);
+        try { document.exitPointerLock(); } catch (er) { }
+        ticker = null; crabs.forEach(c => scene.remove(c.g)); camera.remove(hands); scene.remove(camera);
+        camera.fov = saved.fov; camera.near = saved.near; camera.zoom = saved.zoom; camera.rotation.order = saved.order; camera.updateProjectionMatrix();
+        pg.visible = saved.vis; pg.position.set(RAY.stn.x, saved.pos.y, RAY.stn.z); player.v = 0; player.heading = Math.atan2(RAY.npc.p.g.position.x - RAY.stn.x, RAY.npc.p.g.position.z - RAY.stn.z); player.vdir = player.heading; pg.rotation.y = player.heading;
+        $('crabHud').hidden = true; $('hud').hidden = false; state.mode = 'explore';
+        resolve({ won: !!won, quit: !!quit, caught: st.caught, time: st.t });
+      },
+    };
+    $('cbExit').onclick = () => crabQuit();
+    ticker = dt => {
+      if (st.done) return; st.t += dt; st.grabCd -= dt; st.grabT = Math.min(1, st.grabT + dt / .32);
+      // look + move
+      const turn = (keys.has('ArrowRight') ? -1 : 0) + (keys.has('ArrowLeft') ? 1 : 0); P.yaw += turn * 2.2 * dt;
+      const fwd = (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0) - joy.z, str = (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0) + joy.x;
+      const sprint = (keys.has('ShiftLeft') || keys.has('ShiftRight')) && P.stam > 0 && P.lock <= 0 && (fwd || str);
+      if (sprint) { P.stam = Math.max(0, P.stam - dt / 3); if (P.stam <= 0) P.lock = 1.2; } else P.stam = Math.min(1, P.stam + dt * .45); P.lock -= dt;
+      const sp = sprint ? 7.4 : 4.4, ml = Math.hypot(fwd, str) || 1, fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw), rx = Math.cos(P.yaw), rz = -Math.sin(P.yaw);
+      const wx = (fx * fwd + rx * str) / Math.max(1, ml) * sp, wz = (fz * fwd + rz * str) / Math.max(1, ml) * sp, k = Math.min(1, dt * 9);
+      P.vx += (wx - P.vx) * k; P.vz += (wz - P.vz) * k;
+      P.x += P.vx * dt; P.z += P.vz * dt;
+      for (const r of rounds) { const dx = P.x - r.x, dz = P.z - r.z, d = Math.hypot(dx, dz), m = r.r + .5; if (d < m && d > 1e-4) { P.x = r.x + dx / d * m; P.z = r.z + dz / d * m; } }
+      const n = pathNear(P.x, P.z); if (n.d > 56.2) { P.x = n.px + (P.x - n.px) / n.d * 56.2; P.z = n.pz + (P.z - n.pz) / n.d * 56.2; } else if (n.d < 38) { P.x = n.px + (P.x - n.px) / n.d * 38; P.z = n.pz + (P.z - n.pz) / n.d * 38; }
+      const spd = Math.hypot(P.vx, P.vz); P.step += spd * dt; if (spd > 1 && Math.sin(P.step * 2.2) > .98) beep(90 + Math.random() * 30, .03, 'triangle', .02);
+      const bob = Math.sin(P.step * 2.2) * .035 * Math.min(1, spd / 4.4), eye = 1.62 + bob;
+      pg.position.set(P.x, saved.pos.y, P.z);
+      camera.position.set(P.x, BY_SAND + eye, P.z); camera.rotation.set(P.pitch, P.yaw, 0);
+      // hands: sway, and a quick thrust forward when grabbing
+      const ex = Math.sin(Math.PI * st.grabT) * (st.grabT < 1 ? 1 : 0);
+      hand.forEach((h, i) => { const s = i ? 1 : -1; h.position.set(s * (.3 - ex * .1), -.42 + Math.sin(P.step * 2.2 + i * 1.6) * .012 * Math.min(1, spd / 4) + ex * .05, -.72 - ex * .62); h.rotation.x = -ex * .5 + P.pitch * -.0; });
+      // crabs
+      let near = null, nd = 1e9;
+      for (const c of crabs) {
+        if (c.dead) { c.dead += dt; c.g.scale.setScalar(Math.max(.001, 1.0 * (1 - c.dead * 4))); c.g.position.y = BY_SAND + c.dead * 2; if (c.dead > .3) { c.g.visible = false; } continue; }
+        const dx = c.x - P.x, dz = c.z - P.z, dist = Math.hypot(dx, dz) || .01; c.spook -= dt; c.jit -= dt; c.pause -= dt;
+        const nn = pathNear(c.x, c.z), ux = (c.x - nn.px) / (nn.d || 1), uz = (c.z - nn.pz) / (nn.d || 1);
+        let mx = 0, mz = 0, speed = 0;
+        if (dist < 8.5 + (c.spook > 0 ? 3 : 0)) {
+          if (c.jit <= 0) { c.jit = .3 + Math.random() * .5; c.pause = Math.random() < .12 ? .2 + Math.random() * .25 : 0; if (Math.random() < .35) c.side *= -1; }
+          if (c.pause <= 0) {
+            const ax = dx / dist, az = dz / dist; let t1 = uz, t2 = -ux; const sg = (t1 * ax + t2 * az) >= 0 ? 1 : -1; t1 *= sg * c.side; t2 *= sg * c.side;
+            let vx = ax * .5 + t1 * 1.0, vz = az * .5 + t2 * 1.0;
+            if (nn.d > 55.4) { vx -= ux * 1.4; vz -= uz * 1.4; } else if (nn.d < 47.5) { vx += ux * 1.0; vz += uz * 1.0; }
+            const cd = Math.hypot(c.x - C.x, c.z - C.z); if (cd > 36) { vx += (C.x - c.x) / cd * 1.6; vz += (C.z - c.z) / cd * 1.6; }
+            const vl = Math.hypot(vx, vz) || 1; mx = vx / vl; mz = vz / vl; speed = 5.6 + (c.spook > 0 ? 1.2 : 0) + (dist < 2.6 ? .9 : 0);
+          }
+        } else if (c.jit <= 0) { c.jit = 1 + Math.random() * 2; c.side = Math.random() < .5 ? -1 : 1; c.pause = Math.random() < .5 ? 1.5 : 0; }
+        if (speed === 0 && dist >= 8.5 && c.pause <= 0) { mx = uz * c.side; mz = -ux * c.side; speed = .5; }
+        c.x += mx * speed * dt; c.z += mz * speed * dt;
+        for (const r of rounds) { const ddx = c.x - r.x, ddz = c.z - r.z, d = Math.hypot(ddx, ddz), m = r.r + .4; if (d < m && d > 1e-4) { c.x = r.x + ddx / d * m; c.z = r.z + ddz / d * m; } }
+        const n2 = pathNear(c.x, c.z); if (n2.d > 57) { c.x = n2.px + (c.x - n2.px) / n2.d * 57; c.z = n2.pz + (c.z - n2.pz) / n2.d * 57; }
+        c.sp += (speed - c.sp) * Math.min(1, dt * 12);
+        c.g.position.set(c.x, BY_SAND, c.z); c.g.rotation.y = Math.atan2(P.x - c.x, P.z - c.z);
+        const U = c.g.userData; U.legs.forEach(l => { l.g.rotation.z = Math.sin(t0 + st.t * 34 * (.2 + c.sp * .3) + l.k * 1.9 + l.s) * .35 * Math.min(1, c.sp); }); U.claws.forEach((a, i) => { a.rotation.x = -.35 + Math.sin(st.t * (c.sp > 0 ? 9 : 2.5) + i * 2 + c.ph) * .2; });
+        if (c.sp > 1 && Math.random() < dt * 4) poof(c.x, c.z, 0xe8d4a0);
+        if (dist < nd) { nd = dist; near = c; }
+      }
+      // HUD
+      const left = Math.max(0, Math.ceil(LIMIT - st.t));
+      $('cbCount').textContent = st.caught + ' / ' + GOAL; $('cbTime').textContent = left + 's'; $('cbStam').style.width = (P.stam * 100) + '%'; $('cbStam').style.background = P.lock > 0 ? '#d8402a' : '#7fe8a0';
+      if (near) { const vx = near.x - P.x, vz = near.z - P.z, ang = Math.atan2(vx * rx_(P.yaw) + vz * rz_(P.yaw), vx * -Math.sin(P.yaw) + vz * -Math.cos(P.yaw)); $('cbArrow').style.transform = `rotate(${ang}rad)`; $('cbDist').textContent = Math.round(nd) + ' m'; $('cbCompass').hidden = false;
+        const f = (vx * -Math.sin(P.yaw) + vz * -Math.cos(P.yaw)) / (nd || 1); $('cbCross').classList.toggle('hot', nd < 1.9 && f > .5); } else $('cbCompass').hidden = true;
+      if (st.t >= LIMIT && !st.done) crabCtl.end(false);
+    };
+  });
+}
+const rx_ = y => Math.cos(y), rz_ = y => -Math.sin(y), t0 = 0, BY_SAND = .07;
+async function runRayappan() {
+  busy = true; const R = 'Beedi Rayappan', best = save.crab && save.crab.best;
+  const first = !save.crab;
+  const pick = await say([
+    A(R, first ? 'Hey, thambi! Come here. Beedi Rayappan, that is me. Forty years I have trained fighters on this sand. The knees are old now, but the eyes still see everything.' : 'Back again? Good. In my days, a boy who stopped training was just a man with big hands.'),
+    A(R, 'Boxing is not about hitting hard. It is quick hands and sharper eyes. See those little crabs? Faster than any opponent I ever corner-coached in North Madras.'),
+    { who: R, text: 'Catch three of them in one minute with your bare gloves, and I will call you a fighter. Ready?', choices: [{ label: 'Start training', reply: [A(R, 'Hmm! Gloves up. Eyes open. Go, go, go!')] }, { label: 'Maybe later', reply: [A(R, 'Crabs are patient. Come when your hands are ready.')] }] },
+  ]);
+  if (pick !== 0) { busy = false; return; }
+  const r = await crabGame();
+  if (r.quit) { await say([A(R, 'Running away from a crab? Hmm. Come back when you are serious.')]); }
+  else if (r.won) {
+    const t = Math.round(r.time * 10) / 10; save.crab = { best: Math.min(best || 1e9, t), done: true }; persist();
+    await say([A(R, 'Ayyo! ' + t + ' seconds! Not bad at all, thambi. Quick hands, sharp eyes.'), A(R, 'Remember it: in the ring, in code, in life, the one who keeps getting up wins. Now go, the road is waiting.')]);
+    toast('Side quest complete', 'Crab training done in ' + t + 's. Beedi Rayappan approves.');
+  } else await say([A(R, 'Adei! Even the crabs are laughing at you. Only ' + r.caught + ' of 3. Again, again!')]);
+  busy = false;
+}
+
 async function interactStation(s) {
+  if (s.kind === 'side') { await runRayappan(); return; }
   if (s.kind === 'print') { await printResume(); return; }
   if (s.kind === 'term') { openTerm(s.id); return; }
   if (s.kind === 'door') { await enterOffice(); return; }
@@ -1729,21 +2011,12 @@ async function arenaIntro() {
     if (tt > 1.8 && tt < 1.9) arBanner('ONE JUMP', 'land it clean'); if (tt >= 4.6 || AR.skip) { ticker = null; res(); } }; });
   $('arBanner').hidden = true; state.mode = 'explore'; busy = false;
 }
-async function arenaWin() {
-  ARENA.best = Math.max(ARENA.best || 0, ARENA.score); ARENA.cheerT = 6; AR.active = false; AR.cd = 30; $('arHud').hidden = true; state.mode = 'cut'; busy = true; player.v = 0; chime();
-  const p = player.g.position, c = ARENA.center; let tt = 0, fw = 0; arBanner('CHAMPION!', AR.tricks + ' tricks · score ' + ARENA.score);
-  await new Promise(res => { ticker = dt => { tt += dt; const a = tt * .45, R = 9 + Math.sin(tt) * 1.2;
-    camera.position.set(p.x + Math.cos(a) * R, 3.2 + tt * .45, p.z + Math.sin(a) * R); camera.lookAt(p.x, 1.2, p.z);
-    player.arms[0].rotation.x = player.arms[1].rotation.x = -2.8; if (ARENA.trophy) { ARENA.trophy.rotation.y += dt * 3; ARENA.trophy.scale.setScalar(1 + Math.sin(tt * 6) * .08); }
-    fw -= dt; if (fw <= 0) { fw = .22; const col = [0xffd36a, 0xff7a8a, 0x9be8ff, 0xb8ff9a][Math.floor(Math.random() * 4)], bx = c.x + (Math.random() - .5) * 18, bz = c.z + (Math.random() - .5) * 18, by = 5 + Math.random() * 6;
-      for (let q = 0; q < 14; q++) { const sp = new T.Sprite(new T.SpriteMaterial({ map: glowTex(), color: col, transparent: true, opacity: 1, depthWrite: false })); sp.position.set(bx, by, bz); sp.scale.setScalar(.7); scene.add(sp); const ang = q / 14 * 6.283; AR.parts.push({ sp, vx: Math.cos(ang) * 4, vy: Math.sin(ang) * 4 + 1, vz: (Math.random() - .5) * 4, life: 1.2 }); } beep(300 + Math.random() * 300, .12, 'sawtooth', .03); }
-    if (tt >= 5.2) { ticker = null; res(); } }; });
-  $('arBanner').hidden = true; state.mode = 'explore'; busy = false; player.arms[0].rotation.x = player.arms[1].rotation.x = 0; if (ARENA.trophy) ARENA.trophy.scale.setScalar(1);
-  toast('Jump landed', 'Ride the lane again to take the challenge again.');
+function arenaWin() {
+  ARENA.best = Math.max(ARENA.best || 0, ARENA.score); ARENA.cheerT = 4; AR.active = false; AR.cd = 30; $('arHud').hidden = true; chime();
+  toast('Jump landed', 'Score ' + ARENA.score + '. Ride the lane again to take the challenge again.');
 }
 function arenaStep(dt, pp, t) {
   for (let i = AR.parts.length - 1; i >= 0; i--) { const q = AR.parts[i]; q.life -= dt; q.vy -= 5 * dt; q.sp.position.x += q.vx * dt; q.sp.position.y += q.vy * dt; q.sp.position.z += q.vz * dt; q.sp.material.opacity = Math.max(0, q.life / 1.2); if (q.life <= 0) { scene.remove(q.sp); AR.parts.splice(i, 1); } }
-  if (ARENA.trophy && state.mode !== 'cut') ARENA.trophy.rotation.y += dt * .6;
   AR.cd -= dt;
   if (AR.active) {
     if (state.mode === 'explore') { AR.t += dt; arSync(); if (Math.hypot(pp.x - ARENA.center.x, pp.z - ARENA.center.z) > 40) arenaCancel('You left the lane. Challenge ended.'); else if ((pp.x - ARENA.fins[AR.dir].x) * ARENA.fins[AR.dir].dx + (pp.z - ARENA.fins[AR.dir].z) * ARENA.fins[AR.dir].dz > 0) arenaCancel('Missed the landing. Ride the lane again.'); else if (AR.t >= AR.limit) { arenaCancel(null); chime(); arBanner('TIME UP', AR.tricks + ' / ' + AR.goal + ' tricks', 2200); toast('So close', 'Ride the lane again to try again.'); } }
@@ -1865,7 +2138,9 @@ function movePlayer(dt) {
   let target = 0, dh = 0;
   if (drive && len > .1) {
     const k = Math.min(1, len); let da = Math.atan2(ix, iz) - player.heading; da = Math.atan2(Math.sin(da), Math.cos(da));
-    const tr = cfg.turn * (1.6 - .8 * Math.min(1, player.v / cfg.max)), step = clamp(da, -tr * dt, tr * dt);
+    const sp0 = Math.min(1, player.v / cfg.max), moto0 = V.type === 'moto' && !player.onFoot,
+      // a bike can't swing its nose round at speed: yaw rate falls off with speed (about what the tyres can hold)
+      tr = moto0 ? Math.min(cfg.turn * (1.3 - .75 * sp0), 22 / Math.max(player.v, 4)) : cfg.turn * (1.6 - .8 * sp0), step = clamp(da, -tr * dt, tr * dt);
     player.heading += step; dh = step / Math.max(dt, 1e-4); target = max * k * (Math.abs(da) > 1.8 ? .4 : 1);
   }
   player.v += (target - player.v) * Math.min(1, dt * (target > player.v ? cfg.acc : cfg.acc * 1.8));
@@ -1873,7 +2148,8 @@ function movePlayer(dt) {
   const isMoto = V.type === 'moto' && !player.onFoot;
   if (player.vdir === undefined || !isMoto) player.vdir = player.heading;
   let slip = Math.atan2(Math.sin(player.heading - player.vdir), Math.cos(player.heading - player.vdir));
-  if (isMoto) { const sp = Math.min(1, player.v / cfg.max), grip = 1.6 + 7 * (1 - sp) + (len < .1 ? 3 : 0); player.vdir += slip * Math.min(1, dt * grip); slip = Math.atan2(Math.sin(player.heading - player.vdir), Math.cos(player.heading - player.vdir)); player.v *= 1 - Math.min(.5, Math.abs(slip)) * dt * .35; }
+  if (isMoto) { const sp = Math.min(1, player.v / cfg.max), grip = 7 + 6 * (1 - sp) + (len < .1 ? 3 : 0); player.vdir += slip * Math.min(1, dt * grip);
+    { const ms = .4, sl = Math.atan2(Math.sin(player.heading - player.vdir), Math.cos(player.heading - player.vdir)); if (Math.abs(sl) > ms) player.vdir = player.heading - Math.sign(sl) * ms; } /* never slide more than ~23 degrees */  slip = Math.atan2(Math.sin(player.heading - player.vdir), Math.cos(player.heading - player.vdir)); player.v *= 1 - Math.min(.5, Math.abs(slip)) * dt * .35; }
   player.slip = slip;
   const px = p.x, pz = p.z; p.x += Math.sin(player.vdir) * player.v * dt; p.z += Math.cos(player.vdir) * player.v * dt;
   const R = .5 * player.g.scale.x + .3;
@@ -1957,6 +2233,7 @@ addEventListener('keydown', e => {
   if (e.repeat) { keys.add(e.code); return; }
   keys.add(e.code);
   if (state.mode === 'folio') { if (['Escape', 'KeyE'].includes(e.code)) closeFolio(); else if (['ArrowRight', 'KeyD', 'Space', 'Enter'].includes(e.code)) slideNext(); else if (['ArrowLeft', 'KeyA'].includes(e.code)) showSlide(SL.i - 1); return; }
+  if (state.mode === 'crab') { if (e.code === 'Escape') crabQuit(); else if (['KeyE', 'Space', 'Enter'].includes(e.code)) crabGrab(); return; }
   if (state.mode === 'map') { if (['Escape', 'KeyM', 'KeyE', 'Space', 'Enter'].includes(e.code)) toggleMap(false); return; }
   if (state.mode === 'explore' && !busy && !player.inside && e.code === 'KeyM') { toggleMap(true); return; }
   if (state.mode === 'term') { if (['Escape', 'KeyE', 'Space', 'Enter'].includes(e.code)) termKey(); return; }
@@ -1968,7 +2245,7 @@ addEventListener('blur', () => keys.clear());
 renderer.domElement.addEventListener('pointerdown', e => { if (state.mode === 'chess') ChessGame.pointer(e.clientX, e.clientY, innerWidth, innerHeight); });
 $('dlg').addEventListener('click', () => advance());
 async function interact() { if (state.mode !== 'explore' || busy) return; const s = nearestInteract(); if (s) await interactStation(s); }
-$('actBtn').addEventListener('pointerdown', e => { e.preventDefault(); if (state.mode === 'explore') interact(); else if (state.mode === 'term') termKey(); else if (state.mode === 'folio') closeFolio(); else if (state.mode === 'dialog') advance(); });
+$('actBtn').addEventListener('pointerdown', e => { e.preventDefault(); if (state.mode === 'explore') interact(); else if (state.mode === 'term') termKey(); else if (state.mode === 'folio') closeFolio(); else if (state.mode === 'dialog') advance(); else if (state.mode === 'crab') crabGrab(); });
 {
   const stick = $('stick'), knob = $('knob'); let id = null;
   const set = e => { const r = stick.getBoundingClientRect(), x = (e.clientX - r.left - 60) / 60, z = (e.clientY - r.top - 60) / 60, l = Math.hypot(x, z) || 1, k = Math.min(1, l); joy.x = x / l * k; joy.z = z / l * k; knob.style.transform = `translate(${joy.x * 35}px,${joy.z * 35}px)`; };
@@ -2007,7 +2284,7 @@ on('mapBig', () => toggleMap(false));
 $('btnNew').onclick = () => begin(true);
 $('btnCont').onclick = () => begin(false);
 { const m = /act=(\d)/.exec(location.hash); if (m) { const n = +m[1]; save.done = [...Array(n).keys()]; if (n >= 3) save.visited.push('edu', 'ach'); if (n >= 4) save.visited.push('exp', 'ibm', 'ibb', 'city', 'skills'); window.__start = () => begin(false); } }
-window.__j = { get stunt() { return stunt; }, setVehicle, enterOffice, leaveOffice, openFolio, OFFICE, INT, get AR() { return AR; }, arenaTrick, ARENA, pointAt, CUM, startStunt, playCricket, state, save, player, camera, STN, GATES, SPIRE, interact, completeAct, get busy() { return busy; }, pathNear, TOTAL };
+window.__j = { RAY, crabGame, runRayappan, get crabCtl() { return crabCtl; }, get stunt() { return stunt; }, setVehicle, enterOffice, leaveOffice, openFolio, OFFICE, INT, get AR() { return AR; }, arenaTrick, ARENA, pointAt, CUM, startStunt, playCricket, state, save, player, camera, STN, GATES, SPIRE, interact, completeAct, get busy() { return busy; }, pathNear, TOTAL };
 refreshHud();
 animate();
 })();
