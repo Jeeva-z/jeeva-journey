@@ -1662,8 +1662,9 @@ const FOLIO = {
       'Migrated an enterprise application from Java 11 to Java 17, addressing deprecated APIs, module compatibility and build pipeline updates.',
       'Took part in architectural planning meetings, contributing to 4 major security design decisions.'] },
     { h: 'Junior Software Engineer (Intern)', meta: 'Jun 2023 – May 2024', items: ['Part of the Keycloak version migration team (19 to 23) for the product, ensuring zero downtime.'] }] },
-  ibm: { icon: '🔐', title: 'IBM PKV', sub: 'Insurance Provider', blocks: [{ items: [
+  ibm: { icon: '🔐', title: 'IBM PKV', sub: 'Insurance Provider · Accessible authentication', blocks: [{ h: 'ARIA for accessible authentication', items: [
     'Designed and implemented secure key management with Hardware Security Modules (HSMs) to protect cryptographic keys from extraction or misuse.',
+    'Added ARIA accessibility support to IBM authentication experiences for assistive technology users.',
     'Wrote data validation and cleanup scripts for production and pre-production environments.',
     'Implemented notification triggers based on authentication events, user actions and insurance workflow status.',
     'Integrated external video identification (Video-Ident) providers for secure remote identity verification.'] }] },
@@ -1671,20 +1672,21 @@ const FOLIO = {
     'Worked closely with product, QA and DevOps teams to deliver secure and scalable features.',
     'Debugged and resolved production issues across authentication, database queries and user access.',
     'Owned features end to end, from requirement understanding to deployment and post-release support.'] }] },
-  city: { icon: '🏰', title: 'CityApp · Nibelungenstadt Worms', sub: 'Municipal citizen app', blocks: [{ items: [
+  city: { icon: '🏰', title: 'CityApp · Nibelungenstadt Worms', sub: 'Municipal services · Consent management', blocks: [{ h: 'Consent management with on-demand authenticator', items: [
     'Designed and implemented a centralized consent management system to capture, store and validate user consents, in line with GDPR and municipal data protection policies.',
+    'Used an on-demand authenticator to support consent-related authentication flows.',
     'Integrated Keycloak with backend services using OAuth 2.0 / OpenID Connect for secure token-based communication.'] }] },
   skills: { icon: '🧰', title: 'The Tool Shed', sub: 'Technical skills', blocks: [], chips: [
-    ['Languages', ['Java', 'JPA', 'JDBC', 'JavaScript']], ['Frameworks', ['Spring Boot', 'ReactJS']], ['Database', ['PostgreSQL', 'MySQL']], ['Tools', ['Git', 'Docker', 'Keycloak']]] },
+    ['Languages', ['Java', 'JPA', 'JDBC', 'JavaScript']], ['Frameworks', ['Spring Boot', 'ReactJS']], ['Database', ['PostgreSQL', 'MySQL']], ['Testing & quality', ['JUnit', 'Unit testing', 'Integration testing', 'Code coverage', 'SonarQube']], ['Observability & events', ['OpenTelemetry', 'Event-driven systems']], ['Tools', ['Git', 'Docker', 'Keycloak']]] },
   ach: { icon: '🏆', title: 'Hall of Fame', sub: 'Achievements', blocks: [{ h: 'BIT Hackathon · Finalist', items: ['Finalist in a highly competitive hackathon conducted by BIT, for innovative problem-solving.'] }] },
   edu: { icon: '🎓', title: 'Bannari Amman Institute of Technology', sub: 'Sathyamangalam, India', blocks: [{ h: 'Bachelor of Engineering · Information Science and Engineering', meta: '2020 – 2024', items: ['CGPA: 8.3'] }] },
   contact: { icon: '✉️', title: 'Say hello', sub: 'Jeeva S U · Software Engineer', blocks: [], contact: [['📞', '+91 75388 81377', 'tel:+917538881377'], ['✉️', 'jeev102003@gmail.com', 'mailto:jeev102003@gmail.com']] },
   portfolio: { icon: '👋', title: 'Jeeva S U', sub: 'Software Engineer · Chennai, India', description: 'I build secure authentication systems and backend services. My work spans enterprise identity, authentication flows, Java, Spring Boot and Keycloak.', blocks: [
     { h: 'What I bring', items: ['End-to-end delivery, from understanding requirements through deployment and production support.', 'A security-first approach to identity, authentication and user access.', 'Experience working with product, QA and DevOps teams.'] }] },
   projects: { icon: '🧩', title: 'Selected Projects', sub: 'Authentication · Identity · Citizen services', blocks: [
-    { h: 'IBM PKV · Insurance', items: ['Implemented secure key management using Hardware Security Modules.', 'Built notification triggers and integrated external video-identification providers.'] },
+    { h: 'IBM PKV · Accessible authentication', items: ['Added ARIA accessibility support to IBM authentication experiences.', 'Implemented secure key management using Hardware Security Modules, notification triggers and external video-identification integrations.'] },
     { h: 'Istanbul Senin · City app', items: ['Delivered secure, scalable features and resolved authentication and access issues.', 'Worked across the feature lifecycle, from requirements to deployment and support.'] },
-    { h: 'CityApp · Worms', items: ['Built centralized consent management aligned with GDPR and municipal data-protection requirements.', 'Integrated Keycloak with backend services through OAuth 2.0 and OpenID Connect.'] }] },
+    { h: 'CityApp · Worms municipal services', items: ['Built centralized consent management with an on-demand authenticator, aligned with GDPR and municipal data-protection requirements.', 'Integrated Keycloak with backend services through OAuth 2.0 and OpenID Connect.'] }] },
   keerthi: { icon: '☕', title: 'Keerthi', sub: 'Software engineer · Chai and strength training', description: 'Keerthi is 23 and enjoys a strong cup of chai and time at the gym. Explore his portfolio and selected work.', links: [
     ['Open Keerthi’s portfolio', 'https://keerthivibisan.com/'], ['About · sample link', 'https://keerthivibisan.com/#about'], ['Projects · sample link', 'https://keerthivibisan.com/#projects'], ['Contact · sample link', 'https://keerthivibisan.com/#contact'] ] },
   dhanush: { icon: '💻', title: 'Dhanush', sub: 'Software engineer · Strong coffee, small commits', description: 'Dhanush keeps the coffee strong and the commits small. Visit his portfolio for a preview of his work and projects.', links: [
