@@ -485,29 +485,39 @@ const INT = { x: 300, z: -223, W: 34, D: 22 }; let INTGLASS = null;
     const torso = P => P.body.children[0];
     const crop = (P, col, r = .322, tilt = -.22) => { const cap = new T.Mesh(new T.SphereGeometry(r, 18, 12, 0, Math.PI * 2, 0, Math.PI * .5), new T.MeshToonMaterial({ color: col, gradientMap: toonGrad })); cap.position.set(0, .02, -.01); cap.rotation.x = tilt; P.head.add(cap); return cap; };
     const hold = (P, i) => add(P.arms[i], new T.CylinderGeometry(.055, .045, .11, 10), mat(0xf4f0e6), 0, -.7, .06, false);
-    const tag = (P, name, y) => { const tex = textCanvas(256, 64, (x, w, h) => { x.fillStyle = '#00000088'; x.beginPath(); x.roundRect ? x.roundRect(8, 8, w - 16, h - 16, 16) : x.rect(8, 8, w - 16, h - 16); x.fill(); x.font = '700 30px system-ui, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#fff'; x.fillText(name, w / 2, h / 2 + 1); });
-      const s = new T.Sprite(new T.SpriteMaterial({ map: tex, transparent: true, depthWrite: false })); s.scale.set(1.9, .48, 1); s.position.set(P.g.position.x, y, P.g.position.z); g.add(s); };
+    const tag = (P, name, y) => { const tex = textCanvas(256, 64, (x, w, h) => { x.fillStyle = '#000000aa'; x.beginPath(); x.roundRect ? x.roundRect(8, 8, w - 16, h - 16, 16) : x.rect(8, 8, w - 16, h - 16); x.fill(); x.font = '700 30px system-ui, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#fff'; x.fillText(name, w / 2, h / 2 + 1); });
+      const s = new T.Sprite(new T.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false })); s.scale.set(1.9, .48, 1); s.position.set(P.g.position.x, y, P.g.position.z); g.add(s); return s; };
+    const portfolioTag = (P, y, ready) => { const tex = textCanvas(320, 64, (x, w, h) => { x.fillStyle = ready ? '#163e32ee' : '#51442fee'; x.beginPath(); x.roundRect ? x.roundRect(8, 8, w - 16, h - 16, 16) : x.rect(8, 8, w - 16, h - 16); x.fill(); x.font = '800 28px system-ui, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = ready ? '#c8ffdc' : '#ffe6b0'; x.fillText(ready ? 'PORTFOLIO ↗' : 'PORTFOLIO SOON', w / 2, h / 2 + 1); });
+      const s = new T.Sprite(new T.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false })); s.scale.set(1.7, .36, 1); s.position.set(P.g.position.x, y, P.g.position.z); s.renderOrder = 10; g.add(s); return s; };
     // Keerthi, 23: pretty bulky and fit, full beard
     const K = person({ shirt: 0x38b0c8, pants: 0x3a4660, skin: 0xd09468, beard: true, brow: true, hair: 'bald', hairColor: 0x15100d, scale: 1.1 });
     torso(K).scale.set(1.5, 1.05, 1.35); K.arms.forEach((a, i) => { a.scale.set(1.55, 1, 1.55); a.position.x = (i ? 1 : -1) * .5; }); K.legs.forEach((l, i) => { l.scale.set(1.4, 1, 1.4); l.position.x = (i ? 1 : -1) * .2; });
     for (const sg of [-1, 1]) { sph(K.body, .2, 0x38b0c8, sg * .45, 1.5, 0); sph(K.body, .15, 0x38b0c8, sg * .24, 1.62, -.02); } crop(K, 0x15100d, .322, -.3);
     for (const sg of [-1, 1]) { const w = box(K.head, .09, .035, .06, 0x15100d, sg * .09, -.1, .265, false); w.rotation.z = sg * .3; } box(K.head, .2, .04, .06, 0x15100d, 0, -.09, .27, false); hold(K, 1);
-    K.g.position.set(-14.7, .11, -5.6); K.g.rotation.y = .85; g.add(K.g); tag(K, 'Keerthi', 3.05);
+    K.g.position.set(-14.7, .11, -5.6); K.g.rotation.y = .85; g.add(K.g); tag(K, 'Keerthi', 3.05); portfolioTag(K, 3.48, true);
     // Dhanush: lean and tall, French beard (moustache joined to a chin goatee)
     const Dh = person({ shirt: 0xd2d6cc, pants: 0x2b3a60, skin: 0xd49c70, brow: true, hairColor: 0x1f1612, scale: 1.0 });
     Dh.g.scale.set(.9, 1.2, .9); torso(Dh).scale.set(.82, 1.05, .78); Dh.arms.forEach((a, i) => { a.scale.set(.75, 1.02, .75); a.position.x = (i ? 1 : -1) * .27; }); Dh.legs.forEach((l, i) => { l.scale.set(.8, 1.02, .8); l.position.x = (i ? 1 : -1) * .13; });
     { const bc = 0x1f1612; box(Dh.head, .24, .045, .06, bc, 0, -.085, .27, false); for (const sg of [-1, 1]) { box(Dh.head, .04, .12, .045, bc, sg * .085, -.15, .262, false); const w = box(Dh.head, .09, .03, .05, bc, sg * .13, -.1, .262, false); w.rotation.z = sg * .35; } const ch = sph(Dh.head, .085, bc, 0, -.2, .23); ch.scale.set(1, 1.35, .75); }
-    hold(Dh, 1); Dh.arms[0].rotation.x = -.9; Dh.g.position.set(-12.4, .11, -3.6); Dh.g.rotation.y = -2.4; g.add(Dh.g); tag(Dh, 'Dhanush', 3.3);
+    hold(Dh, 1); Dh.arms[0].rotation.x = -.9; Dh.g.position.set(-12.4, .11, -3.6); Dh.g.rotation.y = -2.4; g.add(Dh.g); tag(Dh, 'Dhanush', 3.3); portfolioTag(Dh, 3.72, true);
     // Bharath: short, dark-skinned, buzz cut and a full beard
     const Bh = person({ shirt: 0xf2c040, pants: 0x7a6a58, skin: 0x5a3a2a, beard: true, brow: true, hair: 'bald', hairColor: 0x14100e, scale: 1.0 });
     torso(Bh).scale.set(1.12, 1, 1.05); Bh.arms.forEach(a => a.scale.set(1.1, 1, 1.1)); crop(Bh, 0x1c1a1a, .318, -.05);
     for (const sg of [-1, 1]) { const w = box(Bh.head, .09, .035, .06, 0x14100e, sg * .09, -.1, .265, false); w.rotation.z = sg * .3; } box(Bh.head, .2, .04, .06, 0x14100e, 0, -.09, .27, false);
-    Bh.g.position.set(-14.2, .11, -1.7); Bh.g.rotation.y = 2.75; g.add(Bh.g); tag(Bh, 'Bharath', 2.8); hold(Bh, 0);
+    Bh.g.position.set(-14.2, .11, -1.7); Bh.g.rotation.y = 2.75; g.add(Bh.g); tag(Bh, 'Bharath', 2.8); portfolioTag(Bh, 3.22, false); hold(Bh, 0);
     for (const [P, lx, lz] of [[K, -14.7, -5.6], [Dh, -12.4, -3.6], [Bh, -14.2, -1.7]]) solidP(lx, lz, .55);
     // chat stations: stand beside each of them and press E
     const CHAT = { keerthi: ['Keerthi', 'Chai? I just made a fresh batch. Careful, it is strong, like my deadlifts.', 'Twenty-three, and the gym is the only place where I do not get merge conflicts.'], dhanush: ['Dhanush', 'You walked in right on time. The whole team reaches this pantry at the same minute every day. Classic race condition.', 'I keep the coffee strong and the commits small. Works for both.'], bharath: ['Bharath', 'Short in height, tall in deploys. Ask anyone here.', 'The secret to good code is the same as good biscuits: dunk it at the right moment and do not let it fall apart.'] };
     INT.chat = CHAT;
-    for (const [id, lx, lz] of [['keerthi', -12.6, -7.0], ['dhanush', -10.8, -2.6], ['bharath', -12.1, -0.4]]) { const w = wp(lx, lz), r = ringAt(w.x, w.z, 0xffb86a), verb = id === 'bharath' || id === 'keerthi' || id === 'dhanush' ? 'Portfolio' : 'Chat'; STN.push({ id, x: w.x, z: w.z, label: verb + ' · ' + CHAT[id][0], kind: 'chat', ...r }); }
+    for (const [id, lx, lz] of [['keerthi', -12.6, -7.0], ['dhanush', -10.8, -2.6], ['bharath', -12.1, -0.4]]) {
+      const w = wp(lx, lz), r = ringAt(w.x, w.z, 0xffb86a);
+      STN.push({ id, x: w.x, z: w.z, label: 'Chat · ' + CHAT[id][0], kind: 'chat', ...r });
+    }
+    const PROFILE_URL = { keerthi: 'https://keerthivibisan.com/', dhanush: 'https://dhanushkarthik.com/', bharath: '' };
+    for (const [id, lx, lz] of [['keerthi', -13.5, -5.6], ['dhanush', -11.2, -3.6], ['bharath', -13.0, -1.7]]) {
+      const w = wp(lx, lz), r = ringAt(w.x, w.z, 0x73c79a);
+      STN.push({ id: 'portfolio-' + id, x: w.x, z: w.z, label: 'Portfolio · ' + CHAT[id][0], kind: 'portfolio', url: PROFILE_URL[id], ...r });
+    }
     (globalThis.PREAMB = globalThis.PREAMB || []).push(t => {
       K.arms[0].rotation.x = -1.2 + Math.sin(t * 3.2) * .18; K.arms[1].rotation.x = -.9 + Math.sin(t * 3.2 + 1) * .08; K.body.rotation.y = Math.sin(t * 1.1) * .08;
       Dh.arms[1].rotation.x = -1.35 + Math.max(0, Math.sin(t * .7)) * -.5; Dh.head.rotation.x = Math.max(0, Math.sin(t * .7)) * -.15 + .04; Dh.body.position.y = Math.sin(t * 1.4) * .012;
@@ -751,6 +761,9 @@ function envStep(dt, t, aw) {
   const C = E.cur, h = E.hour; let i = 0; while (i < KF.length - 2 && KF[i + 1].h <= h) i++;
   const A = KF[i], B = KF[i + 1], f0 = clamp((h - A.h) / (B.h - A.h), 0, 1), f = f0 * f0 * (3 - 2 * f0);
   const day = lerp(A.day, B.day, f), night = 1 - day, ind = E.indoor;
+  // Disable the moving sun shadow map at night, when its low light reveals map-edge streaks.
+  const shadowsOn = !player.inside && day > .12;
+  if (sun.castShadow !== shadowsOn) sun.castShadow = shadowsOn;
   // sun/moon light on a continuous arc: west at dusk, overhead at midnight is the moon, east at dawn
   const a = (h - 6) / 12 * Math.PI, el = Math.sin(a);
   sun.position.set(pp.x + 30 * Math.cos(a), 14 + 22 * Math.abs(el), pp.z + 14);
@@ -2210,7 +2223,8 @@ async function runRayappan() {
 
 async function interactStation(s) {
   if (s.kind === 'side') { await runRayappan(); return; }
-  if (s.kind === 'chat') { if (['keerthi', 'dhanush', 'bharath'].includes(s.id)) { openFolio(s.id); return; } const c = INT.chat[s.id]; busy = true; await say(c.slice(1).map(t => A(c[0], t))); busy = false; return; }
+  if (s.kind === 'portfolio') { if (s.url) { window.open(s.url, '_blank', 'noopener,noreferrer'); } else toast('Portfolio coming soon', 'Bharath’s portfolio link is not available yet.'); return; }
+  if (s.kind === 'chat') { const c = INT.chat[s.id]; busy = true; await say(c.slice(1).map(t => A(c[0], t))); busy = false; return; }
   if (s.kind === 'print') { await printResume(); return; }
   if (s.kind === 'term') { openTerm(s.id); return; }
   if (s.kind === 'door') { await enterOffice(); return; }
@@ -2451,7 +2465,6 @@ function animate() {
     if (camShake > .01) { camera.position.x += (Math.random() - .5) * camShake; camera.position.y += (Math.random() - .5) * camShake * .6; camShake *= .86; }
     camera.lookAt(camera.position.x, 1.2, camera.position.z - 14.5 * k);
   }
-  if (sun.castShadow === !!player.inside) sun.castShadow = !player.inside;   // indoors the sun's moving shadow map only makes the room shimmer
   sun.target.position.set(pp.x, 0, pp.z);
   if (state.mode === 'explore' && !busy) { const it = nearestInteract(); $('prompt').hidden = !it; if (it) $('prompt').textContent = 'E · ' + it.label; } else $('prompt').hidden = true;
   termStep(dt); smokeStep(dt); lifeStep(t, dt);
