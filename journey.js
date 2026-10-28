@@ -78,6 +78,7 @@ const cyl = (p, rt, rb, h, c, x, y, z, seg = 8) => add(p, new T.CylinderGeometry
 const sph = (p, r, c, x, y, z, sx = 1, sy = 1, sz = 1) => { const m = add(p, new T.SphereGeometry(r, 14, 10), mat(c), x, y, z); m.scale.set(sx, sy, sz); return m; };
 const world = new T.Group(); scene.add(world);
 const walls = [], rounds = [];
+const WEATHER_PEOPLE = [];
 let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 
 function signBoard(parent, text, w, h, x, y, z, sub) {
@@ -174,6 +175,8 @@ function glowTex() { if (glowTex.t) return glowTex.t; const c = document.createE
 // Cricket ground
 const PITCH = { cx: 42, cz: -36, R: 11 };
 const stumpMeshes = [];
+const PITCH_WETNESS = [];
+let pitchDamp = 0;
 {
   const g = new T.Group(); g.position.set(PITCH.cx, 0, PITCH.cz); world.add(g);
   add(g, new T.CylinderGeometry(PITCH.R, PITCH.R, .06, 56), mat(0x7fc15a), 0, .03, 0, false);
@@ -181,6 +184,11 @@ const stumpMeshes = [];
   const rope = add(g, new T.TorusGeometry(PITCH.R, .09, 6, 72), mat(0xfdf6e3), 0, .1, 0, false); rope.rotation.x = Math.PI / 2;
   for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; cyl(g, .05, .05, .5, 0xd8402a, Math.cos(a) * PITCH.R, .3, Math.sin(a) * PITCH.R, 5); }
   box(g, 3, .06, 12.8, 0xd9bd8a, 0, .1, 0, false);
+  // Fine wet patches catch the light as rain settles over the outfield and wicket.
+  for (const [x, z, sx, sz] of [[-5.5, -2, 1.8, .72], [4.5, 3.3, 1.45, .62], [1.7, -4.8, 1.1, .5], [-2.2, 4.9, 1.35, .55], [0, 0, 1.05, 2.9]]) {
+    const wet = new T.Mesh(new T.CircleGeometry(1, 24), new T.MeshBasicMaterial({ color: 0x9eb9c2, transparent: true, opacity: 0, depthWrite: false, side: T.DoubleSide }));
+    wet.rotation.x = -Math.PI / 2; wet.position.set(x, Math.abs(x) < 1 && Math.abs(z) < 1 ? .145 : .077, z); wet.scale.set(sx, sz, 1); g.add(wet); PITCH_WETNESS.push(wet);
+  }
   for (const z of [-5.5, 5.5, -4.2, 4.2]) box(g, z === 5.5 || z === -5.5 ? 3 : 2.6, .01, .06, 0xffffff, 0, .14, z, false);
   for (const z of [-5.95, 5.95]) for (const dx of [-.14, 0, .14]) { const st = add(g, new T.CylinderGeometry(.035, .035, .9, 6), mat(0xf6e7c6), dx, .55, z); if (z > 0) stumpMeshes.push(st); }
   for (const z of [-5.95, 5.95]) for (const dx of [-.07, .07]) box(g, .13, .03, .04, 0xd8402a, dx, 1.02, z, false);
@@ -279,8 +287,17 @@ function person(o) {
     const ap = new T.Group(); ap.position.set(s * .33, 1.5, 0); body.add(ap);
     const ar = add(ap, new T.CapsuleGeometry(.075, .5, 4, 8), torsoMat, 0, -.3, 0); ink(ar, 1.1); add(ap, new T.SphereGeometry(.085, 8, 6), skin, 0, -.66, 0); if (o.me && s === 1) { add(ap, new T.CylinderGeometry(.088, .088, .07, 12), tm(0x24242a), 0, -.56, 0, false); add(ap, new T.BoxGeometry(.05, .02, .1), new T.MeshBasicMaterial({ color: 0x7fd0e8 }), s * .0, -.56, .0, false).position.x = .085; } arms.push(ap);
   }
+  // A compact open umbrella, hidden until rain reaches the character's area.
+  const umbrella = new T.Group(); umbrella.position.set(.34, 0, .03); umbrella.visible = false; g.add(umbrella);
+  const canopyColor = [0xd8402a, 0x397c98, 0xf0b84a, 0x8a4a8a, 0x3f8f88][Math.floor(Math.random() * 5)];
+  const canopy = add(umbrella, new T.SphereGeometry(.57, 16, 8, 0, Math.PI * 2, 0, Math.PI * .5), tm(canopyColor), 0, 2.55, 0, false);
+  canopy.scale.y = .34;
+  const pole = add(umbrella, new T.CylinderGeometry(.025, .025, 1.36, 7), tm(0x59432d), 0, 1.78, 0, false);
+  const hook = add(umbrella, new T.TorusGeometry(.09, .024, 5, 10, Math.PI), tm(0x59432d), 0, 1.12, .07, false); hook.rotation.x = Math.PI / 2;
   g.scale.setScalar(o.scale || 1);
-  return { g, body, legs, arms, torsoMat, legMat, head, setAge };
+  const p = { g, body, legs, arms, torsoMat, legMat, head, setAge, umbrella };
+  WEATHER_PEOPLE.push(p);
+  return p;
 }
 function walkAnim(p, phase, amt) {
   const s = Math.sin(phase) * .8 * amt;
@@ -490,7 +507,7 @@ const INT = { x: 300, z: -223, W: 34, D: 22 }; let INTGLASS = null;
     // chat stations: stand beside each of them and press E
     const CHAT = { keerthi: ['Keerthi', 'Chai? I just made a fresh batch. Careful, it is strong, like my deadlifts.', 'Twenty-three, and the gym is the only place where I do not get merge conflicts.'], dhanush: ['Dhanush', 'You walked in right on time. The whole team reaches this pantry at the same minute every day. Classic race condition.', 'I keep the coffee strong and the commits small. Works for both.'], bharath: ['Bharath', 'Short in height, tall in deploys. Ask anyone here.', 'The secret to good code is the same as good biscuits: dunk it at the right moment and do not let it fall apart.'] };
     INT.chat = CHAT;
-    for (const [id, lx, lz] of [['keerthi', -12.6, -7.0], ['dhanush', -10.8, -2.6], ['bharath', -12.1, -0.4]]) { const w = wp(lx, lz), r = ringAt(w.x, w.z, 0xffb86a); STN.push({ id, x: w.x, z: w.z, label: 'Chat · ' + CHAT[id][0], kind: 'chat', ...r }); }
+    for (const [id, lx, lz] of [['keerthi', -12.6, -7.0], ['dhanush', -10.8, -2.6], ['bharath', -12.1, -0.4]]) { const w = wp(lx, lz), r = ringAt(w.x, w.z, 0xffb86a), verb = id === 'bharath' || id === 'keerthi' || id === 'dhanush' ? 'Portfolio' : 'Chat'; STN.push({ id, x: w.x, z: w.z, label: verb + ' · ' + CHAT[id][0], kind: 'chat', ...r }); }
     (globalThis.PREAMB = globalThis.PREAMB || []).push(t => {
       K.arms[0].rotation.x = -1.2 + Math.sin(t * 3.2) * .18; K.arms[1].rotation.x = -.9 + Math.sin(t * 3.2 + 1) * .08; K.body.rotation.y = Math.sin(t * 1.1) * .08;
       Dh.arms[1].rotation.x = -1.35 + Math.max(0, Math.sin(t * .7)) * -.5; Dh.head.rotation.x = Math.max(0, Math.sin(t * .7)) * -.15 + .04; Dh.body.position.y = Math.sin(t * 1.4) * .012;
@@ -765,6 +782,9 @@ function envStep(dt, t, aw) {
   plight.position.set(pp.x, pp.y + 3.2, pp.z); plight.intensity = night * (1 - ind) * (14 + C.cover * 8);
   // rain
   const rk = C.rain * (1 - ind), R = RAIN; R.m.visible = rk > .02;
+  pitchDamp += (C.rain - pitchDamp) * Math.min(1, dt * .18);
+  for (const wet of PITCH_WETNESS) wet.material.opacity = pitchDamp * .34;
+  for (const p of WEATHER_PEOPLE) p.umbrella.visible = rk > .12;
   if (R.m.visible) {
     R.m.position.set(pp.x, 0, pp.z); R.m.material.opacity = .32 + .4 * rk; R.g.setDrawRange(0, Math.floor(R.N * (.25 + .75 * rk)) * 2);
     const vy = 24 + 8 * rk, wx = C.wind * 6, len = .55 + .4 * rk;
@@ -1192,6 +1212,31 @@ const RAY = { camp: null, stn: null, npc: null, greeted: false };   // Beedi Ray
     const m = sheet(new T.MeshBasicMaterial({ map: mkTex(c), transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3 }), BY + .01); m.renderOrder = 3; return m;
   });
   AMB.push(t => foams.forEach((f, k) => { f.material.opacity = .9 * Math.pow(Math.max(0, Math.sin(t * 1.0 - k * 1.15)), 1.3); }));
+  // Curved surf lines move across the shoreline in pulses instead of only fading in place.
+  const waveCanvas = document.createElement('canvas'); waveCanvas.width = 256; waveCanvas.height = 64;
+  { const x = waveCanvas.getContext('2d'), gr = x.createLinearGradient(0, 0, 0, 64); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(.3, 'rgba(255,255,255,.16)'); gr.addColorStop(.52, 'rgba(255,255,255,.9)'); gr.addColorStop(.72, 'rgba(255,255,255,.22)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(0, 0, 256, 64);
+    for (let i = 0; i < 90; i++) { const y = 20 + Math.random() * 25; x.globalAlpha = .18 + Math.random() * .45; x.fillStyle = '#fff'; x.fillRect(Math.random() * 256, y, 2 + Math.random() * 22, 1 + Math.random() * 2); } }
+  const waveTex = mkTex(waveCanvas), surfWaves = [];
+  for (let i = 0; i < SEG.length; i++) {
+    const [ax, az, dx, dz, L2] = SEG[i], L = Math.sqrt(L2), nx = -dz / L, nz = dx / L, mx = ax + dx * .5, mz = az + dz * .5;
+    for (const side of [-1, 1]) {
+      const normal = { x: nx * side, z: nz * side }, y = .085;
+      const base = SHORE - wob(mx + normal.x * SHORE, mz + normal.z * SHORE);
+      for (let lane = 0; lane < 2; lane++) {
+        const mesh = new T.Mesh(new T.PlaneGeometry(L + 1.4, 1.15), new T.MeshBasicMaterial({ map: waveTex, transparent: true, opacity: .58 - lane * .12, depthWrite: false, side: T.DoubleSide }));
+        mesh.rotation.set(-Math.PI / 2, Math.atan2(-dz, dx), 0);
+        mesh.position.set(mx + normal.x * (base + lane * 1.25), y + lane * .001, mz + normal.z * (base + lane * 1.25));
+        mesh.renderOrder = 4; world.add(mesh);
+        surfWaves.push({ mesh, mx, mz, normal, base, lane, phase: i * .78 + (side > 0 ? 0 : 1.7) + lane * 1.1 });
+      }
+    }
+  }
+  AMB.push(t => surfWaves.forEach(w => {
+    const surge = Math.sin(t * 1.15 - w.phase), advance = surge * 1.15;
+    w.mesh.position.x = w.mx + w.normal.x * (w.base + w.lane * 1.25 + advance);
+    w.mesh.position.z = w.mz + w.normal.z * (w.base + w.lane * 1.25 + advance);
+    w.mesh.material.opacity = (.34 + .36 * Math.max(0, surge)) * (w.lane ? .72 : 1);
+  }));
 
   // ---- helpers
   const bm = (p, w, h, d, c, x, y, z) => add(p, new T.BoxGeometry(w, h, d), mat(c), x, y, z, false);
@@ -1377,10 +1422,16 @@ const RAY = { camp: null, stn: null, npc: null, greeted: false };   // Beedi Ray
     g.userData.tail = tail; return g;
   };
   const schools = [];
-  for (let s = 20; s < TOTAL - 10; s += 52) for (const side of [1, -1]) { const sp = spot(s + (side > 0 ? 0 : 20), side, 62.5 + r2() * 2, true); if (!sp) continue;
-    const fishes = []; const n = 6; for (let i = 0; i < n; i++) { const f = mkFish(i + schools.length); f.visible = false; f.scale.setScalar(1.2 + r2() * .5); world.add(f); fishes.push({ f, ph: i * .55 + r2() * .3, rr: .8 + r2() * .5 }); }
+  const stayOffshore = (x, z) => {
+    const n = pathNear(x, z), minD = SHORE + 13;
+    if (n.d >= minD) return { x, z };
+    const d = Math.max(n.d, .001), k = minD / d;
+    return { x: n.px + (x - n.px) * k, z: n.pz + (z - n.pz) * k };
+  };
+  for (let s = 20; s < TOTAL - 10; s += 52) for (const side of [1, -1]) { const sp = spot(s + (side > 0 ? 0 : 20), side, 72 + r2() * 2, true); if (!sp) continue;
+    const fishes = []; const n = 6; for (let i = 0; i < n; i++) { const f = mkFish(i + schools.length); f.visible = false; f.scale.setScalar(1.2 + r2() * .5); world.add(f); fishes.push({ f, ph: i * .55 + r2() * .3, rr: .65 + r2() * .45 }); }
     const rip = new T.Mesh(new T.RingGeometry(.4, .55, 20), new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .0, depthWrite: false, side: T.DoubleSide })); rip.rotation.x = -Math.PI / 2; rip.visible = false; world.add(rip);
-    schools.push({ x: sp.x, z: sp.z, r: 3 + r2() * 2, w: (r2() < .5 ? -1 : 1) * (.45 + r2() * .25), fishes, rip, ph: r2() * 6 }); }
+    schools.push({ x: sp.x, z: sp.z, r: 2.5 + r2() * 1.5, w: (r2() < .5 ? -1 : 1) * (.45 + r2() * .25), fishes, rip, ph: r2() * 6 }); }
   // leaping fish: one hops near each few schools
   const jumpers = schools.filter((_, i) => i % 2 === 0).map(s => ({ s, f: mkFish(3), next: 2 + r2() * 8, u: -1, ang: r2() * 6.28, sp: r2() * 6 }));
   jumpers.forEach(j => { j.f.visible = false; j.f.scale.setScalar(2.2); world.add(j.f); j.ring = new T.Mesh(new T.RingGeometry(.2, .32, 20), new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, side: T.DoubleSide })); j.ring.rotation.x = -Math.PI / 2; world.add(j.ring); });
@@ -1430,14 +1481,14 @@ const RAY = { camp: null, stn: null, npc: null, greeted: false };   // Beedi Ray
   AMB.push((t, dt, pp) => {
     for (const S of schools) {
       const near = Math.hypot(S.x - pp.x, S.z - pp.z) < 90; S.fishes.forEach(o => o.f.visible = near); S.rip.visible = near; if (!near) continue;
-      S.fishes.forEach((o, i) => { const a = t * S.w + o.ph * (S.w > 0 ? 1 : -1), rr = S.r * o.rr, vx = -Math.sin(a) * S.w, vz = Math.cos(a) * .7 * S.w;
-        o.f.position.set(S.x + Math.cos(a) * rr, BY + .03 + Math.sin(t * 3 + i) * .015, S.z + Math.sin(a) * rr * .7); o.f.rotation.y = -Math.atan2(vz, vx); o.f.rotation.z = Math.sin(t * 5 + i) * .08; o.f.userData.tail.rotation.y = Math.sin(t * 14 + i * 2) * .6; });
+      S.fishes.forEach((o, i) => { const a = t * S.w + o.ph * (S.w > 0 ? 1 : -1), rr = S.r * o.rr, vx = -Math.sin(a) * S.w, vz = Math.cos(a) * .7 * S.w, p = stayOffshore(S.x + Math.cos(a) * rr, S.z + Math.sin(a) * rr * .7);
+        o.f.position.set(p.x, BY + .03 + Math.sin(t * 3 + i) * .015, p.z); o.f.rotation.y = -Math.atan2(vz, vx); o.f.rotation.z = Math.sin(t * 5 + i) * .08; o.f.userData.tail.rotation.y = Math.sin(t * 14 + i * 2) * .6; });
       const pr = (t * .7 + S.ph) % 1; S.rip.position.set(S.x + Math.cos(t * S.w) * S.r * .9, BY + .02, S.z + Math.sin(t * S.w) * S.r * .6); S.rip.scale.setScalar(1 + pr * 3); S.rip.material.opacity = (1 - pr) * .45;
     }
     for (const J of jumpers) {
       const near = Math.hypot(J.s.x - pp.x, J.s.z - pp.z) < 90; if (!near) { J.f.visible = false; continue; }
-      J.next -= dt; if (J.u < 0 && J.next <= 0) { J.u = 0; J.ang = Math.random() * 6.28; J.sp = 3 + Math.random() * 3; J.bx = J.s.x + (Math.random() - .5) * 8; J.bz = J.s.z + (Math.random() - .5) * 6; J.ring.position.set(J.bx, BY + .02, J.bz); J.rt = 0; }
-      if (J.u >= 0) { J.u += dt / .95; const u = J.u, x = J.bx + Math.cos(J.ang) * J.sp * u, z = J.bz + Math.sin(J.ang) * J.sp * u, h = 4.4 * u * (1 - u) * 1.1;
+      J.next -= dt; if (J.u < 0 && J.next <= 0) { J.u = 0; J.ang = Math.random() * 6.28; J.sp = 3 + Math.random() * 3; const base = stayOffshore(J.s.x + (Math.random() - .5) * 8, J.s.z + (Math.random() - .5) * 6); J.bx = base.x; J.bz = base.z; J.ring.position.set(J.bx, BY + .02, J.bz); J.rt = 0; }
+      if (J.u >= 0) { J.u += dt / .95; const u = J.u, rawX = J.bx + Math.cos(J.ang) * J.sp * u, rawZ = J.bz + Math.sin(J.ang) * J.sp * u, p = stayOffshore(rawX, rawZ), x = p.x, z = p.z, h = 4.4 * u * (1 - u) * 1.1;
         J.f.visible = u < 1; J.f.position.set(x, BY + h, z); J.f.rotation.y = -J.ang; J.f.rotation.z = (1 - 2 * u) * 1.1; J.f.userData.tail.rotation.y = Math.sin(t * 30) * .7;
         if (u >= 1) { J.u = -1; J.next = 4 + Math.random() * 8; J.ring.position.set(x, BY + .02, z); J.rt = 0; J.f.visible = false; } }
       if (J.rt !== undefined && J.rt < 1) { J.rt += dt / .9; J.ring.scale.setScalar(1 + J.rt * 5); J.ring.material.opacity = Math.max(0, 1 - J.rt) * .8; } else J.ring.material.opacity = 0;
@@ -1587,13 +1638,21 @@ const FOLIO = {
   ach: { icon: '🏆', title: 'Hall of Fame', sub: 'Achievements', blocks: [{ h: 'BIT Hackathon · Finalist', items: ['Finalist in a highly competitive hackathon conducted by BIT, for innovative problem-solving.'] }] },
   edu: { icon: '🎓', title: 'Bannari Amman Institute of Technology', sub: 'Sathyamangalam, India', blocks: [{ h: 'Bachelor of Engineering · Information Science and Engineering', meta: '2020 – 2024', items: ['CGPA: 8.3'] }] },
   contact: { icon: '✉️', title: 'Say hello', sub: 'Jeeva S U · Software Engineer', blocks: [], contact: [['📞', '+91 75388 81377', 'tel:+917538881377'], ['✉️', 'jeev102003@gmail.com', 'mailto:jeev102003@gmail.com']] },
+  keerthi: { icon: '☕', title: 'Keerthi', sub: 'Software engineer · Chai and strength training', description: 'Keerthi is 23 and enjoys a strong cup of chai and time at the gym. Explore his portfolio and selected work.', links: [
+    ['Open Keerthi’s portfolio', 'https://keerthivibisan.com/'], ['About · sample link', 'https://keerthivibisan.com/#about'], ['Projects · sample link', 'https://keerthivibisan.com/#projects'], ['Contact · sample link', 'https://keerthivibisan.com/#contact'] ] },
+  dhanush: { icon: '💻', title: 'Dhanush', sub: 'Software engineer · Strong coffee, small commits', description: 'Dhanush keeps the coffee strong and the commits small. Visit his portfolio for a preview of his work and projects.', links: [
+    ['Open Dhanush’s portfolio', 'https://dhanushkarthik.com/'], ['About · sample link', 'https://dhanushkarthik.com/#about'], ['Projects · sample link', 'https://dhanushkarthik.com/#projects'], ['Contact · sample link', 'https://dhanushkarthik.com/#contact'] ] },
+  bharath: { icon: '🧑🏾‍💻', title: 'Bharath', sub: 'Software engineer · Short in height, tall in deploys', description: 'Bharath brings a sense of humor to the team and likes getting software deployed. His portfolio details and sample links can be added here.', portfolioPending: true },
 };
 const esc = t => String(t).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 function openFolio(id) {
   const d = FOLIO[id]; if (!d) return;
   let h = `<div class="fhead">${d.photo ? '<img class="mePhoto" src="assets/me.jpg" alt="" onerror="this.remove()">' : ''}<div class="ficon">${d.icon}</div><div><h2>${esc(d.title)}</h2><p>${esc(d.sub)}</p></div></div>`;
-  for (const b of d.blocks) h += `<div class="fblock">${b.h ? `<h3>${esc(b.h)}</h3>` : ''}${b.meta ? `<small>${esc(b.meta)}</small>` : ''}<ul>${b.items.map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>`;
+  if (d.description) h += `<div class="fblock"><p>${esc(d.description)}</p></div>`;
+  for (const b of d.blocks || []) h += `<div class="fblock">${b.h ? `<h3>${esc(b.h)}</h3>` : ''}${b.meta ? `<small>${esc(b.meta)}</small>` : ''}<ul>${b.items.map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>`;
   if (d.chips) h += d.chips.map(([k, v]) => `<div class="fblock"><h3>${k}</h3><div class="chips">${v.map(x => `<span>${esc(x)}</span>`).join('')}</div></div>`).join('');
+  if (d.links) h += `<div class="fblock"><h3>Portfolio links</h3>${d.links.map(([label, url], i) => `<a class="clink" href="${url}" target="_blank" rel="noopener noreferrer">${i ? '↗' : '🌐'} ${esc(label)}</a>`).join('')}</div>`;
+  if (d.portfolioPending) h += '<div class="fblock"><h3>Portfolio links</h3><p>Coming soon</p><ul><li>About · sample link</li><li>Projects · sample link</li><li>Contact · sample link</li></ul></div>';
   if (d.contact) h += '<div class="fblock">' + d.contact.map(([e, t, u]) => `<a class="clink" href="${u}">${e} ${esc(t)}</a>`).join('') + '</div>';
   $('folioBody').innerHTML = h; $('folio').hidden = false; $('folioBody').scrollTop = 0; state.mode = 'folio'; chime();
   if (!save.visited.includes(id)) { save.visited.push(id); save.xp += 40; persist(); refreshHud(); }
@@ -2151,7 +2210,7 @@ async function runRayappan() {
 
 async function interactStation(s) {
   if (s.kind === 'side') { await runRayappan(); return; }
-  if (s.kind === 'chat') { const c = INT.chat[s.id]; busy = true; await say(c.slice(1).map(t => A(c[0], t))); busy = false; return; }
+  if (s.kind === 'chat') { if (['keerthi', 'dhanush', 'bharath'].includes(s.id)) { openFolio(s.id); return; } const c = INT.chat[s.id]; busy = true; await say(c.slice(1).map(t => A(c[0], t))); busy = false; return; }
   if (s.kind === 'print') { await printResume(); return; }
   if (s.kind === 'term') { openTerm(s.id); return; }
   if (s.kind === 'door') { await enterOffice(); return; }
