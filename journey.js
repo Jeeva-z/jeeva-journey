@@ -400,6 +400,34 @@ const OFFICE = { x: 24, z: -223, w: 26, d: 11 };
   OFFICE.bay = { x: x + BX, z: z + BZ }; OFFICE.door = { x, z: z + d / 2 + 2.4 };
   const dr = ringAt(x, z + d / 2 + 2.4); dr.ring.position.y = .16; STN.push({ id: 'office', x, z: z + d / 2 + 2.4, label: 'Enter · Grootan Technologies', kind: 'door', act: 3, ...dr });
 }
+// Blue hologram kiosk outside the office opens the complete in-game portfolio.
+{
+  const H = { x: 13.5, z: -208.2 }, g = new T.Group(); g.position.set(H.x, 0, H.z); world.add(g);
+  const blue = c => new T.MeshBasicMaterial({ color: c, transparent: true, opacity: .8, depthWrite: false });
+  const base = new T.Mesh(new T.CylinderGeometry(1.05, 1.2, .18, 32), new T.MeshToonMaterial({ color: 0x152e4a, gradientMap: toonGrad })); base.position.y = .12; base.castShadow = true; g.add(base);
+  const pad = new T.Mesh(new T.TorusGeometry(.92, .055, 8, 48), blue(0x39c9ff)); pad.rotation.x = Math.PI / 2; pad.position.y = .23; g.add(pad);
+  const beam = new T.Mesh(new T.CylinderGeometry(.56, .78, 1.5, 24, 1, true), blue(0x32bfff)); beam.material.opacity = .12; beam.position.y = 1.08; g.add(beam);
+  const rings = [.62, 1.15, 1.72].map((y, i) => { const r = new T.Mesh(new T.TorusGeometry(.76 - i * .07, .025, 6, 40), blue(i === 1 ? 0x9deaff : 0x36c5ff)); r.rotation.x = Math.PI / 2; r.position.y = y; g.add(r); return r; });
+  const screenTex = textCanvas(512, 512, (c, w, h) => {
+    const grad = c.createLinearGradient(0, 0, w, h); grad.addColorStop(0, '#08243ccc'); grad.addColorStop(1, '#1269aacc'); c.fillStyle = grad; c.fillRect(0, 0, w, h);
+    c.strokeStyle = '#62d9ff'; c.lineWidth = 8; c.strokeRect(12, 12, w - 24, h - 24);
+    c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#e8fbff'; c.shadowColor = '#39c9ff'; c.shadowBlur = 18;
+    c.font = '800 48px system-ui, sans-serif'; c.fillText('JEEVA S U', w / 2, 106);
+    c.shadowBlur = 0; c.font = '700 27px system-ui, sans-serif'; c.fillStyle = '#9deaff'; c.fillText('SOFTWARE ENGINEER', w / 2, 166);
+    c.font = '600 24px system-ui, sans-serif'; c.fillStyle = '#e8fbff'; c.fillText('EDUCATION · PROJECTS', w / 2, 252); c.fillText('EXPERIENCE · SKILLS', w / 2, 294);
+    c.font = '800 24px system-ui, sans-serif'; c.fillStyle = '#62d9ff'; c.fillText('PRESS E TO EXPLORE', w / 2, 404);
+  });
+  const screen = new T.Sprite(new T.SpriteMaterial({ map: screenTex, transparent: true, depthWrite: false, toneMapped: false })); screen.scale.set(2.25, 2.25, 1); screen.position.set(0, 2.35, .08); g.add(screen);
+  const title = wordSprite('JEEVA · PORTFOLIO', '#39c9ff'); title.scale.set(3.4, .72, 1); title.position.set(0, 3.85, 0); g.add(title);
+  const light = new T.PointLight(0x35bfff, 8, 9, 2); light.position.y = 1.4; g.add(light);
+  rounds.push({ x: H.x, z: H.z, r: 1.15 });
+  const r = ringAt(H.x, H.z + 1.7, 0x39c9ff);
+  STN.push({ id: 'portfolio', x: H.x, z: H.z + 1.7, label: 'Explore · Jeeva’s portfolio hologram', kind: 'hologram', act: -1, ...r });
+  (globalThis.PREAMB = globalThis.PREAMB || []).push(t => {
+    rings.forEach((ring, i) => { ring.rotation.z = t * (i % 2 ? -.45 : .55); ring.material.opacity = .5 + .35 * Math.sin(t * 2 + i); });
+    title.material.opacity = .78 + .22 * Math.sin(t * 2.2); light.intensity = 6 + 3 * (1 + Math.sin(t * 2.5));
+  });
+}
 // ---- inside Grootan: lobby, project screens, desks (a separate room far off the map)
 const INT = { x: 300, z: -223, W: 34, D: 22 }; let INTGLASS = null;
 {
@@ -1651,6 +1679,12 @@ const FOLIO = {
   ach: { icon: '🏆', title: 'Hall of Fame', sub: 'Achievements', blocks: [{ h: 'BIT Hackathon · Finalist', items: ['Finalist in a highly competitive hackathon conducted by BIT, for innovative problem-solving.'] }] },
   edu: { icon: '🎓', title: 'Bannari Amman Institute of Technology', sub: 'Sathyamangalam, India', blocks: [{ h: 'Bachelor of Engineering · Information Science and Engineering', meta: '2020 – 2024', items: ['CGPA: 8.3'] }] },
   contact: { icon: '✉️', title: 'Say hello', sub: 'Jeeva S U · Software Engineer', blocks: [], contact: [['📞', '+91 75388 81377', 'tel:+917538881377'], ['✉️', 'jeev102003@gmail.com', 'mailto:jeev102003@gmail.com']] },
+  portfolio: { icon: '👋', title: 'Jeeva S U', sub: 'Software Engineer · Chennai, India', description: 'I build secure authentication systems and backend services. My work spans enterprise identity, authentication flows, Java, Spring Boot and Keycloak.', blocks: [
+    { h: 'What I bring', items: ['End-to-end delivery, from understanding requirements through deployment and production support.', 'A security-first approach to identity, authentication and user access.', 'Experience working with product, QA and DevOps teams.'] }] },
+  projects: { icon: '🧩', title: 'Selected Projects', sub: 'Authentication · Identity · Citizen services', blocks: [
+    { h: 'IBM PKV · Insurance', items: ['Implemented secure key management using Hardware Security Modules.', 'Built notification triggers and integrated external video-identification providers.'] },
+    { h: 'Istanbul Senin · City app', items: ['Delivered secure, scalable features and resolved authentication and access issues.', 'Worked across the feature lifecycle, from requirements to deployment and support.'] },
+    { h: 'CityApp · Worms', items: ['Built centralized consent management aligned with GDPR and municipal data-protection requirements.', 'Integrated Keycloak with backend services through OAuth 2.0 and OpenID Connect.'] }] },
   keerthi: { icon: '☕', title: 'Keerthi', sub: 'Software engineer · Chai and strength training', description: 'Keerthi is 23 and enjoys a strong cup of chai and time at the gym. Explore his portfolio and selected work.', links: [
     ['Open Keerthi’s portfolio', 'https://keerthivibisan.com/'], ['About · sample link', 'https://keerthivibisan.com/#about'], ['Projects · sample link', 'https://keerthivibisan.com/#projects'], ['Contact · sample link', 'https://keerthivibisan.com/#contact'] ] },
   dhanush: { icon: '💻', title: 'Dhanush', sub: 'Software engineer · Strong coffee, small commits', description: 'Dhanush keeps the coffee strong and the commits small. Visit his portfolio for a preview of his work and projects.', links: [
@@ -1911,7 +1945,7 @@ function smokeStep(dt) {
   for (const P of SMOKE) { if (P.t >= P.life) { if (P.s.visible) P.s.visible = false; continue; } P.t += dt; const k = P.t / P.life; P.s.position.x += P.vx * dt; P.s.position.z += P.vz * dt; P.s.position.y += dt * .7; P.s.scale.setScalar(.25 + k * 1.1); P.s.material.opacity = .55 * (1 - k); }
 }
 // ---- map
-const MAPN = { ravi: 'Cricket · Ravi', thatha: 'Chess · Thatha', edu: 'B.I.T.', ach: 'Hackathon Hall', office: 'Grootan Office', printer: 'Resume printer', claude: 'Claude Code', codex: 'Codex', astra: 'Astra', auto: 'Automation', ai: 'The AI tower', rayappan: 'Beedi Rayappan · crab training' };
+const MAPN = { ravi: 'Cricket · Ravi', thatha: 'Chess · Thatha', edu: 'B.I.T.', ach: 'Hackathon Hall', office: 'Grootan Office', printer: 'Resume printer', portfolio: 'Jeeva · Portfolio', claude: 'Claude Code', codex: 'Codex', astra: 'Astra', auto: 'Automation', ai: 'The AI tower', rayappan: 'Beedi Rayappan · crab training' };
 let mapBig = false, mapAcc = 0;
 function drawMap(cv, big) {
   const x = cv.getContext('2d'), W = cv.width, H = cv.height, pp = player.g.position;
@@ -1936,7 +1970,7 @@ function drawMap(cv, big) {
   const cur = curAct(), a = ACTS[cur];
   for (const s of STN) {
     const done = stationDone(s), want = a && a.need.includes(s.id) && !done;
-    const col = s.kind === 'side' ? '#ff8a2a' : s.kind === 'term' ? '#8f7cff' : s.kind === 'print' ? '#2fb8a0' : s.kind === 'folio' ? '#e8a33d' : '#d8402a';
+    const col = s.kind === 'hologram' ? '#35caff' : s.kind === 'side' ? '#ff8a2a' : s.kind === 'term' ? '#8f7cff' : s.kind === 'print' ? '#2fb8a0' : s.kind === 'folio' ? '#e8a33d' : '#d8402a';
     const sx = X(s.x, s.z), sy = Y(s.x, s.z), r = big ? 5.5 : 3.5;
     x.fillStyle = done ? '#ffffffaa' : col; x.strokeStyle = '#3b2a22'; x.lineWidth = 1.5; x.beginPath(); x.arc(sx, sy, want ? r + 2 : r, 0, 7); x.fill(); x.stroke();
     if (want) { x.strokeStyle = '#ffffff'; x.lineWidth = 2; x.beginPath(); x.arc(sx, sy, r + 5 + Math.sin(performance.now() / 200) * 1.5, 0, 7); x.stroke(); }
@@ -2223,6 +2257,7 @@ async function runRayappan() {
 
 async function interactStation(s) {
   if (s.kind === 'side') { await runRayappan(); return; }
+  if (s.kind === 'hologram') { openFolio('portfolio'); return; }
   if (s.kind === 'portfolio') { if (s.url) { window.open(s.url, '_blank', 'noopener,noreferrer'); } else toast('Portfolio coming soon', 'Bharath’s portfolio link is not available yet.'); return; }
   if (s.kind === 'chat') { const c = INT.chat[s.id]; busy = true; await say(c.slice(1).map(t => A(c[0], t))); busy = false; return; }
   if (s.kind === 'print') { await printResume(); return; }
@@ -2334,17 +2369,22 @@ async function leaveOffice() {
 /* ---- project folios as slideshows */
 const SL = { slides: [], i: 0 };
 const DECK = ['exp', 'ibm', 'ibb', 'city', 'skills'];
+const FULL_DECK = ['portfolio', 'edu', 'ach', 'exp', 'projects', 'skills', 'contact'];
 function slidesFor(id) {
   const d = FOLIO[id], out = []; if (!d) return out;
   out.push({ id, html: `<div class="slideCover">${d.photo ? '<img class="mePhoto" src="assets/me.jpg" alt="" onerror="this.remove()">' : ''}<div class="ficon big">${d.icon}</div><h2>${esc(d.title)}</h2><p>${esc(d.sub)}</p></div>` });
-  for (const b of d.blocks) out.push({ id, html: `<div class="slideBody"><div class="sTag">${d.icon} ${esc(d.title)}</div>${b.h ? `<h3>${esc(b.h)}</h3>` : ''}${b.meta ? `<small>${esc(b.meta)}</small>` : ''}<ul>${b.items.map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>` });
+  if (d.description) out.push({ id, html: `<div class="slideBody"><div class="sTag">${d.icon} ${esc(d.title)}</div><p>${esc(d.description)}</p></div>` });
+  for (const b of d.blocks || []) out.push({ id, html: `<div class="slideBody"><div class="sTag">${d.icon} ${esc(d.title)}</div>${b.h ? `<h3>${esc(b.h)}</h3>` : ''}${b.meta ? `<small>${esc(b.meta)}</small>` : ''}<ul>${(b.items || []).map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>` });
   if (d.chips) out.push({ id, html: `<div class="slideBody"><div class="sTag">${d.icon} ${esc(d.title)}</div>${d.chips.map(([k, v]) => `<h3>${k}</h3><div class="chips">${v.map(x => `<span>${esc(x)}</span>`).join('')}</div>`).join('')}</div>` });
+  if (d.links) out.push({ id, html: `<div class="slideBody"><div class="sTag">${d.icon} ${esc(d.title)}</div><h3>Portfolio links</h3>${d.links.map(([label, url]) => `<a class="clink" href="${url}" target="_blank" rel="noopener noreferrer">↗ ${esc(label)}</a>`).join('')}</div>` });
+  if (d.portfolioPending) out.push({ id, html: `<div class="slideBody"><div class="sTag">${d.icon} ${esc(d.title)}</div><h3>Portfolio links</h3><p>Coming soon</p></div>` });
   if (d.contact) out.push({ id, html: '<div class="slideBody"><div class="sTag">' + d.icon + ' ' + esc(d.title) + '</div>' + d.contact.map(([e, t, u]) => `<a class="clink" href="${u}">${e} ${esc(t)}</a>`).join('') + '</div>' });
   return out;
 }
 function openFolio(id) {
   if (!FOLIO[id]) return; SL.slides = []; SL.i = 0;
-  if (DECK.includes(id)) { for (const k of DECK) { if (k === id) SL.i = SL.slides.length; SL.slides.push(...slidesFor(k)); } }  // the whole Grootan deck, opened at this section
+  if (id === 'portfolio') SL.slides = FULL_DECK.flatMap(slidesFor);
+  else if (DECK.includes(id)) { for (const k of DECK) { if (k === id) SL.i = SL.slides.length; SL.slides.push(...slidesFor(k)); } }  // the whole Grootan deck, opened at this section
   else SL.slides = slidesFor(id);
   $('folio').hidden = false; state.mode = 'folio'; chime(); showSlide(SL.i);
 }
