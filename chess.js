@@ -1,6 +1,7 @@
 /* Chess for Gully Days: small rules engine + gentle AI + 3D board (Three.js).
-   Rules: all piece moves, check/checkmate/stalemate, pawn double-step, auto-queen promotion.
-   Not included: castling, en passant, repetition draws. */
+   Rules: all piece moves, castling, check/checkmate/stalemate, pawn double-step, auto-queen promotion,
+   draws (agreement, threefold repetition, 50-move rule, insufficient material).
+   Not included: en passant. Thatha sits opposite the board with hand gestures and trash talk. */
 (() => {
   const T = THREE;
   const VAL = { P: 100, N: 320, B: 330, R: 500, Q: 900, K: 0 };
@@ -28,6 +29,14 @@
         const dirs = p.t === 'B' ? DIAG : p.t === 'R' ? ORTH : DIAG.concat(ORTH);
         for (const [dr, dc] of dirs) { let r2 = r + dr, c2 = c + dc; while (inb(r2, c2)) { if (b[r2][c2]) { if (b[r2][c2].c !== color) push(r2, c2); break; } push(r2, c2); r2 += dr; c2 += dc; } }
       }
+      if (p.t === 'K' && !p.moved && r === (color === 'w' ? 7 : 0) && c === 4 && !attacked(b, r, c, opp(color))) {
+        for (const [rc, dir, gap] of [[7, 1, [5, 6]], [0, -1, [3, 2, 1]]]) {
+          const rk = b[r][rc];
+          if (!rk || rk.t !== 'R' || rk.c !== color || rk.moved || gap.some(x => b[r][x])) continue;
+          if ([c + dir, c + 2 * dir].some(x => attacked(b, r, x, opp(color)))) continue;
+          out.push({ from: [r, c], to: [r, c + 2 * dir], cap: null, promo: false, castle: { rf: rc, rt: c + dir } });
+        }
+      }
     }
     return out;
   }
@@ -46,7 +55,9 @@
   const inCheck = (b, color) => { const k = kingPos(b, color); return k ? attacked(b, k[0], k[1], opp(color)) : false; };
   function apply(b, m) {
     const nb = copy(b), p = nb[m.from[0]][m.from[1]];
-    nb[m.to[0]][m.to[1]] = m.promo ? { t: 'Q', c: p.c } : p; nb[m.from[0]][m.from[1]] = null; return nb;
+    nb[m.to[0]][m.to[1]] = { t: m.promo ? 'Q' : p.t, c: p.c, moved: true }; nb[m.from[0]][m.from[1]] = null;
+    if (m.castle) { const r = m.from[0]; nb[r][m.castle.rt] = { t: 'R', c: p.c, moved: true }; nb[r][m.castle.rf] = null; }
+    return nb;
   }
   const legal = (b, color) => pseudo(b, color).filter(m => !inCheck(apply(b, m), color));
   function evaluate(b, color) {
@@ -55,7 +66,7 @@
       const p = b[r][c]; if (!p) continue;
       let v = VAL[p.t];
       const cen = 3.5 - Math.hypot(r - 3.5, c - 3.5) * .5;
-      if (p.t === 'N' || p.t === 'B') v += cen * 8; else if (p.t === 'P') v += cen * 3 + (p.c === 'w' ? 6 - r : r - 1) * 5; else if (p.t === 'Q') v += cen * 2;
+      if (p.t === 'N' || p.t === 'B') v += cen * 8; else if (p.t === 'P') v += cen * 3 + (p.c === 'w' ? 6 - r : r - 1) * 5; else if (p.t === 'Q') v += cen * 2; else if (p.t === 'K' && r === (p.c === 'w' ? 7 : 0) && (c <= 2 || c >= 6)) v += 35;
       s += p.c === 'w' ? v : -v;
     }
     return color === 'w' ? s : -s;
@@ -76,11 +87,14 @@
     if (Math.random() < .22) return sc[Math.floor(Math.random() * Math.min(4, sc.length))].m; // Thatha sometimes plays like a grandfather
     const good = sc.filter(x => x.s >= sc[0].s - 25); return good[Math.floor(Math.random() * good.length)].m;
   }
+  const posKey = (b, turn) => b.map(row => row.map(p => p ? (p.c === 'w' ? p.t : p.t.toLowerCase()) : '.').join('')).join('/') + turn
+    + [[7, 7], [7, 0], [0, 7], [0, 0]].map(([r, c]) => { const k = b[r][4], rk = b[r][c]; return k && rk && k.t === 'K' && !k.moved && rk.t === 'R' && !rk.moved ? 1 : 0; }).join('');
+  function deadDraw(b) { const rest = b.flat().filter(p => p && p.t !== 'K'); return !rest.length || (rest.length === 1 && (rest[0].t === 'B' || rest[0].t === 'N')); }
   const bestMove = (b, color) => { const sc = scored(b, color); return sc.length ? sc[0].m : null; };
 
   /* ------------------------------------------------------------ 3D view */
   const scene = new T.Scene(); scene.background = new T.Color(0x9fc9a4); scene.fog = new T.Fog(0xb9d6b0, 24, 60);
-  const camera = new T.PerspectiveCamera(38, 1, .1, 100); camera.position.set(0, 10.4, 8.8); camera.lookAt(0, 0, .5);
+  const camera = new T.PerspectiveCamera(44, 1, .1, 100); camera.position.set(0, 11.8, 9.6); camera.lookAt(0, 0, -1.6);
   scene.add(new T.HemisphereLight(0xfff4d8, 0x6a8a58, 1.2));
   const dl = new T.DirectionalLight(0xffe9c0, 2.4); dl.position.set(-5, 11, 6); dl.castShadow = true; dl.shadow.mapSize.set(1024, 1024);
   Object.assign(dl.shadow.camera, { left: -7, right: 7, top: 7, bottom: -7, near: 1, far: 30 }); scene.add(dl);
@@ -121,10 +135,86 @@
     return g;
   }
 
+  /* ------------------------------------------------------ Thatha, opposite the board */
+  const SKIN = mat(0xc79a6e, .7), WHITE = mat(0xfdfbf3, .9), DARK = mat(0x2a1a10, .6), ASH = mat(0xf4f1e8, .9), RED = mat(0xc0281c, .6);
+  const thatha = (() => {
+    const g = new T.Group(); g.position.set(0, -1.5, -7.4); g.scale.setScalar(1.3); scene.add(g);
+    const add = (geo, m, x, y, z, parent = g) => { const o = new T.Mesh(geo, m); o.position.set(x, y, z); parent.add(o); return o; };
+    add(new T.BoxGeometry(1.8, 2.1, .95), WHITE, 0, 1.05, 0);
+    add(new T.CylinderGeometry(.2, .22, .3, 10), SKIN, 0, 2.2, 0);
+    const head = new T.Group(); head.position.set(0, 2.6, 0); g.add(head);
+    add(new T.SphereGeometry(.55, 20, 16), SKIN, 0, 0, 0, head);
+    const brows = [], arms = [];
+    for (const s of [-1, 1]) {
+      add(new T.SphereGeometry(.12, 8, 6), SKIN, s * .55, 0, 0, head);
+      add(new T.TorusGeometry(.15, .025, 6, 16), DARK, s * .22, .07, .54, head);
+      add(new T.SphereGeometry(.045, 8, 6), DARK, s * .22, .07, .53, head);
+      brows.push(add(new T.BoxGeometry(.22, .045, .05), ASH, s * .22, .27, .49, head));
+    }
+    add(new T.BoxGeometry(.1, .025, .025), DARK, 0, .07, .56, head);
+    add(new T.SphereGeometry(.09, 8, 6), SKIN, 0, -.06, .55, head);
+    add(new T.BoxGeometry(.44, .09, .12), ASH, 0, -.2, .51, head);
+    const mouth = add(new T.BoxGeometry(.16, .04, .04), DARK, 0, -.32, .45, head);
+    [[.3, .46], [.36, .415], [.42, .36]].forEach(([y, z]) => add(new T.BoxGeometry(.3, .025, .03), ASH, 0, y, z, head).rotation.x = -.3);
+    add(new T.SphereGeometry(.035, 8, 6), RED, 0, .2, .52, head);
+    for (const s of [-1, 1]) {
+      const sh = new T.Group(); sh.position.set(s * 1.05, 1.8, 0); g.add(sh);
+      add(new T.CylinderGeometry(.17, .15, 1, 10), WHITE, 0, -.5, 0, sh); add(new T.SphereGeometry(.18, 10, 8), WHITE, 0, 0, 0, sh);
+      const el = new T.Group(); el.position.y = -1; sh.add(el);
+      add(new T.CylinderGeometry(.14, .12, .9, 10), WHITE, 0, -.45, 0, el); add(new T.SphereGeometry(.15, 10, 8), SKIN, 0, -.98, 0, el);
+      arms.push({ sh, el });
+    }
+    return { g, head, mouth, brows, L: arms[0], R: arms[1] };
+  })();
+  const REST = { lsx: -.7, lsz: 0, lex: -.7, rsx: -.7, rsz: 0, rex: -.7, hx: 0, hz: 0, lean: 0, brow: 0 };
+  const cur = { ...REST };
+  const POSES = {
+    idle: () => ({}),
+    think: () => ({ rsx: -1.2, rex: -2.3, hx: .15, hz: .12, brow: .05 }),
+    shake: t => ({ rsx: -1.6, rex: -1, rsz: Math.sin(t * 11) * .35, hx: .1, brow: -.05 }),
+    slam: t => t < .35 ? { lsx: -2.4, rsx: -2.4, lex: -.3, rex: -.3, lean: -.1, brow: -.06 } : { lsx: -.5, rsx: -.5, lex: -.3, rex: -.3, lean: .16, brow: -.06 },
+    cheer: t => ({ lsx: -2.7 + Math.sin(t * 9) * .15, rsx: -2.7 + Math.sin(t * 9 + 1) * .15, lex: -.3, rex: -.3, lsz: -.3, rsz: .3, hx: -.2, brow: .08 }),
+    shrug: () => ({ lsz: -.7, rsz: .7, lsx: -.4, rsx: -.4, lex: -1.6, rex: -1.6, hz: .2, brow: .08 }),
+    wave: t => ({ rsx: -1.1, rex: -.5 + Math.sin(t * 9) * .5, hz: -.1 }),
+    facepalm: () => ({ rsx: -1.3, rex: -2.5, hx: .35, brow: -.04 }),
+    point: () => ({ rsx: -1.5, rex: -.15, hx: .05, brow: -.04 })
+  };
+  const LINES = {
+    start: ['Sit, sit. Let us see what those college books taught you.', 'I taught you the rules, not the secrets. Begin.', 'White to move. Try not to cry before move ten.'],
+    think: ['Hmm... hmm...', 'Let me think. Slowly. Like a grandfather.', 'Ah, I see your plan. It is a bad plan.'],
+    take: ['Aiyo, your piece has gone on vacation!', 'Thank you for the gift. I will eat it with my evening tea.', 'Eat, eat! Free food today.', 'Did you see that coming? Of course not.'],
+    lost: ['Hmph. Beginner\'s luck.', 'That piece was old. Time for retirement anyway.', 'Hm! Who taught you that? Oh. Me.', 'Enjoy it. It will be the last one.'],
+    check: ['Check! Run, little king, run!', 'Your king is sweating, no?', 'Check. Breathe, kanna, breathe.'],
+    gotCheck: ['Check?! You are cheeky today.', 'Hm. Even a blind squirrel finds a nut.'],
+    castle: ['Castling? Hiding the king like a shy bridegroom.', 'King runs home to mummy. Smart, smart.'],
+    myCastle: ['See? King in the fortress, tea in my hand.', 'Castling, kanna. Learn, learn.'],
+    blunder: ['Aiyo Rama! What was that move?', 'Even my walking stick plays better.', 'Are you sleeping with your eyes open?', 'I will pretend I did not see that. Hahaha, no, I saw it.'],
+    great: ['Hm. That one hurt a little.', 'Where did you learn that? Not from me.'],
+    hint: ['Hint? Hint?! In my day we had one brain and no hints.', 'Cheating! I am telling your grandmother.'],
+    idle: ['Today, please! My tea is getting cold.', 'Are you thinking or sleeping?', 'Move, kanna. The sun is setting.'],
+    drawEarly: ['Draw already? We have not even warmed up!', 'Scared, is it? Play, play!'],
+    drawNo: ['Draw? Never! I smell victory.', 'No, no. I am winning, why would I stop?', 'Draw? Only if you apologise first.'],
+    drawYes: ['Hmm. Fine, fine. A draw. Respect, kanna.', 'Okay, okay, handshake. But next time I win.'],
+    drawWait: ['You just asked! Let an old man breathe.'],
+    win: ['Checkmate! Go home and read your books.', 'Hahaha! Do not tell your grandmother. Actually, tell her.'],
+    lose: ['Hm. Hm! Well played. Do not tell your grandmother.', 'Beginner\'s luck... beginner\'s luck... I want a rematch.'],
+    tie: ['A draw. That is how you know a worthy opponent.']
+  };
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+
   /* --------------------------------------------------------------- game */
-  let G = null, ui = null;
+  let G = null, ui = null, talkTimer = 0;
   const $ = id => document.getElementById(id);
+  const tv = new T.Vector3();
   function setStatus(t) { $('chessStatus').textContent = t; }
+  function gesture(name, dur = 1.4) { if (G) G.gest = { name, t: 0, dur }; }
+  function talk(kind, gest, ms = 3400) {
+    const text = Array.isArray(kind) ? pick(kind) : (LINES[kind] ? pick(LINES[kind]) : kind), el = $('chessTalk');
+    el.textContent = text; el.classList.add('show'); if (gest) gesture(gest, Math.min(ms / 1000, 2.2));
+    clearTimeout(talkTimer); talkTimer = setTimeout(() => { el.classList.remove('show'); if (G) G.talkUntil = 0; }, ms);
+    if (G) G.talkUntil = performance.now() + ms;
+  }
+  const talking = () => G && G.talkUntil > performance.now();
 
   function clearMarks() { while (markers.children.length) markers.remove(markers.children[0]); }
   function mark(r, c, material, ring) {
@@ -134,7 +224,7 @@
   function refreshMarks() {
     clearMarks();
     if (G.hint) { mark(G.hint.from[0], G.hint.from[1], hintMat, true); mark(G.hint.to[0], G.hint.to[1], hintMat, true); }
-    if (G.sel) { mark(G.sel[0], G.sel[1], hiMat, true); for (const m of G.selMoves) mark(m.to[0], m.to[1], m.cap ? hiMat : dotMat, !!m.cap); }
+    if (G.sel) { mark(G.sel[0], G.sel[1], hiMat, true); for (const m of G.selMoves) mark(m.to[0], m.to[1], m.cap || m.castle ? hiMat : dotMat, !!(m.cap || m.castle)); }
   }
   function buildPieces() {
     for (const p of G.meshes.flat()) if (p) scene.remove(p);
@@ -145,31 +235,80 @@
     }
   }
   function startGame() {
-    G = { board: newBoard(), turn: 'w', sel: null, selMoves: [], busy: false, over: false, hint: null, meshes: Array.from({ length: 8 }, () => Array(8).fill(null)), anims: [], resolve: null };
-    buildPieces(); refreshMarks(); setStatus('Your move, you are White (cream).');
+    const board = newBoard();
+    G = { board, turn: 'w', sel: null, selMoves: [], busy: false, over: false, hint: null, meshes: Array.from({ length: 8 }, () => Array(8).fill(null)), anims: [], resolve: null,
+      ply: 0, half: 0, seen: { [posKey(board, 'w')]: 1 }, noDrawUntil: 0, last: null, evPrev: 0, gest: { name: 'point', t: 0, dur: 1.6 }, talkUntil: 0, lastActive: performance.now(), tick: 0 };
+    Object.assign(cur, REST); G.evPrev = evaluate(board, 'w');
+    buildPieces(); refreshMarks(); setStatus('Your move, you are White (cream).'); talk('start', 'point');
   }
   function select(r, c) { G.sel = [r, c]; G.selMoves = legal(G.board, 'w').filter(m => m.from[0] === r && m.from[1] === c); G.hint = null; refreshMarks(); }
   function clearSel() { G.sel = null; G.selMoves = []; refreshMarks(); }
 
   function doMove(m, after) {
-    G.busy = true; clearSel(); G.hint = null;
+    G.busy = true; clearSel(); G.hint = null; G.lastActive = performance.now();
+    const mover = G.board[m.from[0]][m.from[1]];
     const mesh = G.meshes[m.from[0]][m.from[1]], victim = G.meshes[m.to[0]][m.to[1]];
     const from = mesh.position.clone(), to = sqPos(m.to[0], m.to[1]);
-    const knight = G.board[m.from[0]][m.from[1]].t === 'N';
-    G.anims.push({ t: 0, dur: .5, run(u) { mesh.position.lerpVectors(from, to, u); mesh.position.y = .05 + Math.sin(u * Math.PI) * (knight ? .9 : .35); if (victim && u > .8) victim.scale.setScalar(Math.max(.01, 1 - (u - .8) * 5)); },
+    const rk = m.castle && G.meshes[m.from[0]][m.castle.rf], rkFrom = rk && rk.position.clone(), rkTo = m.castle && sqPos(m.from[0], m.castle.rt);
+    G.anims.push({ t: 0, dur: m.castle ? .75 : .5, run(u) {
+        mesh.position.lerpVectors(from, to, u); mesh.position.y = .05 + Math.sin(u * Math.PI) * (mover.t === 'N' ? .9 : .35);
+        if (rk) { rk.position.lerpVectors(rkFrom, rkTo, u); rk.position.y = .05 + Math.sin(u * Math.PI) * .3; }
+        if (victim && u > .8) victim.scale.setScalar(Math.max(.01, 1 - (u - .8) * 5)); },
       done() {
         if (victim) scene.remove(victim);
         G.meshes[m.from[0]][m.from[1]] = null; G.meshes[m.to[0]][m.to[1]] = mesh; mesh.position.copy(to);
+        if (rk) { G.meshes[m.from[0]][m.castle.rf] = null; G.meshes[m.from[0]][m.castle.rt] = rk; rk.position.copy(rkTo); }
+        G.half = mover.t === 'P' || m.cap ? 0 : G.half + 1; G.ply++;
         G.board = apply(G.board, m);
-        if (m.promo) { scene.remove(mesh); const q = makePiece('Q', G.turn); q.position.copy(to); scene.add(q); G.meshes[m.to[0]][m.to[1]] = q; }
-        G.turn = opp(G.turn); G.busy = false; after && after();
+        if (m.promo) { scene.remove(mesh); const q = makePiece('Q', mover.c); q.position.copy(to); scene.add(q); G.meshes[m.to[0]][m.to[1]] = q; }
+        G.turn = opp(G.turn); G.busy = false; G.last = { m, by: mover.c };
+        const k = posKey(G.board, G.turn); G.seen[k] = (G.seen[k] || 0) + 1; G.lastActive = performance.now();
+        after && after();
       } });
+  }
+  function endGame(res, msg, line, gest) {
+    G.over = true; setStatus(msg); talk(line, gest, 3000); setTimeout(() => G && G.resolve(res), 3200);
+  }
+  function chatter(chk) {
+    const { m, by } = G.last || {}, ev = evaluate(G.board, 'w'), swing = ev - G.evPrev;
+    if (by === 'w') {
+      if (chk) talk('gotCheck', 'shrug'); else if (m.castle) talk('castle', 'wave');
+      else if (m.cap && (VAL[m.cap.t] >= 300 || Math.random() < .4)) talk('lost', 'shrug');
+      else if (Math.random() < .2) talk('think', 'think');
+    } else if (by === 'b') {
+      if (chk) talk('check', 'point');
+      else if (swing <= -200) talk('blunder', 'cheer');
+      else if (swing >= 200) talk('great', 'facepalm');
+      else if (m.castle) talk('myCastle', 'wave');
+      else if (m.cap) talk('take', 'slam');
+      else if (Math.random() < .18) talk('idle', 'wave');
+      G.evPrev = ev;
+    }
   }
   function afterMove() {
     const ms = legal(G.board, G.turn), chk = inCheck(G.board, G.turn);
-    if (!ms.length) { G.over = true; const res = chk ? (G.turn === 'b' ? 'win' : 'lose') : 'draw'; setStatus(res === 'win' ? 'Checkmate! You beat Thatha!' : res === 'lose' ? 'Checkmate. Thatha wins this one.' : 'Stalemate. A draw!'); setTimeout(() => G.resolve(res), 2200); return; }
-    if (G.turn === 'b') { setStatus(chk ? 'Check! Thatha is thinking...' : 'Thatha is thinking...'); setTimeout(() => { if (G.over) return; const m = gentleMove(G.board, 'b'); doMove(m, afterMove); }, 650); }
-    else setStatus(chk ? 'Check! Protect your king.' : 'Your move.');
+    if (!ms.length) {
+      if (chk) return G.turn === 'b' ? endGame('win', 'Checkmate! You beat Thatha!', 'lose', 'facepalm') : endGame('lose', 'Checkmate. Thatha wins this one.', 'win', 'cheer');
+      return endGame('draw', 'Stalemate. A draw!', 'tie', 'shrug');
+    }
+    if (deadDraw(G.board)) return endGame('draw', 'Draw: not enough pieces left to checkmate.', 'tie', 'shrug');
+    if (G.seen[posKey(G.board, G.turn)] >= 3) return endGame('draw', 'Draw by threefold repetition.', 'tie', 'shrug');
+    if (G.half >= 100) return endGame('draw', 'Draw by the 50-move rule.', 'tie', 'shrug');
+    chatter(chk);
+    if (G.turn === 'b') {
+      setStatus(chk ? 'Check! Thatha is thinking...' : 'Thatha is thinking...');
+      setTimeout(() => { if (!G || G.over) return; if (!talking()) gesture('think', 1.2); }, 150);
+      setTimeout(() => { if (!G || G.over) return; doMove(gentleMove(G.board, 'b'), afterMove); }, 1100);
+    } else setStatus(chk ? 'Check! Protect your king.' : 'Your move.');
+  }
+  function offerDraw() {
+    if (!G || G.over || G.busy || G.turn !== 'w') return;
+    G.lastActive = performance.now();
+    if (G.ply < G.noDrawUntil) { setStatus('Thatha: "Not again so soon."'); return talk('drawWait', 'shake'); }
+    G.noDrawUntil = G.ply + 10;
+    if (G.ply < 20) { setStatus('Thatha refuses the draw.'); return talk('drawEarly', 'shake'); }
+    if (evaluate(G.board, 'b') < 50) { clearSel(); return endGame('draw', 'Thatha accepts. Draw agreed!', 'drawYes', 'shrug'); }
+    setStatus('Thatha refuses the draw.'); talk('drawNo', 'shake');
   }
   function click(r, c) {
     if (!G || G.over || G.busy || G.turn !== 'w') return;
@@ -184,21 +323,41 @@
     let o = hit.object; if (o.userData.sq) return click(...o.userData.sq);
     const root = o.userData.root; for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) if (G.meshes[r][c] === root) return click(r, c);
   }
+  function animateThatha(dt) {
+    const now = performance.now() / 1000, gs = G.gest;
+    gs.t += dt; if (gs.t > gs.dur && gs.name !== 'idle') { gs.name = 'idle'; gs.t = 0; }
+    const tgt = { ...REST, ...POSES[gs.name](gs.t) }, k = Math.min(1, dt * 8);
+    tgt.lean += Math.sin(now * 1.6) * .012; tgt.hz += Math.sin(now * .9) * .03;
+    for (const key in cur) cur[key] += (tgt[key] - cur[key]) * k;
+    const { L, R, head, mouth, brows, g } = thatha;
+    L.sh.rotation.x = cur.lsx; L.sh.rotation.z = cur.lsz; L.el.rotation.x = cur.lex;
+    R.sh.rotation.x = cur.rsx; R.sh.rotation.z = cur.rsz; R.el.rotation.x = cur.rex;
+    head.rotation.x = cur.hx; head.rotation.z = cur.hz; g.rotation.x = cur.lean;
+    brows.forEach((b, i) => { b.position.y = .27 + cur.brow; b.rotation.z = (i ? -1 : 1) * cur.brow * 3; });
+    mouth.scale.y = talking() ? 1 + Math.abs(Math.sin(now * 18)) * 2.5 : 1;
+    head.getWorldPosition(tv); tv.y += .9; tv.project(camera);
+    const w = innerWidth, h = innerHeight, el = $('chessTalk'), narrow = w < 700;
+    const x = (tv.x * .5 + .5) * w + (narrow ? 0 : 210), y = (-tv.y * .5 + .5) * h + (narrow ? 70 : -20);
+    el.style.left = Math.max(130, Math.min(w - 130, x)) + 'px'; el.style.top = Math.max(8, y) + 'px';
+  }
   function update(dt) {
     if (!G) return;
     for (let i = G.anims.length - 1; i >= 0; i--) { const a = G.anims[i]; a.t += dt; const u = Math.min(1, a.t / a.dur); a.run(u * u * (3 - 2 * u)); if (u >= 1) { G.anims.splice(i, 1); a.done(); } }
     markers.children.forEach((m, i) => { m.position.y = .07 + Math.sin(performance.now() / 250 + i) * .01; });
+    if (!G) return;
+    animateThatha(dt);
+    if (!G.over && !G.busy && G.turn === 'w' && !talking() && performance.now() - G.lastActive > 14000) { G.lastActive = performance.now(); talk('idle', 'wave'); }
   }
-  function resize(w, h) { camera.aspect = w / h; camera.fov = w / h < 1 ? 55 : 38; camera.updateProjectionMatrix(); }
+  function resize(w, h) { camera.aspect = w / h; camera.fov = w / h < 1 ? 62 : 44; camera.updateProjectionMatrix(); }
 
   function play() {
     return new Promise(resolve => {
-      ui = $('chessUI'); ui.hidden = false; startGame(); G.resolve = res => { ui.hidden = true; G = null; resolve(res); };
-      $('chessHint').onclick = () => { if (G.over || G.busy || G.turn !== 'w') return; const m = bestMove(G.board, 'w'); if (m) { G.hint = m; clearSel(); refreshMarks(); setStatus('Thatha whispers: "Try the orange squares..."'); } };
+      ui = $('chessUI'); ui.hidden = false; startGame();
+      G.resolve = res => { clearTimeout(talkTimer); $('chessTalk').classList.remove('show'); ui.hidden = true; G = null; resolve(res); };
+      $('chessHint').onclick = () => { if (G.over || G.busy || G.turn !== 'w') return; const m = bestMove(G.board, 'w'); if (m) { G.hint = m; G.lastActive = performance.now(); clearSel(); refreshMarks(); setStatus('Orange squares are the hint.'); talk('hint', 'shake'); } };
+      $('chessDraw').onclick = offerDraw;
       $('chessSkip').onclick = () => { if (!G || G.over) return; G.over = true; G.resolve('skip'); };
-      afterMoveStartCheck();
     });
   }
-  function afterMoveStartCheck() { /* white starts */ }
-  window.ChessGame = { scene, camera, play, update, pointer, resize, _engine: { newBoard, legal, inCheck, apply, gentleMove, bestMove, evaluate } };
+  window.ChessGame = { scene, camera, play, update, pointer, resize, _engine: { posKey, deadDraw, newBoard, legal, inCheck, apply, gentleMove, bestMove, evaluate } };
 })();

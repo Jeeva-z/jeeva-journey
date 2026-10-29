@@ -1791,7 +1791,7 @@ const runStory = {
   },
   async thatha() {
     busy = true;
-    await say([A('Thatha', 'Sit. Today we play a real game.'), A('Thatha', 'You have White, the cream pieces. Click a piece, then a green square. Use Hint if you are stuck. I will go easy on you. A little.')]);
+    await say([A('Thatha', 'Sit. Today we play a real game.'), A('Thatha', 'You have White, the cream pieces. Click a piece, then a green square. To castle, click your king and then the square two steps toward your rook. Offer a draw if you dare, but I only accept when I am not winning. Use Hint if you are stuck. I will go easy on you. A little.')]);
     const res = await playChess();
     if (res === 'win') await say([A('Thatha', 'Hm. Hm! Well played. Do not tell your grandmother I lost.')]);
     else if (res === 'draw') await say([A('Thatha', 'A draw. That is how you know a worthy opponent.')]);
