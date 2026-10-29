@@ -1393,7 +1393,7 @@ const RAY = { camp: null, stn: null, npc: null, greeted: false };   // Beedi Ray
     // the interaction ring sits a few steps in front of him, towards the road
     const sw = g.localToWorld(new T.Vector3(3.6, 0, -3.1)), rr = ringAt(sw.x, sw.z, 0xff8a2a);
     STN.push({ id: 'rayappan', x: sw.x, z: sw.z, label: 'Talk · Beedi Rayappan (training)', kind: 'side', ...rr });
-    RAY.camp = { x: sp.x, z: sp.z, ux: sp.ux, uz: sp.uz, ry: sp.ry }; RAY.stn = { x: sw.x, z: sw.z }; RAY.npc = n;
+    RAY.camp = { x: sp.x, z: sp.z, ux: sp.ux, uz: sp.uz, ry: sp.ry }; RAY.g = g; RAY.ring = { x: -1.5, z: 3.6, top: .53 }; RAY.stn = { x: sw.x, z: sw.z }; RAY.npc = n;
     AMB.push((t, dt, pp) => {
       bag.rotation.z = Math.sin(t * 1.3) * .06; bag.rotation.x = Math.sin(t * .9) * .03; spd.rotation.z = Math.sin(t * 9) * .05;
       ember.material.color.setHex(Math.sin(t * 3) > .2 ? 0xff7a2a : 0xc84a14);
@@ -2244,8 +2244,9 @@ async function runRayappan() {
   const pick = await say([
     A(R, first ? 'Hey, thambi! Come here. Beedi Rayappan, that is me. Forty years I have trained fighters on this sand. The knees are old now, but the eyes still see everything.' : 'Back again? Good. In my days, a boy who stopped training was just a man with big hands.'),
     A(R, 'Boxing is not about hitting hard. It is quick hands and sharper eyes. See those little crabs? Faster than any opponent I ever corner-coached in North Madras.'),
-    { who: R, text: 'Catch three of them in one minute with your bare gloves, and I will call you a fighter. Ready?', choices: [{ label: 'Start training', reply: [A(R, 'Hmm! Gloves up. Eyes open. Go, go, go!')] }, { label: 'Maybe later', reply: [A(R, 'Crabs are patient. Come when your hands are ready.')] }] },
+    { who: R, text: 'Catch three of them in one minute with your bare gloves, and I will call you a fighter. Ready?', choices: [{ label: 'Start training', reply: [A(R, 'Hmm! Gloves up. Eyes open. Go, go, go!')] }, { label: 'Spar with Vembuli (uses your camera)', reply: [A(R, 'Vembuli? That big bull from the other gym? Hmm, brave. Two rounds, forty seconds each. Switch on your camera, thambi, I will watch your hands.')] }, { label: 'Maybe later', reply: [A(R, 'Crabs are patient. Come when your hands are ready.')] }] },
   ]);
+  if (pick === 1) { await runSpar(R); busy = false; return; }
   if (pick !== 0) { busy = false; return; }
   const r = await crabGame();
   if (r.quit) { await say([A(R, 'Running away from a crab? Hmm. Come back when you are serious.')]); }
@@ -2255,6 +2256,34 @@ async function runRayappan() {
     toast('Side quest complete', 'Crab training done in ' + t + 's. Beedi Rayappan approves.');
   } else await say([A(R, 'Adei! Even the crabs are laughing at you. Only ' + r.caught + ' of 3. Again, again!')]);
   busy = false;
+}
+
+/* ---- side quest: spar with Vembuli (first person, hand-gesture punches via webcam) */
+let boxCtl = null;
+function boxQuit() { if (boxCtl) boxCtl.quit(); }
+function boxGame() {
+  return new Promise(resolve => {
+    const pg = player.g, saved = { pos: pg.position.clone(), vis: pg.visible, fov: camera.fov, near: camera.near, zoom: camera.zoom, order: camera.rotation.order };
+    state.mode = 'box'; busy = true; $('hud').hidden = true; $('prompt').hidden = true;
+    pg.visible = false; camera.fov = 74; camera.zoom = 1; camera.near = .05; camera.updateProjectionMatrix(); camera.rotation.order = 'YXZ'; scene.add(camera);
+    $('bxExit').onclick = () => boxQuit();
+    boxCtl = runBoxing({ T, scene, camera, g: RAY.g, ring: RAY.ring, mat, outline, add, beep, chime, keys, canvas: renderer.domElement, setTicker: f => { ticker = f; } });
+    boxCtl.promise.then(res => {
+      boxCtl = null; scene.remove(camera);
+      camera.fov = saved.fov; camera.near = saved.near; camera.zoom = saved.zoom; camera.rotation.order = saved.order; camera.updateProjectionMatrix();
+      pg.visible = saved.vis; pg.position.set(RAY.stn.x, saved.pos.y, RAY.stn.z); player.v = 0; player.heading = Math.atan2(RAY.npc.p.g.position.x - RAY.stn.x, RAY.npc.p.g.position.z - RAY.stn.z); player.vdir = player.heading; pg.rotation.y = player.heading;
+      $('hud').hidden = false; state.mode = 'explore'; resolve(res);
+    });
+  });
+}
+async function runSpar(R) {
+  const r = await boxGame();
+  if (r.quit) { await say([A(R, 'Throwing the towel before the bell? Hmm. Come back when your heart is ready.')]); return; }
+  if (r.won) {
+    save.spar = { won: true, ko: r.ko }; persist();
+    await say([A('Vembuli', r.ko ? 'Ayyo... my head is still ringing. You hit like a lorry, thambi.' : 'Fine. You win on points. Next time I will not go easy.'), A(R, 'Hmm! Hands up, eyes sharp, and the heart bigger than the opponent. That is boxing. That is also life.')]);
+    toast('Side quest complete', 'You beat Vembuli' + (r.ko ? ' by knockout!' : ' on points!') + (r.camera ? ' Every punch was your own hands.' : ''));
+  } else await say([A('Vembuli', r.lost ? 'Stay down, little boy. Boxing is not a college exam.' : 'Hmph. Draw? I will take it.'), A(R, r.lost ? 'You dropped your hands. Both fists up by the face when he winds up, then counter!' : 'Close, thambi. Land the clean ones and block when his glove turns red. Again!')]);
 }
 
 async function interactStation(s) {
@@ -2532,6 +2561,7 @@ addEventListener('keydown', e => {
   if (e.repeat) { keys.add(e.code); return; }
   keys.add(e.code);
   if (state.mode === 'folio') { if (['Escape', 'KeyE'].includes(e.code)) closeFolio(); else if (['ArrowRight', 'KeyD', 'Space', 'Enter'].includes(e.code)) slideNext(); else if (['ArrowLeft', 'KeyA'].includes(e.code)) showSlide(SL.i - 1); return; }
+  if (state.mode === 'box') { if (e.code === 'Escape') boxQuit(); return; }
   if (state.mode === 'crab') { if (e.code === 'Escape') crabQuit(); else if (['KeyE', 'Space', 'Enter'].includes(e.code)) crabGrab(); return; }
   if (state.mode === 'map') { if (['Escape', 'KeyM', 'KeyE', 'Space', 'Enter'].includes(e.code)) toggleMap(false); return; }
   if (state.mode === 'explore' && !busy && !player.inside && e.code === 'KeyM') { toggleMap(true); return; }

@@ -64,6 +64,23 @@
 #cbMsg{position:absolute;left:50%;top:30%;transform:translateX(-50%);font:900 clamp(22px,4vw,40px)/1.1 Georgia,serif;font-style:italic;text-align:center;opacity:0}#cbMsg.pop{animation:cbmsg 1.6s ease both}@keyframes cbmsg{0%{opacity:0;transform:translateX(-50%) scale(.7)}12%{opacity:1;transform:translateX(-50%) scale(1.08)}22%{transform:translateX(-50%) scale(1)}80%{opacity:1}100%{opacity:0}}
 #crabHud .cbStam{position:absolute;left:50%;bottom:54px;transform:translateX(-50%);width:min(240px,50vw);height:8px;border-radius:6px;background:#0005;overflow:hidden}#cbStam{display:block;height:100%;width:100%;background:#7fe8a0}
 #crabHud .cbHelp{position:absolute;left:0;right:0;bottom:22px;text-align:center;font-size:12px;opacity:.9}
+#boxHud{position:fixed;inset:0;z-index:48;pointer-events:none;font:700 13px system-ui,sans-serif;color:#fff;text-shadow:0 2px 8px #000a}
+#boxHud .bxTop{position:absolute;top:14px;left:50%;transform:translateX(-50%);width:min(680px,94vw);display:flex;align-items:center;gap:14px}
+#boxHud .bxSide{flex:1;display:flex;flex-direction:column;gap:4px}#boxHud .bxSide.r{align-items:flex-end}
+.bxBar{display:block;width:100%;height:12px;border-radius:7px;background:#0007;border:2px solid #fff6;overflow:hidden}.bxSide.r .bxBar{transform:scaleX(-1)}
+.bxBar i{display:block;height:100%;width:100%;background:linear-gradient(#ffd36a,#e0782a);transition:width .12s}#bxHim{background:linear-gradient(#ff7a6a,#c4251c)}
+.bxMid{text-align:center;min-width:64px}.bxMid small{display:block;font-size:10px;letter-spacing:.12em;opacity:.85}.bxMid b{font:900 30px Georgia,serif}
+#bxExit{position:absolute;top:56px;right:16px;pointer-events:auto;padding:6px 12px;border-radius:999px;border:2px solid #a77a4a77;background:#fff;color:#b5532b;font:800 11px system-ui,sans-serif;cursor:pointer}
+#bxBig{position:absolute;left:50%;top:26%;transform:translateX(-50%);font:900 clamp(30px,6vw,64px)/1 Georgia,serif;font-style:italic;text-align:center;opacity:0;white-space:nowrap}
+#bxBig.pop{animation:bxpop 1s ease-out}@keyframes bxpop{0%{opacity:0;transform:translateX(-50%) scale(1.5)}15%{opacity:1;transform:translateX(-50%) scale(1)}75%{opacity:1}100%{opacity:0}}
+#bxSub{position:absolute;left:50%;bottom:19%;transform:translateX(-50%);max-width:min(520px,90vw);padding:8px 16px;border-radius:12px;background:#0009;font:600 14px system-ui,sans-serif;text-align:center;opacity:0;transition:opacity .2s}#bxSub.show{opacity:1}#bxSub b{color:#ffd36a;margin-right:6px}
+#bxHit{position:absolute;inset:0;opacity:0;background:radial-gradient(ellipse at center,#ff2a1a00 35%,#ff2a1acc 100%)}
+#bxCam{position:absolute;right:16px;bottom:16px;width:200px;border-radius:12px;overflow:hidden;border:3px solid #a77a4a99;background:#000;box-shadow:0 4px 14px #0007}
+#bxCam video,#bxCam canvas{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;transform:scaleX(-1)}#bxCam canvas{position:absolute;left:0;top:0;height:calc(100% - 28px)}
+#bxCam small{display:block;padding:5px 8px;font:600 11px/1.25 system-ui,sans-serif;background:#1c1410;min-height:28px}#bxCam.guard{border-color:#7fc8ff}
+#bxCam.off video,#bxCam.off canvas{display:none}
+#boxHud .bxHelp{position:absolute;left:16px;bottom:16px;max-width:min(380px,calc(100vw - 260px));font-size:12px;opacity:.92}
+@media (max-width:700px){#bxCam{width:120px}#boxHud .bxHelp{display:none}}
 #envHud{position:absolute;left:16px;bottom:16px;padding:7px 14px;border-radius:999px;border:2px solid #a77a4a77;background:var(--glass,#fdf6e3);color:#3b2a22;font:700 13px system-ui,sans-serif;pointer-events:auto;cursor:pointer;box-shadow:0 4px 14px #3b2a2230}
 #flash.bolt{animation:boltgo .7s ease-out}@keyframes boltgo{0%{opacity:.7}10%{opacity:.05}22%{opacity:.6}100%{opacity:0}}
 </style>
@@ -175,6 +192,17 @@
   <div class="cbStam"><i id="cbStam"></i></div>
   <div class="cbHelp">WASD move · Shift sprint · mouse or ← → look (click the game to capture the mouse) · E / Space / click to grab</div>
 </div>
+<div id="boxHud" hidden>
+  <div class="bxTop">
+    <div class="bxSide"><b>JEEVA</b><span class="bxBar"><i id="bxMe"></i></span></div>
+    <div class="bxMid"><small id="bxRound">ROUND 1</small><b id="bxTime">40</b></div>
+    <div class="bxSide r"><b>VEMBULI</b><span class="bxBar"><i id="bxHim"></i></span></div>
+  </div>
+  <button id="bxExit" type="button">Exit · Esc</button>
+  <div id="bxBig"></div><div id="bxSub"></div><div id="bxHit"></div>
+  <div id="bxCam"><video id="bxVideo" muted playsinline></video><canvas id="bxCanvas" width="240" height="180"></canvas><small id="bxCamMsg">Starting camera…</small></div>
+  <div class="bxHelp">Fist toward the camera = straight · fast sideways sweep = hook · both fists up = block · A / D dodge · no camera: J K U I and Space</div>
+</div>
 <div id="flash"></div>
 <div id="snap" hidden><img id="snapImg" alt=""><b id="snapCap"></b></div>
 <div id="fade"></div>
@@ -182,7 +210,8 @@
 <script src="vendor/three.min.js"></script>
 <script src="chess.js?v=1793300000"></script>
 <script src="cricket.js?v=1792681426"></script>
+<script src="boxing.js?v=1793400000"></script>
 <script src="post.js?v=1792681426"></script>
-<script src="journey.js?v=1792681426"></script>
+<script src="journey.js?v=1793400000"></script>
 </body>
 </html>
