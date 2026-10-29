@@ -74,13 +74,21 @@
 #bxBig{position:absolute;left:50%;top:26%;transform:translateX(-50%);font:900 clamp(30px,6vw,64px)/1 Georgia,serif;font-style:italic;text-align:center;opacity:0;white-space:nowrap}
 #bxBig.pop{animation:bxpop 1s ease-out}@keyframes bxpop{0%{opacity:0;transform:translateX(-50%) scale(1.5)}15%{opacity:1;transform:translateX(-50%) scale(1)}75%{opacity:1}100%{opacity:0}}
 #bxSub{position:absolute;left:50%;bottom:19%;transform:translateX(-50%);max-width:min(520px,90vw);padding:8px 16px;border-radius:12px;background:#0009;font:600 14px system-ui,sans-serif;text-align:center;opacity:0;transition:opacity .2s}#bxSub.show{opacity:1}#bxSub b{color:#ffd36a;margin-right:6px}
-#bxHit{position:absolute;inset:0;opacity:0;background:radial-gradient(ellipse at center,#ff2a1a00 35%,#ff2a1acc 100%)}
+#bxHit{position:absolute;inset:0;opacity:0;background:radial-gradient(ellipse at center,#ff2a1a00 35%,#ff2a1acc 100%)}#bxHit.blue{background:radial-gradient(ellipse at center,#3aa0ff00 35%,#3aa0ffcc 100%)}
+#bxNum{position:absolute;transform:translate(-50%,0);font:900 26px Georgia,serif;font-style:italic;text-shadow:0 2px 0 #000a,0 0 10px #000a;opacity:0;white-space:nowrap}#bxNum.go{animation:bxnum .8s ease-out}@keyframes bxnum{0%{opacity:0;transform:translate(-50%,10px) scale(1.5)}15%{opacity:1;transform:translate(-50%,0) scale(1)}100%{opacity:0;transform:translate(-50%,-46px) scale(.9)}}
+#bxGuard{position:absolute;left:50%;bottom:11%;transform:translateX(-50%) scale(.8);padding:7px 20px;border-radius:999px;background:#2a7fd8e6;border:2px solid #bfe0ff;font:900 15px system-ui,sans-serif;letter-spacing:.1em;opacity:0;transition:all .12s}#bxGuard.on{opacity:1;transform:translateX(-50%) scale(1)}#bxGuard span{display:block;margin-top:4px;height:5px;border-radius:3px;background:#0006;overflow:hidden}#bxGuard i{display:block;height:100%;background:#bfe0ff}#bxGuard.low{background:#d8702ae6}
 #bxCam{position:absolute;right:16px;bottom:16px;width:200px;border-radius:12px;overflow:hidden;border:3px solid #a77a4a99;background:#000;box-shadow:0 4px 14px #0007}
-#bxCam video,#bxCam canvas{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;transform:scaleX(-1)}#bxCam canvas{position:absolute;left:0;top:0;height:calc(100% - 28px)}
+#bxCam video,#bxCam canvas{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}#bxCam video{transform:scaleX(-1)}#bxCam.noflip video{transform:none}
+#bxFlip{position:absolute;top:6px;right:6px;padding:3px 9px;border-radius:999px;border:2px solid #a77a4a99;background:#fff;color:#b5532b;font:800 10px system-ui,sans-serif;cursor:pointer;pointer-events:auto}#bxCam.off #bxFlip{display:none}#bxCam canvas{position:absolute;left:0;top:0;height:calc(100% - 28px)}
 #bxCam small{display:block;padding:5px 8px;font:600 11px/1.25 system-ui,sans-serif;background:#1c1410;min-height:28px}#bxCam.guard{border-color:#7fc8ff}
-#bxCam.off video,#bxCam.off canvas{display:none}
+#bxCam.off video,#bxCam.off canvas{display:none}#bxCam{transition:width .25s}#bxCam.big{width:300px}
+#bxCoach{position:absolute;left:16px;top:96px;width:min(300px,calc(100vw - 32px));padding:14px 16px;border-radius:14px;background:#140d09dd;border:2px solid #ffd36a88;pointer-events:auto}
+#bxCoach b{display:block;font:800 15px system-ui,sans-serif;color:#ffd36a}#bxCoach p{margin:6px 0 10px;font:600 13px/1.35 system-ui,sans-serif}
+#bxSteps{margin:0 0 10px;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px}#bxSteps li{font:600 12px system-ui,sans-serif;opacity:.55}#bxSteps li:before{content:"○ "}
+#bxSteps li.now{opacity:1;color:#ffd36a}#bxSteps li.now:before{content:"▶ "}#bxSteps li.ok{opacity:.9;color:#9ff0b0}#bxSteps li.ok:before{content:"✔ "}
+#bxSkip{padding:5px 12px;border-radius:999px;border:2px solid #a77a4a77;background:#fff;color:#b5532b;font:800 11px system-ui,sans-serif;cursor:pointer}
 #boxHud .bxHelp{position:absolute;left:16px;bottom:16px;max-width:min(380px,calc(100vw - 260px));font-size:12px;opacity:.92}
-@media (max-width:700px){#bxCam{width:120px}#boxHud .bxHelp{display:none}}
+@media (max-width:700px){#bxCam{width:120px}#bxCam.big{width:170px}#boxHud .bxHelp{display:none}#bxCoach{top:70px}}
 #envHud{position:absolute;left:16px;bottom:16px;padding:7px 14px;border-radius:999px;border:2px solid #a77a4a77;background:var(--glass,#fdf6e3);color:#3b2a22;font:700 13px system-ui,sans-serif;pointer-events:auto;cursor:pointer;box-shadow:0 4px 14px #3b2a2230}
 #flash.bolt{animation:boltgo .7s ease-out}@keyframes boltgo{0%{opacity:.7}10%{opacity:.05}22%{opacity:.6}100%{opacity:0}}
 </style>
@@ -199,9 +207,10 @@
     <div class="bxSide r"><b>VEMBULI</b><span class="bxBar"><i id="bxHim"></i></span></div>
   </div>
   <button id="bxExit" type="button">Exit · Esc</button>
-  <div id="bxBig"></div><div id="bxSub"></div><div id="bxHit"></div>
-  <div id="bxCam"><video id="bxVideo" muted playsinline></video><canvas id="bxCanvas" width="240" height="180"></canvas><small id="bxCamMsg">Starting camera…</small></div>
-  <div class="bxHelp">Fist toward the camera = straight · fast sideways sweep = hook · both fists up = block · A / D dodge · no camera: J K U I and Space</div>
+  <div id="bxBig"></div><div id="bxSub"></div><div id="bxHit"></div><div id="bxNum"></div><div id="bxGuard">&#128737; BLOCKING<span><i id="bxGuardBar"></i></span></div>
+  <div id="bxCam"><video id="bxVideo" muted playsinline></video><canvas id="bxCanvas" width="240" height="180"></canvas><small id="bxCamMsg">Starting camera…</small><button id="bxFlip" type="button" title="If your left hand shows up as the right one, press this">&#8644; Swap L/R</button></div>
+  <div id="bxCoach" hidden><b id="bxCoachT"></b><p id="bxCoachP"></p><ol id="bxSteps"></ol><button id="bxSkip" type="button">Skip warm-up</button></div>
+  <div class="bxHelp">Your hands are the controls. Push a fist straight at the camera = punch · open palm = block (it tires, so drop it between hits) · lean your head sideways = dodge</div>
 </div>
 <div id="flash"></div>
 <div id="snap" hidden><img id="snapImg" alt=""><b id="snapCap"></b></div>
@@ -210,8 +219,8 @@
 <script src="vendor/three.min.js"></script>
 <script src="chess.js?v=1793300000"></script>
 <script src="cricket.js?v=1792681426"></script>
-<script src="boxing.js?v=1793400000"></script>
+<script src="boxing.js?v=1794700000"></script>
 <script src="post.js?v=1792681426"></script>
-<script src="journey.js?v=1793400000"></script>
+<script src="journey.js?v=1794700000"></script>
 </body>
 </html>
