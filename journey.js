@@ -400,6 +400,34 @@ const OFFICE = { x: 24, z: -223, w: 26, d: 11 };
   OFFICE.bay = { x: x + BX, z: z + BZ }; OFFICE.door = { x, z: z + d / 2 + 2.4 };
   const dr = ringAt(x, z + d / 2 + 2.4); dr.ring.position.y = .16; STN.push({ id: 'office', x, z: z + d / 2 + 2.4, label: 'Enter · Grootan Technologies', kind: 'door', act: 3, ...dr });
 }
+// Blue hologram kiosk outside the office opens the complete in-game portfolio.
+{
+  const H = { x: 13.5, z: -208.2 }, g = new T.Group(); g.position.set(H.x, 0, H.z); world.add(g);
+  const blue = c => new T.MeshBasicMaterial({ color: c, transparent: true, opacity: .8, depthWrite: false });
+  const base = new T.Mesh(new T.CylinderGeometry(1.05, 1.2, .18, 32), new T.MeshToonMaterial({ color: 0x152e4a, gradientMap: toonGrad })); base.position.y = .12; base.castShadow = true; g.add(base);
+  const pad = new T.Mesh(new T.TorusGeometry(.92, .055, 8, 48), blue(0x39c9ff)); pad.rotation.x = Math.PI / 2; pad.position.y = .23; g.add(pad);
+  const beam = new T.Mesh(new T.CylinderGeometry(.56, .78, 1.5, 24, 1, true), blue(0x32bfff)); beam.material.opacity = .12; beam.position.y = 1.08; g.add(beam);
+  const rings = [.62, 1.15, 1.72].map((y, i) => { const r = new T.Mesh(new T.TorusGeometry(.76 - i * .07, .025, 6, 40), blue(i === 1 ? 0x9deaff : 0x36c5ff)); r.rotation.x = Math.PI / 2; r.position.y = y; g.add(r); return r; });
+  const screenTex = textCanvas(512, 512, (c, w, h) => {
+    const grad = c.createLinearGradient(0, 0, w, h); grad.addColorStop(0, '#08243ccc'); grad.addColorStop(1, '#1269aacc'); c.fillStyle = grad; c.fillRect(0, 0, w, h);
+    c.strokeStyle = '#62d9ff'; c.lineWidth = 8; c.strokeRect(12, 12, w - 24, h - 24);
+    c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#e8fbff'; c.shadowColor = '#39c9ff'; c.shadowBlur = 18;
+    c.font = '800 48px system-ui, sans-serif'; c.fillText('JEEVA S U', w / 2, 106);
+    c.shadowBlur = 0; c.font = '700 27px system-ui, sans-serif'; c.fillStyle = '#9deaff'; c.fillText('SOFTWARE ENGINEER', w / 2, 166);
+    c.font = '600 24px system-ui, sans-serif'; c.fillStyle = '#e8fbff'; c.fillText('EDUCATION · PROJECTS', w / 2, 252); c.fillText('EXPERIENCE · SKILLS', w / 2, 294);
+    c.font = '800 24px system-ui, sans-serif'; c.fillStyle = '#62d9ff'; c.fillText('PRESS E TO EXPLORE', w / 2, 404);
+  });
+  const screen = new T.Sprite(new T.SpriteMaterial({ map: screenTex, transparent: true, depthWrite: false, toneMapped: false })); screen.scale.set(2.25, 2.25, 1); screen.position.set(0, 2.35, .08); g.add(screen);
+  const title = wordSprite('JEEVA · PORTFOLIO', '#39c9ff'); title.scale.set(3.4, .72, 1); title.position.set(0, 3.85, 0); g.add(title);
+  const light = new T.PointLight(0x35bfff, 8, 9, 2); light.position.y = 1.4; g.add(light);
+  rounds.push({ x: H.x, z: H.z, r: 1.15 });
+  const r = ringAt(H.x, H.z + 1.7, 0x39c9ff);
+  STN.push({ id: 'portfolio', x: H.x, z: H.z + 1.7, label: 'Explore · Jeeva’s portfolio hologram', kind: 'hologram', act: -1, ...r });
+  (globalThis.PREAMB = globalThis.PREAMB || []).push(t => {
+    rings.forEach((ring, i) => { ring.rotation.z = t * (i % 2 ? -.45 : .55); ring.material.opacity = .5 + .35 * Math.sin(t * 2 + i); });
+    title.material.opacity = .78 + .22 * Math.sin(t * 2.2); light.intensity = 6 + 3 * (1 + Math.sin(t * 2.5));
+  });
+}
 // ---- inside Grootan: lobby, project screens, desks (a separate room far off the map)
 const INT = { x: 300, z: -223, W: 34, D: 22 }; let INTGLASS = null;
 {
@@ -485,29 +513,39 @@ const INT = { x: 300, z: -223, W: 34, D: 22 }; let INTGLASS = null;
     const torso = P => P.body.children[0];
     const crop = (P, col, r = .322, tilt = -.22) => { const cap = new T.Mesh(new T.SphereGeometry(r, 18, 12, 0, Math.PI * 2, 0, Math.PI * .5), new T.MeshToonMaterial({ color: col, gradientMap: toonGrad })); cap.position.set(0, .02, -.01); cap.rotation.x = tilt; P.head.add(cap); return cap; };
     const hold = (P, i) => add(P.arms[i], new T.CylinderGeometry(.055, .045, .11, 10), mat(0xf4f0e6), 0, -.7, .06, false);
-    const tag = (P, name, y) => { const tex = textCanvas(256, 64, (x, w, h) => { x.fillStyle = '#00000088'; x.beginPath(); x.roundRect ? x.roundRect(8, 8, w - 16, h - 16, 16) : x.rect(8, 8, w - 16, h - 16); x.fill(); x.font = '700 30px system-ui, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#fff'; x.fillText(name, w / 2, h / 2 + 1); });
-      const s = new T.Sprite(new T.SpriteMaterial({ map: tex, transparent: true, depthWrite: false })); s.scale.set(1.9, .48, 1); s.position.set(P.g.position.x, y, P.g.position.z); g.add(s); };
+    const tag = (P, name, y) => { const tex = textCanvas(256, 64, (x, w, h) => { x.fillStyle = '#000000aa'; x.beginPath(); x.roundRect ? x.roundRect(8, 8, w - 16, h - 16, 16) : x.rect(8, 8, w - 16, h - 16); x.fill(); x.font = '700 30px system-ui, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#fff'; x.fillText(name, w / 2, h / 2 + 1); });
+      const s = new T.Sprite(new T.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false })); s.scale.set(1.9, .48, 1); s.position.set(P.g.position.x, y, P.g.position.z); g.add(s); return s; };
+    const portfolioTag = (P, y, ready) => { const tex = textCanvas(320, 64, (x, w, h) => { x.fillStyle = ready ? '#163e32ee' : '#51442fee'; x.beginPath(); x.roundRect ? x.roundRect(8, 8, w - 16, h - 16, 16) : x.rect(8, 8, w - 16, h - 16); x.fill(); x.font = '800 28px system-ui, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = ready ? '#c8ffdc' : '#ffe6b0'; x.fillText(ready ? 'PORTFOLIO ↗' : 'PORTFOLIO SOON', w / 2, h / 2 + 1); });
+      const s = new T.Sprite(new T.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false })); s.scale.set(1.7, .36, 1); s.position.set(P.g.position.x, y, P.g.position.z); s.renderOrder = 10; g.add(s); return s; };
     // Keerthi, 23: pretty bulky and fit, full beard
     const K = person({ shirt: 0x38b0c8, pants: 0x3a4660, skin: 0xd09468, beard: true, brow: true, hair: 'bald', hairColor: 0x15100d, scale: 1.1 });
     torso(K).scale.set(1.5, 1.05, 1.35); K.arms.forEach((a, i) => { a.scale.set(1.55, 1, 1.55); a.position.x = (i ? 1 : -1) * .5; }); K.legs.forEach((l, i) => { l.scale.set(1.4, 1, 1.4); l.position.x = (i ? 1 : -1) * .2; });
     for (const sg of [-1, 1]) { sph(K.body, .2, 0x38b0c8, sg * .45, 1.5, 0); sph(K.body, .15, 0x38b0c8, sg * .24, 1.62, -.02); } crop(K, 0x15100d, .322, -.3);
     for (const sg of [-1, 1]) { const w = box(K.head, .09, .035, .06, 0x15100d, sg * .09, -.1, .265, false); w.rotation.z = sg * .3; } box(K.head, .2, .04, .06, 0x15100d, 0, -.09, .27, false); hold(K, 1);
-    K.g.position.set(-14.7, .11, -5.6); K.g.rotation.y = .85; g.add(K.g); tag(K, 'Keerthi', 3.05);
+    K.g.position.set(-14.7, .11, -5.6); K.g.rotation.y = .85; g.add(K.g); tag(K, 'Keerthi', 3.05); portfolioTag(K, 3.48, true);
     // Dhanush: lean and tall, French beard (moustache joined to a chin goatee)
     const Dh = person({ shirt: 0xd2d6cc, pants: 0x2b3a60, skin: 0xd49c70, brow: true, hairColor: 0x1f1612, scale: 1.0 });
     Dh.g.scale.set(.9, 1.2, .9); torso(Dh).scale.set(.82, 1.05, .78); Dh.arms.forEach((a, i) => { a.scale.set(.75, 1.02, .75); a.position.x = (i ? 1 : -1) * .27; }); Dh.legs.forEach((l, i) => { l.scale.set(.8, 1.02, .8); l.position.x = (i ? 1 : -1) * .13; });
     { const bc = 0x1f1612; box(Dh.head, .24, .045, .06, bc, 0, -.085, .27, false); for (const sg of [-1, 1]) { box(Dh.head, .04, .12, .045, bc, sg * .085, -.15, .262, false); const w = box(Dh.head, .09, .03, .05, bc, sg * .13, -.1, .262, false); w.rotation.z = sg * .35; } const ch = sph(Dh.head, .085, bc, 0, -.2, .23); ch.scale.set(1, 1.35, .75); }
-    hold(Dh, 1); Dh.arms[0].rotation.x = -.9; Dh.g.position.set(-12.4, .11, -3.6); Dh.g.rotation.y = -2.4; g.add(Dh.g); tag(Dh, 'Dhanush', 3.3);
+    hold(Dh, 1); Dh.arms[0].rotation.x = -.9; Dh.g.position.set(-12.4, .11, -3.6); Dh.g.rotation.y = -2.4; g.add(Dh.g); tag(Dh, 'Dhanush', 3.3); portfolioTag(Dh, 3.72, true);
     // Bharath: short, dark-skinned, buzz cut and a full beard
     const Bh = person({ shirt: 0xf2c040, pants: 0x7a6a58, skin: 0x5a3a2a, beard: true, brow: true, hair: 'bald', hairColor: 0x14100e, scale: 1.0 });
     torso(Bh).scale.set(1.12, 1, 1.05); Bh.arms.forEach(a => a.scale.set(1.1, 1, 1.1)); crop(Bh, 0x1c1a1a, .318, -.05);
     for (const sg of [-1, 1]) { const w = box(Bh.head, .09, .035, .06, 0x14100e, sg * .09, -.1, .265, false); w.rotation.z = sg * .3; } box(Bh.head, .2, .04, .06, 0x14100e, 0, -.09, .27, false);
-    Bh.g.position.set(-14.2, .11, -1.7); Bh.g.rotation.y = 2.75; g.add(Bh.g); tag(Bh, 'Bharath', 2.8); hold(Bh, 0);
+    Bh.g.position.set(-14.2, .11, -1.7); Bh.g.rotation.y = 2.75; g.add(Bh.g); tag(Bh, 'Bharath', 2.8); portfolioTag(Bh, 3.22, false); hold(Bh, 0);
     for (const [P, lx, lz] of [[K, -14.7, -5.6], [Dh, -12.4, -3.6], [Bh, -14.2, -1.7]]) solidP(lx, lz, .55);
     // chat stations: stand beside each of them and press E
     const CHAT = { keerthi: ['Keerthi', 'Chai? I just made a fresh batch. Careful, it is strong, like my deadlifts.', 'Twenty-three, and the gym is the only place where I do not get merge conflicts.'], dhanush: ['Dhanush', 'You walked in right on time. The whole team reaches this pantry at the same minute every day. Classic race condition.', 'I keep the coffee strong and the commits small. Works for both.'], bharath: ['Bharath', 'Short in height, tall in deploys. Ask anyone here.', 'The secret to good code is the same as good biscuits: dunk it at the right moment and do not let it fall apart.'] };
     INT.chat = CHAT;
-    for (const [id, lx, lz] of [['keerthi', -12.6, -7.0], ['dhanush', -10.8, -2.6], ['bharath', -12.1, -0.4]]) { const w = wp(lx, lz), r = ringAt(w.x, w.z, 0xffb86a), verb = id === 'bharath' || id === 'keerthi' || id === 'dhanush' ? 'Portfolio' : 'Chat'; STN.push({ id, x: w.x, z: w.z, label: verb + ' · ' + CHAT[id][0], kind: 'chat', ...r }); }
+    for (const [id, lx, lz] of [['keerthi', -12.6, -7.0], ['dhanush', -10.8, -2.6], ['bharath', -12.1, -0.4]]) {
+      const w = wp(lx, lz), r = ringAt(w.x, w.z, 0xffb86a);
+      STN.push({ id, x: w.x, z: w.z, label: 'Chat · ' + CHAT[id][0], kind: 'chat', ...r });
+    }
+    const PROFILE_URL = { keerthi: 'https://keerthivibisan.com/', dhanush: 'https://dhanushkarthik.com/', bharath: '' };
+    for (const [id, lx, lz] of [['keerthi', -13.5, -5.6], ['dhanush', -11.2, -3.6], ['bharath', -13.0, -1.7]]) {
+      const w = wp(lx, lz), r = ringAt(w.x, w.z, 0x73c79a);
+      STN.push({ id: 'portfolio-' + id, x: w.x, z: w.z, label: 'Portfolio · ' + CHAT[id][0], kind: 'portfolio', url: PROFILE_URL[id], ...r });
+    }
     (globalThis.PREAMB = globalThis.PREAMB || []).push(t => {
       K.arms[0].rotation.x = -1.2 + Math.sin(t * 3.2) * .18; K.arms[1].rotation.x = -.9 + Math.sin(t * 3.2 + 1) * .08; K.body.rotation.y = Math.sin(t * 1.1) * .08;
       Dh.arms[1].rotation.x = -1.35 + Math.max(0, Math.sin(t * .7)) * -.5; Dh.head.rotation.x = Math.max(0, Math.sin(t * .7)) * -.15 + .04; Dh.body.position.y = Math.sin(t * 1.4) * .012;
@@ -751,6 +789,9 @@ function envStep(dt, t, aw) {
   const C = E.cur, h = E.hour; let i = 0; while (i < KF.length - 2 && KF[i + 1].h <= h) i++;
   const A = KF[i], B = KF[i + 1], f0 = clamp((h - A.h) / (B.h - A.h), 0, 1), f = f0 * f0 * (3 - 2 * f0);
   const day = lerp(A.day, B.day, f), night = 1 - day, ind = E.indoor;
+  // Disable the moving sun shadow map at night, when its low light reveals map-edge streaks.
+  const shadowsOn = !player.inside && day > .12;
+  if (sun.castShadow !== shadowsOn) sun.castShadow = shadowsOn;
   // sun/moon light on a continuous arc: west at dusk, overhead at midnight is the moon, east at dawn
   const a = (h - 6) / 12 * Math.PI, el = Math.sin(a);
   sun.position.set(pp.x + 30 * Math.cos(a), 14 + 22 * Math.abs(el), pp.z + 14);
@@ -1352,7 +1393,7 @@ const RAY = { camp: null, stn: null, npc: null, greeted: false };   // Beedi Ray
     // the interaction ring sits a few steps in front of him, towards the road
     const sw = g.localToWorld(new T.Vector3(3.6, 0, -3.1)), rr = ringAt(sw.x, sw.z, 0xff8a2a);
     STN.push({ id: 'rayappan', x: sw.x, z: sw.z, label: 'Talk · Beedi Rayappan (training)', kind: 'side', ...rr });
-    RAY.camp = { x: sp.x, z: sp.z, ux: sp.ux, uz: sp.uz, ry: sp.ry }; RAY.stn = { x: sw.x, z: sw.z }; RAY.npc = n;
+    RAY.camp = { x: sp.x, z: sp.z, ux: sp.ux, uz: sp.uz, ry: sp.ry }; RAY.g = g; RAY.ring = { x: -1.5, z: 3.6, top: .53 }; RAY.stn = { x: sw.x, z: sw.z }; RAY.npc = n;
     AMB.push((t, dt, pp) => {
       bag.rotation.z = Math.sin(t * 1.3) * .06; bag.rotation.x = Math.sin(t * .9) * .03; spd.rotation.z = Math.sin(t * 9) * .05;
       ember.material.color.setHex(Math.sin(t * 3) > .2 ? 0xff7a2a : 0xc84a14);
@@ -1621,8 +1662,9 @@ const FOLIO = {
       'Migrated an enterprise application from Java 11 to Java 17, addressing deprecated APIs, module compatibility and build pipeline updates.',
       'Took part in architectural planning meetings, contributing to 4 major security design decisions.'] },
     { h: 'Junior Software Engineer (Intern)', meta: 'Jun 2023 – May 2024', items: ['Part of the Keycloak version migration team (19 to 23) for the product, ensuring zero downtime.'] }] },
-  ibm: { icon: '🔐', title: 'IBM PKV', sub: 'Insurance Provider', blocks: [{ items: [
+  ibm: { icon: '🔐', title: 'IBM PKV', sub: 'Insurance Provider · Accessible authentication', blocks: [{ h: 'ARIA for accessible authentication', items: [
     'Designed and implemented secure key management with Hardware Security Modules (HSMs) to protect cryptographic keys from extraction or misuse.',
+    'Added ARIA accessibility support to IBM authentication experiences for assistive technology users.',
     'Wrote data validation and cleanup scripts for production and pre-production environments.',
     'Implemented notification triggers based on authentication events, user actions and insurance workflow status.',
     'Integrated external video identification (Video-Ident) providers for secure remote identity verification.'] }] },
@@ -1630,14 +1672,21 @@ const FOLIO = {
     'Worked closely with product, QA and DevOps teams to deliver secure and scalable features.',
     'Debugged and resolved production issues across authentication, database queries and user access.',
     'Owned features end to end, from requirement understanding to deployment and post-release support.'] }] },
-  city: { icon: '🏰', title: 'CityApp · Nibelungenstadt Worms', sub: 'Municipal citizen app', blocks: [{ items: [
+  city: { icon: '🏰', title: 'CityApp · Nibelungenstadt Worms', sub: 'Municipal services · Consent management', blocks: [{ h: 'Consent management with on-demand authenticator', items: [
     'Designed and implemented a centralized consent management system to capture, store and validate user consents, in line with GDPR and municipal data protection policies.',
+    'Used an on-demand authenticator to support consent-related authentication flows.',
     'Integrated Keycloak with backend services using OAuth 2.0 / OpenID Connect for secure token-based communication.'] }] },
   skills: { icon: '🧰', title: 'The Tool Shed', sub: 'Technical skills', blocks: [], chips: [
-    ['Languages', ['Java', 'JPA', 'JDBC', 'JavaScript']], ['Frameworks', ['Spring Boot', 'ReactJS']], ['Database', ['PostgreSQL', 'MySQL']], ['Tools', ['Git', 'Docker', 'Keycloak']]] },
+    ['Languages', ['Java', 'JPA', 'JDBC', 'JavaScript']], ['Frameworks', ['Spring Boot', 'ReactJS']], ['Database', ['PostgreSQL', 'MySQL']], ['Testing & quality', ['JUnit', 'Unit testing', 'Integration testing', 'Code coverage', 'SonarQube']], ['Observability & events', ['OpenTelemetry', 'Event-driven systems']], ['Tools', ['Git', 'Docker', 'Keycloak']]] },
   ach: { icon: '🏆', title: 'Hall of Fame', sub: 'Achievements', blocks: [{ h: 'BIT Hackathon · Finalist', items: ['Finalist in a highly competitive hackathon conducted by BIT, for innovative problem-solving.'] }] },
   edu: { icon: '🎓', title: 'Bannari Amman Institute of Technology', sub: 'Sathyamangalam, India', blocks: [{ h: 'Bachelor of Engineering · Information Science and Engineering', meta: '2020 – 2024', items: ['CGPA: 8.3'] }] },
   contact: { icon: '✉️', title: 'Say hello', sub: 'Jeeva S U · Software Engineer', blocks: [], contact: [['📞', '+91 75388 81377', 'tel:+917538881377'], ['✉️', 'jeev102003@gmail.com', 'mailto:jeev102003@gmail.com']] },
+  portfolio: { icon: '👋', title: 'Jeeva S U', sub: 'Software Engineer · Chennai, India', description: 'I build secure authentication systems and backend services. My work spans enterprise identity, authentication flows, Java, Spring Boot and Keycloak.', blocks: [
+    { h: 'What I bring', items: ['End-to-end delivery, from understanding requirements through deployment and production support.', 'A security-first approach to identity, authentication and user access.', 'Experience working with product, QA and DevOps teams.'] }] },
+  projects: { icon: '🧩', title: 'Selected Projects', sub: 'Authentication · Identity · Citizen services', blocks: [
+    { h: 'IBM PKV · Accessible authentication', items: ['Added ARIA accessibility support to IBM authentication experiences.', 'Implemented secure key management using Hardware Security Modules, notification triggers and external video-identification integrations.'] },
+    { h: 'Istanbul Senin · City app', items: ['Delivered secure, scalable features and resolved authentication and access issues.', 'Worked across the feature lifecycle, from requirements to deployment and support.'] },
+    { h: 'CityApp · Worms municipal services', items: ['Built centralized consent management with an on-demand authenticator, aligned with GDPR and municipal data-protection requirements.', 'Integrated Keycloak with backend services through OAuth 2.0 and OpenID Connect.'] }] },
   keerthi: { icon: '☕', title: 'Keerthi', sub: 'Software engineer · Chai and strength training', description: 'Keerthi is 23 and enjoys a strong cup of chai and time at the gym. Explore his portfolio and selected work.', links: [
     ['Open Keerthi’s portfolio', 'https://keerthivibisan.com/'], ['About · sample link', 'https://keerthivibisan.com/#about'], ['Projects · sample link', 'https://keerthivibisan.com/#projects'], ['Contact · sample link', 'https://keerthivibisan.com/#contact'] ] },
   dhanush: { icon: '💻', title: 'Dhanush', sub: 'Software engineer · Strong coffee, small commits', description: 'Dhanush keeps the coffee strong and the commits small. Visit his portfolio for a preview of his work and projects.', links: [
@@ -1742,7 +1791,7 @@ const runStory = {
   },
   async thatha() {
     busy = true;
-    await say([A('Thatha', 'Sit. Today we play a real game.'), A('Thatha', 'You have White, the cream pieces. Click a piece, then a green square. Use Hint if you are stuck. I will go easy on you. A little.')]);
+    await say([A('Thatha', 'Sit. Today we play a real game.'), A('Thatha', 'You have White, the cream pieces. Click a piece, then a green square. To castle, click your king and then the square two steps toward your rook. Offer a draw if you dare, but I only accept when I am not winning. Use Hint if you are stuck. I will go easy on you. A little.')]);
     const res = await playChess();
     if (res === 'win') await say([A('Thatha', 'Hm. Hm! Well played. Do not tell your grandmother I lost.')]);
     else if (res === 'draw') await say([A('Thatha', 'A draw. That is how you know a worthy opponent.')]);
@@ -1898,7 +1947,7 @@ function smokeStep(dt) {
   for (const P of SMOKE) { if (P.t >= P.life) { if (P.s.visible) P.s.visible = false; continue; } P.t += dt; const k = P.t / P.life; P.s.position.x += P.vx * dt; P.s.position.z += P.vz * dt; P.s.position.y += dt * .7; P.s.scale.setScalar(.25 + k * 1.1); P.s.material.opacity = .55 * (1 - k); }
 }
 // ---- map
-const MAPN = { ravi: 'Cricket · Ravi', thatha: 'Chess · Thatha', edu: 'B.I.T.', ach: 'Hackathon Hall', office: 'Grootan Office', printer: 'Resume printer', claude: 'Claude Code', codex: 'Codex', astra: 'Astra', auto: 'Automation', ai: 'The AI tower', rayappan: 'Beedi Rayappan · crab training' };
+const MAPN = { ravi: 'Cricket · Ravi', thatha: 'Chess · Thatha', edu: 'B.I.T.', ach: 'Hackathon Hall', office: 'Grootan Office', printer: 'Resume printer', portfolio: 'Jeeva · Portfolio', claude: 'Claude Code', codex: 'Codex', astra: 'Astra', auto: 'Automation', ai: 'The AI tower', rayappan: 'Beedi Rayappan · crab training' };
 let mapBig = false, mapAcc = 0;
 function drawMap(cv, big) {
   const x = cv.getContext('2d'), W = cv.width, H = cv.height, pp = player.g.position;
@@ -1923,7 +1972,7 @@ function drawMap(cv, big) {
   const cur = curAct(), a = ACTS[cur];
   for (const s of STN) {
     const done = stationDone(s), want = a && a.need.includes(s.id) && !done;
-    const col = s.kind === 'side' ? '#ff8a2a' : s.kind === 'term' ? '#8f7cff' : s.kind === 'print' ? '#2fb8a0' : s.kind === 'folio' ? '#e8a33d' : '#d8402a';
+    const col = s.kind === 'hologram' ? '#35caff' : s.kind === 'side' ? '#ff8a2a' : s.kind === 'term' ? '#8f7cff' : s.kind === 'print' ? '#2fb8a0' : s.kind === 'folio' ? '#e8a33d' : '#d8402a';
     const sx = X(s.x, s.z), sy = Y(s.x, s.z), r = big ? 5.5 : 3.5;
     x.fillStyle = done ? '#ffffffaa' : col; x.strokeStyle = '#3b2a22'; x.lineWidth = 1.5; x.beginPath(); x.arc(sx, sy, want ? r + 2 : r, 0, 7); x.fill(); x.stroke();
     if (want) { x.strokeStyle = '#ffffff'; x.lineWidth = 2; x.beginPath(); x.arc(sx, sy, r + 5 + Math.sin(performance.now() / 200) * 1.5, 0, 7); x.stroke(); }
@@ -2195,8 +2244,9 @@ async function runRayappan() {
   const pick = await say([
     A(R, first ? 'Hey, thambi! Come here. Beedi Rayappan, that is me. Forty years I have trained fighters on this sand. The knees are old now, but the eyes still see everything.' : 'Back again? Good. In my days, a boy who stopped training was just a man with big hands.'),
     A(R, 'Boxing is not about hitting hard. It is quick hands and sharper eyes. See those little crabs? Faster than any opponent I ever corner-coached in North Madras.'),
-    { who: R, text: 'Catch three of them in one minute with your bare gloves, and I will call you a fighter. Ready?', choices: [{ label: 'Start training', reply: [A(R, 'Hmm! Gloves up. Eyes open. Go, go, go!')] }, { label: 'Maybe later', reply: [A(R, 'Crabs are patient. Come when your hands are ready.')] }] },
+    { who: R, text: 'Catch three of them in one minute with your bare gloves, and I will call you a fighter. Ready?', choices: [{ label: 'Start training', reply: [A(R, 'Hmm! Gloves up. Eyes open. Go, go, go!')] }, { label: 'Spar with Vembuli (uses your camera)', reply: [A(R, 'Vembuli? That big bull from the other gym? Hmm, brave. Two rounds, forty seconds each. Switch on your camera, thambi. Your fists are the gloves, I will teach you the moves first.')] }, { label: 'Maybe later', reply: [A(R, 'Crabs are patient. Come when your hands are ready.')] }] },
   ]);
+  if (pick === 1) { await runSpar(R); busy = false; return; }
   if (pick !== 0) { busy = false; return; }
   const r = await crabGame();
   if (r.quit) { await say([A(R, 'Running away from a crab? Hmm. Come back when you are serious.')]); }
@@ -2208,9 +2258,40 @@ async function runRayappan() {
   busy = false;
 }
 
+/* ---- side quest: spar with Vembuli (first person, hand-gesture punches via webcam) */
+let boxCtl = null;
+function boxQuit() { if (boxCtl) boxCtl.quit(); }
+function boxGame() {
+  return new Promise(resolve => {
+    const pg = player.g, saved = { pos: pg.position.clone(), vis: pg.visible, fov: camera.fov, near: camera.near, zoom: camera.zoom, order: camera.rotation.order };
+    state.mode = 'box'; busy = true; $('hud').hidden = true; $('prompt').hidden = true;
+    pg.visible = false; camera.fov = 74; camera.zoom = 1; camera.near = .05; camera.updateProjectionMatrix(); camera.rotation.order = 'YXZ'; scene.add(camera);
+    $('bxExit').onclick = () => boxQuit();
+    boxCtl = runBoxing({ T, scene, camera, g: RAY.g, ring: RAY.ring, mat, outline, add, beep, chime, setTicker: f => { ticker = f; } });
+    boxCtl.promise.then(res => {
+      boxCtl = null; scene.remove(camera);
+      camera.fov = saved.fov; camera.near = saved.near; camera.zoom = saved.zoom; camera.rotation.order = saved.order; camera.updateProjectionMatrix();
+      pg.visible = saved.vis; pg.position.set(RAY.stn.x, saved.pos.y, RAY.stn.z); player.v = 0; player.heading = Math.atan2(RAY.npc.p.g.position.x - RAY.stn.x, RAY.npc.p.g.position.z - RAY.stn.z); player.vdir = player.heading; pg.rotation.y = player.heading;
+      $('hud').hidden = false; state.mode = 'explore'; resolve(res);
+    });
+  });
+}
+async function runSpar(R) {
+  const r = await boxGame();
+  if (r.nocam) { await say([A(R, 'Without the camera I cannot see your hands, and a boxer with no hands is just a man in shorts. Allow the camera for this page and come back, thambi.')]); return; }
+  if (r.quit) { await say([A(R, 'Throwing the towel before the bell? Hmm. Come back when your heart is ready.')]); return; }
+  if (r.won) {
+    save.spar = { won: true, ko: r.ko }; persist();
+    await say([A('Vembuli', r.ko ? 'Ayyo... my head is still ringing. You hit like a lorry, thambi.' : 'Fine. You win on points. Next time I will not go easy.'), A(R, 'Hmm! Hands up, eyes sharp, and the heart bigger than the opponent. That is boxing. That is also life.')]);
+    toast('Side quest complete', 'You beat Vembuli' + (r.ko ? ' by knockout!' : ' on points!') + (r.camera ? ' Every punch was your own hands.' : ''));
+  } else await say([A('Vembuli', r.lost ? 'Stay down, little boy. Boxing is not a college exam.' : 'Hmph. Draw? I will take it.'), A(R, r.lost ? 'You dropped your hands. Show your open palm when his glove turns red, then counter!' : 'Close, thambi. Land the clean ones and block when his glove turns red. Again!')]);
+}
+
 async function interactStation(s) {
   if (s.kind === 'side') { await runRayappan(); return; }
-  if (s.kind === 'chat') { if (['keerthi', 'dhanush', 'bharath'].includes(s.id)) { openFolio(s.id); return; } const c = INT.chat[s.id]; busy = true; await say(c.slice(1).map(t => A(c[0], t))); busy = false; return; }
+  if (s.kind === 'hologram') { openFolio('portfolio'); return; }
+  if (s.kind === 'portfolio') { if (s.url) { window.open(s.url, '_blank', 'noopener,noreferrer'); } else toast('Portfolio coming soon', 'Bharath’s portfolio link is not available yet.'); return; }
+  if (s.kind === 'chat') { const c = INT.chat[s.id]; busy = true; await say(c.slice(1).map(t => A(c[0], t))); busy = false; return; }
   if (s.kind === 'print') { await printResume(); return; }
   if (s.kind === 'term') { openTerm(s.id); return; }
   if (s.kind === 'door') { await enterOffice(); return; }
@@ -2320,17 +2401,22 @@ async function leaveOffice() {
 /* ---- project folios as slideshows */
 const SL = { slides: [], i: 0 };
 const DECK = ['exp', 'ibm', 'ibb', 'city', 'skills'];
+const FULL_DECK = ['portfolio', 'edu', 'ach', 'exp', 'projects', 'skills', 'contact'];
 function slidesFor(id) {
   const d = FOLIO[id], out = []; if (!d) return out;
   out.push({ id, html: `<div class="slideCover">${d.photo ? '<img class="mePhoto" src="assets/me.jpg" alt="" onerror="this.remove()">' : ''}<div class="ficon big">${d.icon}</div><h2>${esc(d.title)}</h2><p>${esc(d.sub)}</p></div>` });
-  for (const b of d.blocks) out.push({ id, html: `<div class="slideBody"><div class="sTag">${d.icon} ${esc(d.title)}</div>${b.h ? `<h3>${esc(b.h)}</h3>` : ''}${b.meta ? `<small>${esc(b.meta)}</small>` : ''}<ul>${b.items.map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>` });
+  if (d.description) out.push({ id, html: `<div class="slideBody"><div class="sTag">${d.icon} ${esc(d.title)}</div><p>${esc(d.description)}</p></div>` });
+  for (const b of d.blocks || []) out.push({ id, html: `<div class="slideBody"><div class="sTag">${d.icon} ${esc(d.title)}</div>${b.h ? `<h3>${esc(b.h)}</h3>` : ''}${b.meta ? `<small>${esc(b.meta)}</small>` : ''}<ul>${(b.items || []).map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>` });
   if (d.chips) out.push({ id, html: `<div class="slideBody"><div class="sTag">${d.icon} ${esc(d.title)}</div>${d.chips.map(([k, v]) => `<h3>${k}</h3><div class="chips">${v.map(x => `<span>${esc(x)}</span>`).join('')}</div>`).join('')}</div>` });
+  if (d.links) out.push({ id, html: `<div class="slideBody"><div class="sTag">${d.icon} ${esc(d.title)}</div><h3>Portfolio links</h3>${d.links.map(([label, url]) => `<a class="clink" href="${url}" target="_blank" rel="noopener noreferrer">↗ ${esc(label)}</a>`).join('')}</div>` });
+  if (d.portfolioPending) out.push({ id, html: `<div class="slideBody"><div class="sTag">${d.icon} ${esc(d.title)}</div><h3>Portfolio links</h3><p>Coming soon</p></div>` });
   if (d.contact) out.push({ id, html: '<div class="slideBody"><div class="sTag">' + d.icon + ' ' + esc(d.title) + '</div>' + d.contact.map(([e, t, u]) => `<a class="clink" href="${u}">${e} ${esc(t)}</a>`).join('') + '</div>' });
   return out;
 }
 function openFolio(id) {
   if (!FOLIO[id]) return; SL.slides = []; SL.i = 0;
-  if (DECK.includes(id)) { for (const k of DECK) { if (k === id) SL.i = SL.slides.length; SL.slides.push(...slidesFor(k)); } }  // the whole Grootan deck, opened at this section
+  if (id === 'portfolio') SL.slides = FULL_DECK.flatMap(slidesFor);
+  else if (DECK.includes(id)) { for (const k of DECK) { if (k === id) SL.i = SL.slides.length; SL.slides.push(...slidesFor(k)); } }  // the whole Grootan deck, opened at this section
   else SL.slides = slidesFor(id);
   $('folio').hidden = false; state.mode = 'folio'; chime(); showSlide(SL.i);
 }
@@ -2451,7 +2537,6 @@ function animate() {
     if (camShake > .01) { camera.position.x += (Math.random() - .5) * camShake; camera.position.y += (Math.random() - .5) * camShake * .6; camShake *= .86; }
     camera.lookAt(camera.position.x, 1.2, camera.position.z - 14.5 * k);
   }
-  if (sun.castShadow === !!player.inside) sun.castShadow = !player.inside;   // indoors the sun's moving shadow map only makes the room shimmer
   sun.target.position.set(pp.x, 0, pp.z);
   if (state.mode === 'explore' && !busy) { const it = nearestInteract(); $('prompt').hidden = !it; if (it) $('prompt').textContent = 'E · ' + it.label; } else $('prompt').hidden = true;
   termStep(dt); smokeStep(dt); lifeStep(t, dt);
@@ -2477,6 +2562,7 @@ addEventListener('keydown', e => {
   if (e.repeat) { keys.add(e.code); return; }
   keys.add(e.code);
   if (state.mode === 'folio') { if (['Escape', 'KeyE'].includes(e.code)) closeFolio(); else if (['ArrowRight', 'KeyD', 'Space', 'Enter'].includes(e.code)) slideNext(); else if (['ArrowLeft', 'KeyA'].includes(e.code)) showSlide(SL.i - 1); return; }
+  if (state.mode === 'box') { if (e.code === 'Escape') boxQuit(); return; }
   if (state.mode === 'crab') { if (e.code === 'Escape') crabQuit(); else if (['KeyE', 'Space', 'Enter'].includes(e.code)) crabGrab(); return; }
   if (state.mode === 'map') { if (['Escape', 'KeyM', 'KeyE', 'Space', 'Enter'].includes(e.code)) toggleMap(false); return; }
   if (state.mode === 'explore' && !busy && !player.inside && e.code === 'KeyM') { toggleMap(true); return; }
