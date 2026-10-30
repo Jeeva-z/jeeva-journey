@@ -2244,9 +2244,9 @@ async function runRayappan() {
   const pick = await say([
     A(R, first ? 'Hey, thambi! Come here. Beedi Rayappan, that is me. Forty years I have trained fighters on this sand. The knees are old now, but the eyes still see everything.' : 'Back again? Good. In my days, a boy who stopped training was just a man with big hands.'),
     A(R, 'Boxing is not about hitting hard. It is quick hands and sharper eyes. See those little crabs? Faster than any opponent I ever corner-coached in North Madras.'),
-    { who: R, text: 'Catch three of them in one minute with your bare gloves, and I will call you a fighter. Ready?', choices: [{ label: 'Start training', reply: [A(R, 'Hmm! Gloves up. Eyes open. Go, go, go!')] }, { label: 'Spar with Vembuli (uses your camera)', reply: [A(R, 'Vembuli? That big bull from the other gym? Hmm, brave. Two rounds, forty seconds each. Switch on your camera, thambi. Your fists are the gloves, I will teach you the moves first.')] }, { label: 'Maybe later', reply: [A(R, 'Crabs are patient. Come when your hands are ready.')] }] },
+    { who: R, text: 'Catch three of them in one minute with your bare gloves, and I will call you a fighter. Ready?', choices: [{ label: 'Start training', reply: [A(R, 'Hmm! Gloves up. Eyes open. Go, go, go!')] }, { label: 'Spar with Vembuli (uses your camera)', reply: [A(R, 'Vembuli? That big bull from the other gym? Hmm, brave. Two rounds, forty seconds each. Switch on your camera, thambi. Your fists are the gloves, I will teach you the moves first.')] }, { label: 'Spar with Conor (uses your camera)', reply: [A(R, 'Conor? The loud one with the quick hands? Hmm. He talks a lot, but he does not fall easy. Two rounds, forty seconds each. Switch on your camera, thambi, and watch his glove before the swing.')] }, { label: 'Maybe later', reply: [A(R, 'Crabs are patient. Come when your hands are ready.')] }] },
   ]);
-  if (pick === 1) { await runSpar(R); busy = false; return; }
+  if (pick === 1 || pick === 2) { await runSpar(R, pick === 1 ? 'vembuli' : 'conor'); busy = false; return; }
   if (pick !== 0) { busy = false; return; }
   const r = await crabGame();
   if (r.quit) { await say([A(R, 'Running away from a crab? Hmm. Come back when you are serious.')]); }
@@ -2258,16 +2258,16 @@ async function runRayappan() {
   busy = false;
 }
 
-/* ---- side quest: spar with Vembuli (first person, hand-gesture punches via webcam) */
+/* ---- side quest: spar with Vembuli or Conor (first person, hand-gesture punches via webcam) */
 let boxCtl = null;
 function boxQuit() { if (boxCtl) boxCtl.quit(); }
-function boxGame() {
+function boxGame(opp) {
   return new Promise(resolve => {
     const pg = player.g, saved = { pos: pg.position.clone(), vis: pg.visible, fov: camera.fov, near: camera.near, zoom: camera.zoom, order: camera.rotation.order };
     state.mode = 'box'; busy = true; $('hud').hidden = true; $('prompt').hidden = true;
     pg.visible = false; camera.fov = 74; camera.zoom = 1; camera.near = .05; camera.updateProjectionMatrix(); camera.rotation.order = 'YXZ'; scene.add(camera);
     $('bxExit').onclick = () => boxQuit();
-    boxCtl = runBoxing({ T, scene, camera, g: RAY.g, ring: RAY.ring, mat, outline, add, beep, chime, setTicker: f => { ticker = f; } });
+    boxCtl = runBoxing({ opp, T, scene, camera, g: RAY.g, ring: RAY.ring, mat, outline, add, beep, chime, setTicker: f => { ticker = f; } });
     boxCtl.promise.then(res => {
       boxCtl = null; scene.remove(camera);
       camera.fov = saved.fov; camera.near = saved.near; camera.zoom = saved.zoom; camera.rotation.order = saved.order; camera.updateProjectionMatrix();
@@ -2276,15 +2276,15 @@ function boxGame() {
     });
   });
 }
-async function runSpar(R) {
-  const r = await boxGame();
+async function runSpar(R, opp) {
+  const r = await boxGame(opp), conor = opp === 'conor', W = conor ? 'Conor' : 'Vembuli';
   if (r.nocam) { await say([A(R, 'Without the camera I cannot see your hands, and a boxer with no hands is just a man in shorts. Allow the camera for this page and come back, thambi.')]); return; }
   if (r.quit) { await say([A(R, 'Throwing the towel before the bell? Hmm. Come back when your heart is ready.')]); return; }
   if (r.won) {
-    save.spar = { won: true, ko: r.ko }; persist();
-    await say([A('Vembuli', r.ko ? 'Ayyo... my head is still ringing. You hit like a lorry, thambi.' : 'Fine. You win on points. Next time I will not go easy.'), A(R, 'Hmm! Hands up, eyes sharp, and the heart bigger than the opponent. That is boxing. That is also life.')]);
-    toast('Side quest complete', 'You beat Vembuli' + (r.ko ? ' by knockout!' : ' on points!') + (r.camera ? ' Every punch was your own hands.' : ''));
-  } else await say([A('Vembuli', r.lost ? 'Stay down, little boy. Boxing is not a college exam.' : 'Hmph. Draw? I will take it.'), A(R, r.lost ? 'You dropped your hands. Show your open palm when his glove turns red, then counter!' : 'Close, thambi. Land the clean ones and block when his glove turns red. Again!')]);
+    save.spar = Object.assign(save.spar || {}, { won: true, ko: r.ko, [opp]: { won: true, ko: r.ko } }); persist();
+    await say([A(W, conor ? (r.ko ? 'Okay... okay. Nobody puts me down. Except you, apparently. Good punch, kid.' : 'Fine. You take it on points. Respect. Rematch, though.') : (r.ko ? 'Ayyo... my head is still ringing. You hit like a lorry, thambi.' : 'Fine. You win on points. Next time I will not go easy.')), A(R, 'Hmm! Hands up, eyes sharp, and the heart bigger than the opponent. That is boxing. That is also life.')]);
+    toast('Side quest complete', 'You beat ' + W + (r.ko ? ' by knockout!' : ' on points!') + (r.camera ? ' Every punch was your own hands.' : ''));
+  } else await say([A(W, conor ? (r.lost ? 'Told you. Precision beats power. Go practise.' : 'A draw? Cute. I will take it.') : (r.lost ? 'Stay down, little boy. Boxing is not a college exam.' : 'Hmph. Draw? I will take it.')), A(R, r.lost ? 'You dropped your hands. Show your open palm when his glove turns red, then counter!' : 'Close, thambi. Land the clean ones and block when his glove turns red. Again!')]);
 }
 
 async function interactStation(s) {
