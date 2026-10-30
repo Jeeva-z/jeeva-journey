@@ -1265,7 +1265,7 @@ const RAY = { camp: null, stn: null, npc: null, greeted: false };   // Beedi Ray
       const base = SHORE - wob(mx + normal.x * SHORE, mz + normal.z * SHORE);
       for (let lane = 0; lane < 2; lane++) {
         const mesh = new T.Mesh(new T.PlaneGeometry(L + 1.4, 1.15), new T.MeshBasicMaterial({ map: waveTex, transparent: true, opacity: .58 - lane * .12, depthWrite: false, side: T.DoubleSide }));
-        mesh.rotation.set(-Math.PI / 2, Math.atan2(-dz, dx), 0);
+        mesh.rotation.order = 'YXZ'; mesh.rotation.set(-Math.PI / 2, Math.atan2(-dz, dx), 0);   // lie flat first, then turn along the shore (the default order tilts strips on north-south roads up into the sky)
         mesh.position.set(mx + normal.x * (base + lane * 1.25), y + lane * .001, mz + normal.z * (base + lane * 1.25));
         mesh.renderOrder = 4; world.add(mesh);
         surfWaves.push({ mesh, mx, mz, normal, base, lane, phase: i * .78 + (side > 0 ? 0 : 1.7) + lane * 1.1 });
