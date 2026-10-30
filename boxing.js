@@ -12,7 +12,7 @@
   const lerp = (a, b, t) => a + (b - a) * t;
   const pick = a => a[Math.floor(Math.random() * a.length)];
   const DMG = { straight: 5 };
-  const ROUND_T = 40, ROUNDS = 2, HIS_HP = 240, MY_HP = 100;
+  const ROUND_T = 40, ROUNDS = 2, HIS_HP = 288, MY_HP = 100;
   const TAUNT = ['Come on, little boy!', 'Is that all you have?', 'My grandmother hits harder!', 'Hands up. Or go home.', 'Hm. Tickling me?', 'Stand still!'];
   const CORNER = ['Palm up, thambi!', 'Watch his shoulder before the swing!', 'Counter! He is open!', 'Keep moving. Breathe!', 'Jab! Push it straight at him!'];
 
@@ -119,6 +119,23 @@
     add(head, new T.BoxGeometry(.4, .17, .26), mat(DARK), 0, -.17, .12, false); add(head, new T.BoxGeometry(.26, .05, .06), mat(DARK), 0, -.07, .29, false);
     for (const s of [-1, 1]) { whites.push(add(head, new T.SphereGeometry(.05, 8, 6), mat(0xf4f0e6), s * .1, .06, .27, false)); pupils.push(add(head, new T.SphereGeometry(.025, 6, 6), mat(DARK), s * .1, .06, .31, false)); const br = add(head, new T.BoxGeometry(.14, .04, .05), mat(DARK), s * .1, .14, .29, false); br.rotation.z = s * .35; add(head, new T.SphereGeometry(.06, 8, 6), mat(SKIN), s * .31, 0, 0, false); }
     add(head, new T.SphereGeometry(.05, 8, 6), mat(SKIN), 0, -.02, .31, false);
+    // thick 80s mustache: a fat middle with two heavy wings drooping past the corners of his mouth, plus bushy sideburns
+    const stache = add(head, new T.BoxGeometry(.2, .075, .08), mat(DARK), 0, -.095, .285, false); outline(stache, 1.08);
+    for (const s of [-1, 1]) {
+      const wing = add(head, new T.BoxGeometry(.2, .07, .075), mat(DARK), s * .16, -.115, .255, false); wing.rotation.set(0, s * -.5, s * .3); outline(wing, 1.08);
+      const tip = add(head, new T.SphereGeometry(.045, 8, 6), mat(DARK), s * .27, -.17, .2, false); tip.scale.set(1, 1.5, 1);
+      const burn = add(head, new T.BoxGeometry(.06, .22, .1), mat(DARK), s * .285, -.04, .14, false); burn.rotation.z = s * .1;
+    }
+    // curly 80s perm: a tight cloud of curls over the crown, back and sides, with the hairline kept clear of the face
+    const curl = (x, y, z, r) => { const c = add(head, new T.SphereGeometry(r, 8, 6), mat(DARK), x, y, z, false); c.scale.y = .9; return c; };
+    for (let i = 0; i < 70; i++) {
+      const u = (i + .5) / 70, th = Math.acos(1 - u * 1.55), ph = i * 2.39996;   // golden-angle spread over the upper ~115 degrees of the skull
+      const x = Math.sin(th) * Math.sin(ph), y = Math.cos(th), z = Math.sin(th) * Math.cos(ph);
+      if (z > 0 && y < .55) continue;   // keep the forehead and face clear
+      curl(x * .33, y * .37 + .04, z * .33, .075 + (i % 3) * .012);
+    }
+    for (let i = 0; i < 16; i++) { const a = i / 16 * 6.283; curl(Math.sin(a) * .39, .24 + (i % 2) * .05, -Math.abs(Math.cos(a)) * .3 - .06, .09); }   // outer ring of bigger curls for the poofy volume
+    curl(0, .38, .02, .11); curl(-.12, .36, -.06, .1); curl(.12, .36, -.06, .1);
     // damage: lumps that grow from nothing as he takes punches (eyes first, then cheeks, brows and lip)
     const puff = (c, r, x, y, z) => { const m = add(head, new T.SphereGeometry(r, 10, 8), mat(c), x, y, z, false); m.scale.setScalar(.001); return m; };
     const swell = { skull, whites, pupils, eye: [puff(0x6b2f5c, .085, -.1, .07, .29), puff(0x6b2f5c, .085, .1, .07, .29)], cheek: [puff(0xb85a52, .1, -.17, -.08, .24), puff(0xb85a52, .1, .17, -.08, .24)],
