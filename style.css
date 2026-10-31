@@ -144,3 +144,9 @@ h1{margin:6px 0 10px;font-family:var(--serif);font-size:clamp(52px,11vw,92px);fo
 
 /* Ride HUD */
 #rideHud{position:fixed;top:92px;left:50%;transform:translateX(-50%);z-index:14;background:var(--glass);border:2px solid var(--wood);border-radius:30px;padding:8px 22px;font-family:var(--serif);font-size:19px;font-weight:700;color:var(--rust);pointer-events:none}
+
+/* Always allow a conversation to be dismissed without advancing its story. */
+#dlgExit{position:absolute;top:9px;right:10px;background:#fffaf0;border:2px solid var(--wood);border-radius:999px;padding:5px 11px;color:var(--rust);font:700 11px system-ui,sans-serif;cursor:pointer;z-index:1}
+#dlgExit:hover{background:#ffe9a8}
+#dlgExit:focus-visible{outline:3px solid var(--rust);outline-offset:3px}
+#dlgText{padding-top:15px}
