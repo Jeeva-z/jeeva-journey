@@ -1253,31 +1253,7 @@ const RAY = { camp: null, stn: null, npc: null, greeted: false };   // Beedi Ray
     const m = sheet(new T.MeshBasicMaterial({ map: mkTex(c), transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3 }), BY + .01); m.renderOrder = 3; return m;
   });
   AMB.push(t => foams.forEach((f, k) => { f.material.opacity = .9 * Math.pow(Math.max(0, Math.sin(t * 1.0 - k * 1.15)), 1.3); }));
-  // Curved surf lines move across the shoreline in pulses instead of only fading in place.
-  const waveCanvas = document.createElement('canvas'); waveCanvas.width = 256; waveCanvas.height = 64;
-  { const x = waveCanvas.getContext('2d'), gr = x.createLinearGradient(0, 0, 0, 64); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(.3, 'rgba(255,255,255,.16)'); gr.addColorStop(.52, 'rgba(255,255,255,.9)'); gr.addColorStop(.72, 'rgba(255,255,255,.22)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(0, 0, 256, 64);
-    for (let i = 0; i < 90; i++) { const y = 20 + Math.random() * 25; x.globalAlpha = .18 + Math.random() * .45; x.fillStyle = '#fff'; x.fillRect(Math.random() * 256, y, 2 + Math.random() * 22, 1 + Math.random() * 2); } }
-  const waveTex = mkTex(waveCanvas), surfWaves = [];
-  for (let i = 0; i < SEG.length; i++) {
-    const [ax, az, dx, dz, L2] = SEG[i], L = Math.sqrt(L2), nx = -dz / L, nz = dx / L, mx = ax + dx * .5, mz = az + dz * .5;
-    for (const side of [-1, 1]) {
-      const normal = { x: nx * side, z: nz * side }, y = .085;
-      const base = SHORE - wob(mx + normal.x * SHORE, mz + normal.z * SHORE);
-      for (let lane = 0; lane < 2; lane++) {
-        const mesh = new T.Mesh(new T.PlaneGeometry(L + 1.4, 1.15), new T.MeshBasicMaterial({ map: waveTex, transparent: true, opacity: .58 - lane * .12, depthWrite: false, side: T.DoubleSide }));
-        mesh.rotation.order = 'YXZ'; mesh.rotation.set(-Math.PI / 2, Math.atan2(-dz, dx), 0);   // lie flat first, then turn along the shore (the default order tilts strips on north-south roads up into the sky)
-        mesh.position.set(mx + normal.x * (base + lane * 1.25), y + lane * .001, mz + normal.z * (base + lane * 1.25));
-        mesh.renderOrder = 4; world.add(mesh);
-        surfWaves.push({ mesh, mx, mz, normal, base, lane, phase: i * .78 + (side > 0 ? 0 : 1.7) + lane * 1.1 });
-      }
-    }
-  }
-  AMB.push(t => surfWaves.forEach(w => {
-    const surge = Math.sin(t * 1.15 - w.phase), advance = surge * 1.15;
-    w.mesh.position.x = w.mx + w.normal.x * (w.base + w.lane * 1.25 + advance);
-    w.mesh.position.z = w.mz + w.normal.z * (w.base + w.lane * 1.25 + advance);
-    w.mesh.material.opacity = (.34 + .36 * Math.max(0, surge)) * (w.lane ? .72 : 1);
-  }));
+  // Shoreline foam above follows the distance field; avoid straight wave planes that cross inland.
 
   // ---- helpers
   const bm = (p, w, h, d, c, x, y, z) => add(p, new T.BoxGeometry(w, h, d), mat(c), x, y, z, false);
