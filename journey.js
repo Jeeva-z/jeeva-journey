@@ -1,6 +1,8 @@
 /* The Road So Far — a life-journey path game (Three.js) */
-(() => {
+(async () => {
 'use strict';
+// Paint the lightweight sky before constructing the Three.js world.
+await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 const $ = id => document.getElementById(id);
 if (!window.THREE) { document.body.innerHTML = '<p style="padding:2rem;color:#fff;font-family:sans-serif">Three.js failed to load (vendor/three.min.js).</p>'; return; }
 const T = THREE;
@@ -39,7 +41,7 @@ const host = $('game');
 let renderer;
 try {
   renderer = new T.WebGLRenderer({ antialias: true });
-} catch (e) { host.innerHTML = '<p style="padding:2rem">WebGL is unavailable in this browser.</p>'; return; }
+} catch (e) { host.innerHTML = '<p style="padding:2rem">WebGL is unavailable in this browser.</p>'; document.body.classList.add('scene-ready'); return; }
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
 renderer.outputColorSpace = T.SRGBColorSpace;
 renderer.toneMapping = T.ACESFilmicToneMapping;
@@ -626,6 +628,7 @@ function openGate(k) { const G = GATES[k]; if (!G || G.open) return; G.open = tr
   }
   for (let s = CUM[12] + 6; s < TOTAL - 4; s += 7) for (const side of [-1, 1]) { const p = pointAt(s), off = side * (6 + rnd() * 5), c = new T.Mesh(new T.OctahedronGeometry(.5 + rnd() * .5, 0), new T.MeshBasicMaterial({ color: new T.Color(rnd() < .5 ? 0xbff6ff : 0xffe9a8).multiplyScalar(1.5) })); c.position.set(p.x - p.tz * off, .6, p.z + p.tx * off); c.scale.y = 1.8; c.rotation.y = rnd() * 3; scene.add(c); }
 }
+await wait(0);
 // ---- player (built from the photos) + looks per act
 const player = person({ me: true, hair: 'none', brow: true, skin: 0xc98a5e, shirt: 0xf0a44b, pants: 0xeadcc0, scale: .62, hairColor: 0x1e1512 });
 player.g.position.set(0, .07, 42); scene.add(player.g); player.heading = Math.PI; player.v = 0; player.lean = 0;
@@ -1035,7 +1038,7 @@ for (const [frac, txt] of [[.2, 'CHESS AHEAD'], [.4, 'COLLEGE AHEAD'], [.58, 'WO
 }
 // stunt lane: one-way track that peels off the road (entry curve), launches over a gap jump (stunt) and rejoins the road (exit curve)
 const AR = { active: false, t: 0, tricks: 0, goal: 1, limit: 25, dir: 0, cd: 0, skip: false, parts: [] };
-const ARENA = { ramps: [], score: 0, combo: 0 }; const _rv = new T.Vector3();
+const ARENA = { ramps: [] }; const _rv = new T.Vector3();
 // height of the ramp surface under a world point (the bike climbs the kickers)
 function rampH(p) {
   for (const R of ARENA.ramps) { if (!R.len) continue; _rv.set(p.x, 0, p.z); R.r.worldToLocal(_rv); const u = (_rv.x + R.len / 2) / R.len; if (u < 0 || u > 1 || Math.abs(_rv.z) > R.w / 2) continue; return R.h * Math.pow(u, 1.9) * .95; }
@@ -1119,18 +1122,18 @@ function rampH(p) {
   const addFan = (px, py, pz, i) => { const f = person({ shirt: cs[i % cs.length], pants: i % 2 ? 0x2a3042 : 0x6a5a48, scale: .8 + (i % 3) * .05, hair: i % 4 === 0 ? 'none' : 'bun', hairColor: [0x2a1713, 0x4a3020, 0x1a1a1a][i % 3] }); f.g.position.set(px, py, pz); f.g.rotation.y = Math.PI; stands.add(f.g); crowd.push({ f, base: py, ph: i * 1.7 }); };
   for (let r = 0; r < 3; r++) for (let k = 0; k < 4; k++) addFan(-3 + k * 2, .78 + r * .6, r * .9 + .2, r * 4 + k);
 
-  // scoreboard (live jump / time / score), posts and floodlights
+  // Trackside challenge board (jump / time), posts and floodlights
   const sbc = document.createElement('canvas'); sbc.width = 640; sbc.height = 320; const sbx = sbc.getContext('2d'), sbt = new T.CanvasTexture(sbc); sbt.colorSpace = T.SRGBColorSpace; let sbKey = '';
   const SBX = 6.5, SBZ = LANE + 7.5;
   for (const sx of [-2.6, 2.6]) cyl(g, .14, .18, 5.4, 0x4a4e58, SBX + sx, 2.7, SBZ, 8); box(g, 6.2, 3.4, .4, 0x1c2230, SBX, 4.8, SBZ); box(g, 6.5, .2, .55, 0xd8402a, SBX, 6.6, SBZ);
   const sbm = new T.Mesh(new T.PlaneGeometry(5.8, 2.9), new T.MeshBasicMaterial({ map: sbt })); sbm.position.set(SBX, 4.8, SBZ - .21); sbm.rotation.y = Math.PI; g.add(sbm);
   solid(SBX - 2.6, SBZ, .5); solid(SBX + 2.6, SBZ, .5);
   const sbDraw = () => {
-    const act = AR.active, key = act ? [AR.tricks, Math.ceil(AR.limit - AR.t), ARENA.score].join() : 'idle' + (ARENA.best || 0); if (key === sbKey) return; sbKey = key;
+    const act = AR.active, key = act ? [AR.tricks, Math.ceil(AR.limit - AR.t)].join() : 'idle'; if (key === sbKey) return; sbKey = key;
     sbx.fillStyle = '#0d1220'; sbx.fillRect(0, 0, 640, 320); sbx.textAlign = 'center'; sbx.fillStyle = '#ffd36a'; sbx.font = '800 40px system-ui, sans-serif'; sbx.fillText('STUNT LANE', 320, 56);
     sbx.strokeStyle = '#ffffff22'; sbx.lineWidth = 3; sbx.beginPath(); sbx.moveTo(40, 76); sbx.lineTo(600, 76); sbx.stroke();
-    if (act) { sbx.fillStyle = '#7fe8a0'; sbx.font = '800 100px system-ui, sans-serif'; sbx.fillText(AR.tricks ? 'LANDED' : 'GO GO GO', 320, 180); sbx.fillStyle = '#fff'; sbx.font = '700 42px system-ui, sans-serif'; sbx.fillText('TIME ' + Math.max(0, Math.ceil(AR.limit - AR.t)) + 's   ·   SCORE ' + ARENA.score, 320, 268); }
-    else { sbx.fillStyle = '#fff'; sbx.font = '800 56px system-ui, sans-serif'; sbx.fillText('LAND THE JUMP', 320, 160); sbx.fillStyle = '#9be8ff'; sbx.font = '600 30px system-ui, sans-serif'; sbx.fillText(ARENA.best ? 'BEST SCORE ' + ARENA.best : 'RIDE UP THE LANE TO START', 320, 255); }
+    if (act) { sbx.fillStyle = '#7fe8a0'; sbx.font = '800 100px system-ui, sans-serif'; sbx.fillText(AR.tricks ? 'LANDED' : 'GO GO GO', 320, 180); sbx.fillStyle = '#fff'; sbx.font = '700 42px system-ui, sans-serif'; sbx.fillText('TIME ' + Math.max(0, Math.ceil(AR.limit - AR.t)) + 's', 320, 268); }
+    else { sbx.fillStyle = '#fff'; sbx.font = '800 56px system-ui, sans-serif'; sbx.fillText('LAND THE JUMP', 320, 160); sbx.fillStyle = '#9be8ff'; sbx.font = '600 30px system-ui, sans-serif'; sbx.fillText('RIDE UP THE LANE TO START', 320, 255); }
     sbt.needsUpdate = true; };
   sbDraw();
   for (const fx of [30, 2]) { const fz = LANE + 6; cyl(g, .12, .2, 9, 0x5c6068, fx, 4.5, fz, 8); const hd = box(g, 1.6, .4, .9, 0x2a2e36, fx, 9.1, fz); const gl = box(g, 1.4, .08, .7, 0xfff4c0, fx, 8.85, fz, false); gl.material = new T.MeshBasicMaterial({ color: 0xfff1b0 }); const hs = new T.Sprite(new T.SpriteMaterial({ map: glowTex(), color: 0xfff1b0, transparent: true, opacity: .5, depthWrite: false })); hs.position.set(fx, 8.6, fz); hs.scale.set(5, 5, 1); g.add(hs); solid(fx, fz, .5); }
@@ -1194,6 +1197,7 @@ function rampH(p) {
   });
 }
 const RAY = { camp: null, stn: null, npc: null, greeted: false };   // Beedi Rayappan's beach club (set up in the beach block)
+await wait(0);
 /* ------------------------------------------------- beach: the edge of the map is a shore with cafes, boats and fish */
 {
   const BY = .07, SAND0 = 44, SHORE = 58.5;   // sand starts 44 m from the road, the waterline is at 58.5 m (riders stop at CORR, on the wet sand)
@@ -1253,31 +1257,7 @@ const RAY = { camp: null, stn: null, npc: null, greeted: false };   // Beedi Ray
     const m = sheet(new T.MeshBasicMaterial({ map: mkTex(c), transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3 }), BY + .01); m.renderOrder = 3; return m;
   });
   AMB.push(t => foams.forEach((f, k) => { f.material.opacity = .9 * Math.pow(Math.max(0, Math.sin(t * 1.0 - k * 1.15)), 1.3); }));
-  // Curved surf lines move across the shoreline in pulses instead of only fading in place.
-  const waveCanvas = document.createElement('canvas'); waveCanvas.width = 256; waveCanvas.height = 64;
-  { const x = waveCanvas.getContext('2d'), gr = x.createLinearGradient(0, 0, 0, 64); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(.3, 'rgba(255,255,255,.16)'); gr.addColorStop(.52, 'rgba(255,255,255,.9)'); gr.addColorStop(.72, 'rgba(255,255,255,.22)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(0, 0, 256, 64);
-    for (let i = 0; i < 90; i++) { const y = 20 + Math.random() * 25; x.globalAlpha = .18 + Math.random() * .45; x.fillStyle = '#fff'; x.fillRect(Math.random() * 256, y, 2 + Math.random() * 22, 1 + Math.random() * 2); } }
-  const waveTex = mkTex(waveCanvas), surfWaves = [];
-  for (let i = 0; i < SEG.length; i++) {
-    const [ax, az, dx, dz, L2] = SEG[i], L = Math.sqrt(L2), nx = -dz / L, nz = dx / L, mx = ax + dx * .5, mz = az + dz * .5;
-    for (const side of [-1, 1]) {
-      const normal = { x: nx * side, z: nz * side }, y = .085;
-      const base = SHORE - wob(mx + normal.x * SHORE, mz + normal.z * SHORE);
-      for (let lane = 0; lane < 2; lane++) {
-        const mesh = new T.Mesh(new T.PlaneGeometry(L + 1.4, 1.15), new T.MeshBasicMaterial({ map: waveTex, transparent: true, opacity: .58 - lane * .12, depthWrite: false, side: T.DoubleSide }));
-        mesh.rotation.set(-Math.PI / 2, Math.atan2(-dz, dx), 0);
-        mesh.position.set(mx + normal.x * (base + lane * 1.25), y + lane * .001, mz + normal.z * (base + lane * 1.25));
-        mesh.renderOrder = 4; world.add(mesh);
-        surfWaves.push({ mesh, mx, mz, normal, base, lane, phase: i * .78 + (side > 0 ? 0 : 1.7) + lane * 1.1 });
-      }
-    }
-  }
-  AMB.push(t => surfWaves.forEach(w => {
-    const surge = Math.sin(t * 1.15 - w.phase), advance = surge * 1.15;
-    w.mesh.position.x = w.mx + w.normal.x * (w.base + w.lane * 1.25 + advance);
-    w.mesh.position.z = w.mz + w.normal.z * (w.base + w.lane * 1.25 + advance);
-    w.mesh.material.opacity = (.34 + .36 * Math.max(0, surge)) * (w.lane ? .72 : 1);
-  }));
+  // Shoreline foam above follows the distance field; avoid straight wave planes that cross inland.
 
   // ---- helpers
   const bm = (p, w, h, d, c, x, y, z) => add(p, new T.BoxGeometry(w, h, d), mat(c), x, y, z, false);
@@ -1603,12 +1583,22 @@ const RAY = { camp: null, stn: null, npc: null, greeted: false };   // Beedi Ray
   });
 }
 
+await wait(0);
 /* --------------------------------------------------------- dialogue */
 let dlg = null;
+const DIALOG_CANCELLED = Symbol('dialogue cancelled');
+function closeConversation() {
+  if (!dlg) return;
+  const reject = dlg.reject; dlg = null;
+  $('dlg').hidden = true; $('dlgChoices').innerHTML = '';
+  state.mode = 'explore'; busy = false; player.v = 0;
+  keys.clear(); joy.x = joy.z = 0;
+  reject(DIALOG_CANCELLED);
+}
 function say(lines) {
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
     const q = lines.map(l => typeof l === 'string' ? { who: '', text: l } : { ...l });
-    dlg = { q, i: 0, pos: 0, full: false, result: 0, resolve, waitingChoice: false };
+    dlg = { q, i: 0, pos: 0, full: false, result: 0, resolve, reject, waitingChoice: false };
     state.mode = 'dialog'; $('dlg').hidden = false;
     showLine();
   });
@@ -1767,7 +1757,7 @@ async function cricketLoop() {
   let won = false, played = false;
   while (true) {
     const r = await playCricket();
-    if (r.quit) { await say([A('Ravi', 'Leaving already? The wicket will wait for you.')]); break; }
+    if (r.quit) return { won, played, quit: true };
     played = true; if (r.won) won = true;
     const pick = await say([{ who: 'Ravi', text: r.won ? `${r.runs} runs! Cracking shots. Fancy another over?` : `${r.runs} runs. So close! Another over?`, choices: [
       { label: 'Another over', reply: [A('Ravi', 'Bowling!')] },
@@ -1787,7 +1777,7 @@ const runStory = {
     busy = true;
     await say([A('Ravi', 'Six balls, one over. Beat 12 runs or the Gandhi Street gang will never let us forget it.'), A('Ravi', 'You bat, I bowl. Press SPACE just as the ball reaches your bat. Perfect timing is a six! Hold A or D to aim. Press Esc any time to walk off.')]);
     const out = await cricketLoop();
-    busy = false; if (out.won || out.played) await completeAct(0);
+    busy = false; if (out.quit) return; if (out.won || out.played) await completeAct(0);
   },
   async thatha() {
     busy = true;
@@ -1861,7 +1851,7 @@ function landStunt() {
   for (let k = 0; k < 3; k++) { const D = DUST[dustI++ % DUST.length]; D.s.position.set(p.x + (Math.random() - .5), .3, p.z + (Math.random() - .5)); D.t = 0; D.life = .6; D.s.visible = true; }
   beep(clean ? 180 : 110, .12, 'square', .04);
   if (!clean) player.v *= .55;
-  if (s && s.arena) { if (clean) { ARENA.cheerT = 2; ARENA.combo++; ARENA.score += 100 * ARENA.combo + 50; arenaTrick(); if (ARENA.combo % 3 === 0) toast('Arena combo x' + ARENA.combo, 'Score ' + ARENA.score); } else { ARENA.combo = 0; toast('Sketchy landing', 'No points. Land straight to score.'); } }
+  if (s && s.arena) { if (clean) { ARENA.cheerT = 2; arenaTrick(); } else toast('Sketchy landing', 'Keep the bike straight for a clean landing.'); }
 }
 function driftFx(dt, len, dh) {
   const V = player.veh, p = player.g.position, isMoto = V.type === 'moto' && !player.onFoot, slip = player.slip || 0;
@@ -2244,12 +2234,12 @@ async function runRayappan() {
   const pick = await say([
     A(R, first ? 'Hey, thambi! Come here. Beedi Rayappan, that is me. Forty years I have trained fighters on this sand. The knees are old now, but the eyes still see everything.' : 'Back again? Good. In my days, a boy who stopped training was just a man with big hands.'),
     A(R, 'Boxing is not about hitting hard. It is quick hands and sharper eyes. See those little crabs? Faster than any opponent I ever corner-coached in North Madras.'),
-    { who: R, text: 'Catch three of them in one minute with your bare gloves, and I will call you a fighter. Ready?', choices: [{ label: 'Start training', reply: [A(R, 'Hmm! Gloves up. Eyes open. Go, go, go!')] }, { label: 'Spar with Vembuli (uses your camera)', reply: [A(R, 'Vembuli? That big bull from the other gym? Hmm, brave. Two rounds, forty seconds each. Switch on your camera, thambi. Your fists are the gloves, I will teach you the moves first.')] }, { label: 'Maybe later', reply: [A(R, 'Crabs are patient. Come when your hands are ready.')] }] },
+    { who: R, text: 'Catch three of them in one minute with your bare gloves, and I will call you a fighter. Ready?', choices: [{ label: 'Start training', reply: [A(R, 'Hmm! Gloves up. Eyes open. Go, go, go!')] }, { label: 'Spar with Vembuli (uses your camera)', reply: [A(R, 'Vembuli? That big bull from the other gym? Hmm, brave. Two rounds, forty seconds each. Switch on your camera, thambi. Your fists are the gloves, I will teach you the moves first.')] }, { label: 'Spar with Conor (uses your camera)', reply: [A(R, 'Conor? The loud one with the quick hands? Hmm. He talks a lot, but he does not fall easy. Two rounds, forty seconds each. Switch on your camera, thambi, and watch his glove before the swing.')] }, { label: 'Maybe later', reply: [A(R, 'Crabs are patient. Come when your hands are ready.')] }] },
   ]);
-  if (pick === 1) { await runSpar(R); busy = false; return; }
+  if (pick === 1 || pick === 2) { await runSpar(R, pick === 1 ? 'vembuli' : 'conor'); busy = false; return; }
   if (pick !== 0) { busy = false; return; }
   const r = await crabGame();
-  if (r.quit) { await say([A(R, 'Running away from a crab? Hmm. Come back when you are serious.')]); }
+  if (r.quit) { busy = false; return; }
   else if (r.won) {
     const t = Math.round(r.time * 10) / 10; save.crab = { best: Math.min(best || 1e9, t), done: true }; persist();
     await say([A(R, 'Ayyo! ' + t + ' seconds! Not bad at all, thambi. Quick hands, sharp eyes.'), A(R, 'Remember it: in the ring, in code, in life, the one who keeps getting up wins. Now go, the road is waiting.')]);
@@ -2258,16 +2248,16 @@ async function runRayappan() {
   busy = false;
 }
 
-/* ---- side quest: spar with Vembuli (first person, hand-gesture punches via webcam) */
+/* ---- side quest: spar with Vembuli or Conor (first person, hand-gesture punches via webcam) */
 let boxCtl = null;
 function boxQuit() { if (boxCtl) boxCtl.quit(); }
-function boxGame() {
+function boxGame(opp) {
   return new Promise(resolve => {
     const pg = player.g, saved = { pos: pg.position.clone(), vis: pg.visible, fov: camera.fov, near: camera.near, zoom: camera.zoom, order: camera.rotation.order };
     state.mode = 'box'; busy = true; $('hud').hidden = true; $('prompt').hidden = true;
     pg.visible = false; camera.fov = 74; camera.zoom = 1; camera.near = .05; camera.updateProjectionMatrix(); camera.rotation.order = 'YXZ'; scene.add(camera);
     $('bxExit').onclick = () => boxQuit();
-    boxCtl = runBoxing({ T, scene, camera, g: RAY.g, ring: RAY.ring, mat, outline, add, beep, chime, setTicker: f => { ticker = f; } });
+    boxCtl = runBoxing({ opp, T, scene, camera, g: RAY.g, ring: RAY.ring, mat, outline, add, beep, chime, setTicker: f => { ticker = f; } });
     boxCtl.promise.then(res => {
       boxCtl = null; scene.remove(camera);
       camera.fov = saved.fov; camera.near = saved.near; camera.zoom = saved.zoom; camera.rotation.order = saved.order; camera.updateProjectionMatrix();
@@ -2276,15 +2266,15 @@ function boxGame() {
     });
   });
 }
-async function runSpar(R) {
-  const r = await boxGame();
+async function runSpar(R, opp) {
+  const r = await boxGame(opp), conor = opp === 'conor', W = conor ? 'Conor' : 'Vembuli';
   if (r.nocam) { await say([A(R, 'Without the camera I cannot see your hands, and a boxer with no hands is just a man in shorts. Allow the camera for this page and come back, thambi.')]); return; }
-  if (r.quit) { await say([A(R, 'Throwing the towel before the bell? Hmm. Come back when your heart is ready.')]); return; }
+  if (r.quit) return;
   if (r.won) {
-    save.spar = { won: true, ko: r.ko }; persist();
-    await say([A('Vembuli', r.ko ? 'Ayyo... my head is still ringing. You hit like a lorry, thambi.' : 'Fine. You win on points. Next time I will not go easy.'), A(R, 'Hmm! Hands up, eyes sharp, and the heart bigger than the opponent. That is boxing. That is also life.')]);
-    toast('Side quest complete', 'You beat Vembuli' + (r.ko ? ' by knockout!' : ' on points!') + (r.camera ? ' Every punch was your own hands.' : ''));
-  } else await say([A('Vembuli', r.lost ? 'Stay down, little boy. Boxing is not a college exam.' : 'Hmph. Draw? I will take it.'), A(R, r.lost ? 'You dropped your hands. Show your open palm when his glove turns red, then counter!' : 'Close, thambi. Land the clean ones and block when his glove turns red. Again!')]);
+    save.spar = Object.assign(save.spar || {}, { won: true, ko: r.ko, [opp]: { won: true, ko: r.ko } }); persist();
+    await say([A(W, conor ? (r.ko ? 'Okay... okay. Nobody puts me down. Except you, apparently. Good punch, kid.' : 'Fine. You take it on points. Respect. Rematch, though.') : (r.ko ? 'Ayyo... my head is still ringing. You hit like a lorry, thambi.' : 'Fine. You win on points. Next time I will not go easy.')), A(R, 'Hmm! Hands up, eyes sharp, and the heart bigger than the opponent. That is boxing. That is also life.')]);
+    toast('Side quest complete', 'You beat ' + W + (r.ko ? ' by knockout!' : ' on points!') + (r.camera ? ' Every punch was your own hands.' : ''));
+  } else await say([A(W, conor ? (r.lost ? 'Told you. Precision beats power. Go practise.' : 'A draw? Cute. I will take it.') : (r.lost ? 'Stay down, little boy. Boxing is not a college exam.' : 'Hmph. Draw? I will take it.')), A(R, r.lost ? 'You dropped your hands. Show your open palm when his glove turns red, then counter!' : 'Close, thambi. Land the clean ones and block when his glove turns red. Again!')]);
 }
 
 async function interactStation(s) {
@@ -2318,25 +2308,18 @@ function caption(t) {
   if (i !== capI) { capI = i; if (i < 0) { $('cap').hidden = true; return; } $('capH').textContent = CAPS[i][1]; $('capP').textContent = CAPS[i][2]; $('cap').hidden = false; const c = $('cap'); c.classList.remove('in'); void c.offsetWidth; c.classList.add('in'); beep(500 + i * 70, .12, 'sine', .03); }
 }
 /* ---------------------------------------------------------- stunt arena challenge */
-function arSync() { $('arCount').textContent = AR.tricks + ' / ' + AR.goal; $('arTime').textContent = Math.max(0, Math.ceil(AR.limit - AR.t)) + 's'; $('arScore').textContent = ARENA.score; }
+function arSync() { $('arCount').textContent = AR.tricks + ' / ' + AR.goal; $('arTime').textContent = Math.max(0, Math.ceil(AR.limit - AR.t)) + 's'; }
 function arBanner(txt, sub, ms) { const b = $('arBanner'); b.innerHTML = txt + (sub ? '<small>' + sub + '</small>' : ''); b.hidden = false; b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); if (ms) setTimeout(() => { b.hidden = true; }, ms); }
 function arenaTrick() { if (!AR.active) return; AR.tricks++; arSync(); if (AR.tricks >= AR.goal) arenaWin(); }
-function arenaCancel(msg) { if (!AR.active) return; AR.active = false; AR.cd = 12; $('arHud').hidden = true; ARENA.combo = 0; if (msg) toast('Stunt arena', msg); }
-async function arenaEnter() {
-  busy = true; const pick = await say([{ who: 'Arena', text: 'STUNT CHALLENGE. Take the curve, hit the orange kicker fast and land the jump clean within 25 seconds. Press Esc any time to quit.', choices: [{ label: 'Start the challenge', reply: [NAR('Engines on!')] }, { label: 'Just ride through', reply: [NAR('Free ride. The kicker always works.')] }] }]);
-  busy = false; if (pick !== 0) { AR.cd = 20; return; }
-  await arenaIntro(); ARENA.score = 0; ARENA.combo = 0; AR.t = 0; AR.tricks = 0; AR.active = true; $('arHud').hidden = false; arSync(); arBanner('GO!', 'land the jump · 25 s', 1400); beep(880, .2, 'triangle', .06);
-}
-async function arenaIntro() {
-  state.mode = 'cut'; busy = true; AR.skip = false; player.v = 0; const c = ARENA.center; let tt = 0; arBanner('STUNT LANE', 'press any key to skip');
-  await new Promise(res => { ticker = dt => { tt += dt; const k = clamp(tt / 4.6, 0, 1), e = k * k * (3 - 2 * k), a = 4.2 - e * 1.5, R = lerp(52, 24, e), H = lerp(34, 12, e);
-    camera.position.set(c.x + Math.cos(a) * R, H, c.z + Math.sin(a) * R); camera.lookAt(c.x, 1.5, c.z);
-    if (tt > 1.8 && tt < 1.9) arBanner('ONE JUMP', 'land it clean'); if (tt >= 4.6 || AR.skip) { ticker = null; res(); } }; });
-  $('arBanner').hidden = true; state.mode = 'explore'; busy = false;
+function arenaCancel(msg) { if (!AR.active) return; AR.active = false; AR.cd = 12; $('arHud').hidden = true; $('arBanner').hidden = true; if (msg) toast('Stunt arena', msg); }
+function arenaEnter() {
+  AR.t = 0; AR.tricks = 0; AR.active = true;
+  $('arHud').hidden = false; arSync();
+  arBanner('GO!', 'land the jump · 25 s · Esc to exit', 1400); beep(880, .2, 'triangle', .06);
 }
 function arenaWin() {
-  ARENA.best = Math.max(ARENA.best || 0, ARENA.score); ARENA.cheerT = 4; AR.active = false; AR.cd = 30; $('arHud').hidden = true; chime();
-  toast('Jump landed', 'Score ' + ARENA.score + '. Ride the lane again to take the challenge again.');
+  ARENA.cheerT = 4; AR.active = false; AR.cd = 30; $('arHud').hidden = true; chime();
+  toast('Jump landed', 'Clean landing! Ride the lane again whenever you like.');
 }
 function arenaStep(dt, pp, t) {
   for (let i = AR.parts.length - 1; i >= 0; i--) { const q = AR.parts[i]; q.life -= dt; q.vy -= 5 * dt; q.sp.position.x += q.vx * dt; q.sp.position.y += q.vy * dt; q.sp.position.z += q.vz * dt; q.sp.material.opacity = Math.max(0, q.life / 1.2); if (q.life <= 0) { scene.remove(q.sp); AR.parts.splice(i, 1); } }
@@ -2347,7 +2330,7 @@ function arenaStep(dt, pp, t) {
   }
   if (AR.cd <= 0 && state.mode === 'explore' && !busy && !away && ARENA.gates) { const gi = ARENA.gates.findIndex(G => Math.hypot(pp.x - G.x, pp.z - G.z) < 2.8); if (gi >= 0) { AR.dir = gi; arenaEnter(); } }
 }
-addEventListener('keydown', e => { if (e.code === 'Escape') { if (AR.active) arenaCancel('Challenge ended. Free ride.'); } if (state.mode === 'cut' && !e.repeat) AR.skip = true; });
+addEventListener('keydown', e => { if (e.code === 'Escape') { if (AR.active) arenaCancel('Challenge ended. Free ride.'); }  });
 $('arExit').addEventListener('click', () => arenaCancel('Challenge ended. Free ride.'));
 
 
@@ -2531,7 +2514,11 @@ function animate() {
   const mp = motes.geometry.attributes.position; for (let i = 0; i < mp.count; i++) { mp.array[i * 3 + 1] += Math.sin(t + i) * .004 + .004; mp.array[i * 3] += Math.sin(t * .3 + i) * .004; if (mp.array[i * 3 + 1] > 10) mp.array[i * 3 + 1] = 0; }
   mp.needsUpdate = true; motes.position.set(pp.x, 0, pp.z);
   motes.visible = !player.inside;   // the drifting pollen glitters like sparkles indoors
-  if (!ticker) {
+  if (!ticker && state.mode === 'title') {
+    const angle = 1.15 + Math.sin(t * .08) * .18;
+    camera.position.set(pp.x + Math.sin(angle) * 62, 85, pp.z + Math.cos(angle) * 62);
+    camera.lookAt(pp.x, 110, pp.z - 120);
+  } else if (!ticker) {
     const k = .62 + .38 * sc, wantX = pp.x + Math.sin(player.heading) * player.v * .25, wantZ = pp.z + 15 * k + Math.cos(player.heading) * player.v * .25;
     camera.position.x = lerp(camera.position.x, wantX, 1 - Math.exp(-dt * 4)); camera.position.z = lerp(camera.position.z, wantZ, 1 - Math.exp(-dt * 4)); camera.position.y = lerp(camera.position.y, 12.5 * k, 1 - Math.exp(-dt * 4));
     if (camShake > .01) { camera.position.x += (Math.random() - .5) * camShake; camera.position.y += (Math.random() - .5) * camShake * .6; camShake *= .86; }
@@ -2567,14 +2554,20 @@ addEventListener('keydown', e => {
   if (state.mode === 'map') { if (['Escape', 'KeyM', 'KeyE', 'Space', 'Enter'].includes(e.code)) toggleMap(false); return; }
   if (state.mode === 'explore' && !busy && !player.inside && e.code === 'KeyM') { toggleMap(true); return; }
   if (state.mode === 'term') { if (['Escape', 'KeyE', 'Space', 'Enter'].includes(e.code)) termKey(); return; }
-  if (state.mode === 'dialog') { if (e.code === 'Space' || e.code === 'Enter' || e.code === 'KeyE') advance(); else if (/^Digit[1-4]$/.test(e.code)) pick(+e.code.slice(5) - 1); }
+  if (state.mode === 'dialog') { if (e.code === 'Escape') { e.preventDefault(); closeConversation(); return; } if (e.code === 'Space' || e.code === 'Enter' || e.code === 'KeyE') advance(); else if (/^Digit[1-4]$/.test(e.code)) pick(+e.code.slice(5) - 1); }
   else if (state.mode === 'explore' && !busy) { if (e.code === 'KeyE' || e.code === 'Enter' || e.code === 'Space') interact(); else if (e.code === 'KeyC') envNext(); else if (e.code === 'KeyT') { ENV.hour = (ENV.hour + 3) % 24; toast('🕒 Time skips ahead', 'Three hours later.'); } }
 });
 addEventListener('keyup', e => keys.delete(e.code));
 addEventListener('blur', () => keys.clear());
 renderer.domElement.addEventListener('pointerdown', e => { if (state.mode === 'chess') ChessGame.pointer(e.clientX, e.clientY, innerWidth, innerHeight); });
 $('dlg').addEventListener('click', () => advance());
-async function interact() { if (state.mode !== 'explore' || busy) return; const s = nearestInteract(); if (s) await interactStation(s); }
+$('dlgExit').addEventListener('click', e => { e.stopPropagation(); closeConversation(); });
+async function interact() {
+  if (state.mode !== 'explore' || busy) return;
+  const s = nearestInteract(); if (!s) return;
+  try { await interactStation(s); }
+  catch (error) { if (error !== DIALOG_CANCELLED) throw error; }
+}
 $('actBtn').addEventListener('pointerdown', e => { e.preventDefault(); if (state.mode === 'explore') interact(); else if (state.mode === 'term') termKey(); else if (state.mode === 'folio') closeFolio(); else if (state.mode === 'dialog') advance(); else if (state.mode === 'crab') crabGrab(); });
 {
   const stick = $('stick'), knob = $('knob'); let id = null;
@@ -2591,18 +2584,37 @@ function placeAtAct(i) {
   const spots = [[0, 40], [20, -30], [-14, -80], [-6, -150], [-18, -216]]; // fallbacks only used when resuming
   const s = spots[Math.min(i, 4)]; player.g.position.set(s[0], .07, s[1]);
 }
+async function descendFromSky() {
+  const p = player.g.position.clone(), k = .62 + .38 * targetScale;
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduced) { camera.position.set(p.x, 12.5 * k, p.z + 15 * k); camera.lookAt(p.x, 1.2, p.z + .5 * k); return; }
+  state.mode = 'arrival'; busy = true;
+  camera.position.set(p.x + Math.sin(1.15) * 62, 85, p.z + Math.cos(1.15) * 62); camera.lookAt(p.x, 125, p.z - 120);
+  await new Promise(resolve => {
+    const started = performance.now();
+    ticker = () => {
+      const elapsed = (performance.now() - started) / 1000, t = clamp(elapsed / 2.6, 0, 1), ease = t * t * (3 - 2 * t);
+      const angle = 1.15 * (1 - ease), radius = lerp(62, 15 * k, ease);
+      camera.position.set(p.x + Math.sin(angle) * radius, lerp(85, 12.5 * k, ease), p.z + Math.cos(angle) * radius);
+      camera.lookAt(p.x, lerp(125, 1.2, ease), p.z + lerp(-120, .5 * k, ease));
+      if (t >= 1) { ticker = null; resolve(); }
+    };
+  });
+}
 async function begin(fresh) {
+  if (state.mode !== 'title') return;
+  state.mode = 'arrival'; busy = true;
+  $('btnNew').disabled = $('btnCont').disabled = true;
   try { if (ac && ac.state === 'suspended') ac.resume(); beep(520, .05); } catch (e) { }
   if (fresh) { resetSave(); save.reach = 0; save.vrank = 0; save.terms = []; save.orbs = []; }
-  $('fade').classList.add('on'); await wait(500);
-  $('title').hidden = true; $('hud').hidden = false; state.mode = 'explore';
+  $('title').hidden = true; $('hud').hidden = true;
   GATES.forEach((G, k) => { if (save.done.includes(k)) { openGate(k); G.t = 1; G.g.visible = false; } });
   if (save.done.includes(1)) save.reach = Math.max(save.reach || 0, S_CHESS + 1); if (save.done.includes(2)) save.reach = Math.max(save.reach || 0, S_COLLEGE + 1);
   save.orbs = save.orbs || []; for (const O of ORBS) { O.got = save.orbs.includes(O.i); O.g.visible = !O.got; }
   const c = curAct(); applyLook(c); player.g.scale.setScalar(targetScale); placeAtAct(c);
-  player.v = 0; player.heading = Math.PI; camera.position.set(player.g.position.x, 12.5, player.g.position.z + 15);
-  refreshHud(); if (!MAPB.img) bakeMap();
-  $('fade').classList.remove('on'); await wait(500);
+  player.v = 0; player.heading = Math.PI; keys.clear(); joy.x = joy.z = 0;
+  refreshHud(); await descendFromSky();
+  state.mode = 'explore'; busy = false; $('hud').hidden = false;
   if (c === 0 && fresh) { toast('A gully, a taped tennis ball', 'Every road starts somewhere small. Explore anywhere. Press E at glowing rings.'); toastT = 9; }
 }
 try { loadSave(); } catch (e) { }
@@ -2616,6 +2628,23 @@ $('btnCont').onclick = () => begin(false);
 { const m = /act=(\d)/.exec(location.hash); if (m) { const n = +m[1]; save.done = [...Array(n).keys()]; if (n >= 3) save.visited.push('edu', 'ach'); if (n >= 4) save.visited.push('exp', 'ibm', 'ibb', 'city', 'skills'); window.__start = () => begin(false); } }
 window.__j = { ENV, RAY, crabGame, runRayappan, get crabCtl() { return crabCtl; }, get stunt() { return stunt; }, setVehicle, enterOffice, leaveOffice, openFolio, OFFICE, INT, get AR() { return AR; }, arenaTrick, ARENA, pointAt, CUM, startStunt, playCricket, state, save, player, camera, STN, GATES, SPIRE, interact, completeAct, get busy() { return busy; }, pathNear, TOTAL };
 refreshHud();
+// Prepare the world while the visible sky remains part of the opening scene.
+await wait(0);
+sun.target.position.copy(player.g.position); envStep(0, 0, 0);
+scene.updateMatrixWorld(true); renderer.compile(scene, camera);
+await wait(0);
+if (!MAPB.img) bakeMap();
 animate();
-})();
-
+await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+window.__worldReady = true;
+document.body.classList.add('scene-ready');
+if (window.__pendingArrival) {
+  const pending = window.__pendingArrival; delete window.__pendingArrival;
+  begin(pending.fresh);
+}
+})().catch(error => {
+  console.error('World startup failed', error);
+  const game = document.getElementById('game');
+  if (game) game.innerHTML = '<p style="padding:2rem">The world could not start. Please refresh to try again.</p>';
+  document.getElementById('title').hidden = false;
+});

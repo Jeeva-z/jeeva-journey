@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#6fae55">
 <title>The Road So Far · Jeeva S U</title>
-<link rel="stylesheet" href="style.css?v=1792681426">
+<link rel="stylesheet" href="style.css?v=1792681428">
 <style>
 #jbar{position:absolute;top:16px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;background:var(--glass);border:2px solid #a77a4a;border-radius:30px;padding:7px 16px;box-shadow:0 6px 0 #6b4a2c33,0 12px 28px #3b2a2233}
 #jbar span{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:#8a7260;letter-spacing:.04em;opacity:.65}
@@ -91,6 +91,12 @@
 @media (max-width:700px){#bxCam{width:120px}#bxCam.big{width:170px}#boxHud .bxHelp{display:none}#bxCoach{top:70px}}
 #envHud{position:absolute;left:16px;bottom:16px;padding:7px 14px;border-radius:999px;border:2px solid #a77a4a77;background:var(--glass,#fdf6e3);color:#3b2a22;font:700 13px system-ui,sans-serif;pointer-events:auto;cursor:pointer;box-shadow:0 4px 14px #3b2a2230}
 #flash.bolt{animation:boltgo .7s ease-out}@keyframes boltgo{0%{opacity:.7}10%{opacity:.05}22%{opacity:.6}100%{opacity:0}}
+/* The first visible frame is the scene's sky, with no loading overlay. */
+#game{background:linear-gradient(#5798d2,#a8d3ec 65%,#edf1df);overflow:hidden}
+#game:before{content:'';position:absolute;inset:-35%;background:radial-gradient(ellipse at 20% 40%,#ffffff80,transparent 16%),radial-gradient(ellipse at 75% 30%,#ffffff70,transparent 18%),radial-gradient(ellipse at 65% 70%,#ffffff55,transparent 20%);animation:skyOrbit 24s ease-in-out infinite alternate;pointer-events:none;will-change:transform}
+#game canvas{position:relative;opacity:0;transition:opacity .8s ease}.scene-ready #game canvas{opacity:1}
+@keyframes skyOrbit{from{transform:rotate(-9deg) scale(1.05)}to{transform:rotate(9deg) scale(1.16)}}
+@media(prefers-reduced-motion:reduce){#game:before{animation:none}#game canvas{transition:none}}
 </style>
 </head>
 <body>
@@ -117,6 +123,7 @@
 </div>
 
 <div id="dlg" hidden>
+  <button id="dlgExit" type="button" aria-label="Exit conversation">Exit · Esc</button>
   <div id="dlgName"></div>
   <div id="dlgText"></div>
   <div id="dlgChoices"></div>
@@ -191,7 +198,7 @@
 <div id="cap" hidden><b id="capH"></b><span id="capP"></span></div>
 <div id="mapBig" hidden><div class="mapbox"><h3>The road so far</h3><canvas id="mapBigCv" width="1100" height="431"></canvas><p>M or click to close · <span style="color:#d8402a">●</span> stories <span style="color:#e8a33d">●</span> places <span style="color:#8f7cff">●</span> agent desks <span style="color:#2fb8a0">●</span> resume printer <span style="color:#c9a040">◆</span> memories · golden arrows on the road give a speed boost</p></div></div>
 <div id="stuntTxt" hidden></div>
-<div id="arHud" hidden><b>STUNT CHALLENGE</b><span>Jump <b id="arCount">0 / 1</b></span><span>Time <b id="arTime">25s</b></span><span>Score <b id="arScore">0</b></span><button id="arExit" type="button">Exit · Esc</button></div>
+<div id="arHud" hidden><b>STUNT CHALLENGE</b><span>Jump <b id="arCount">0 / 1</b></span><span>Time <b id="arTime">25s</b></span><button id="arExit" type="button">Exit · Esc</button></div>
 <div id="arBanner" hidden></div>
 <div id="crabHud" hidden>
   <div class="cbTop"><b>CRAB TRAINING</b><span>Crabs <b id="cbCount">0 / 3</b></span><span>Time <b id="cbTime">60s</b></span><button id="cbExit" type="button">Exit · Esc</button></div>
@@ -204,7 +211,7 @@
   <div class="bxTop">
     <div class="bxSide"><b>JEEVA</b><span class="bxBar"><i id="bxMe"></i></span></div>
     <div class="bxMid"><small id="bxRound">ROUND 1</small><b id="bxTime">40</b></div>
-    <div class="bxSide r"><b>VEMBULI</b><span class="bxBar"><i id="bxHim"></i></span></div>
+    <div class="bxSide r"><b id="bxHimName">VEMBULI</b><span class="bxBar"><i id="bxHim"></i></span></div>
   </div>
   <button id="bxExit" type="button">Exit · Esc</button>
   <div id="bxBig"></div><div id="bxSub"></div><div id="bxHit"></div><div id="bxNum"></div><div id="bxGuard">&#128737; BLOCKING<span><i id="bxGuardBar"></i></span></div>
@@ -216,11 +223,22 @@
 <div id="snap" hidden><img id="snapImg" alt=""><b id="snapCap"></b></div>
 <div id="fade"></div>
 
+<script>
+// Begin responds even while the first world is being prepared.
+for (const [id, fresh] of [['btnNew', true], ['btnCont', false]]) {
+  document.getElementById(id).addEventListener('click', event => {
+    if (window.__worldReady) return;
+    event.stopImmediatePropagation();
+    window.__pendingArrival = { fresh };
+    document.getElementById('title').hidden = true;
+  }, true);
+}
+</script>
 <script src="vendor/three.min.js"></script>
 <script src="chess.js?v=1793300000"></script>
 <script src="cricket.js?v=1792681426"></script>
-<script src="boxing.js?v=1794700000"></script>
+<script src="boxing.js?v=1794800000"></script>
 <script src="post.js?v=1792681426"></script>
-<script src="journey.js?v=1794700000"></script>
+<script src="journey.js?v=1794700005"></script>
 </body>
 </html>

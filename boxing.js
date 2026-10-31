@@ -12,8 +12,14 @@
   const lerp = (a, b, t) => a + (b - a) * t;
   const pick = a => a[Math.floor(Math.random() * a.length)];
   const DMG = { straight: 5 };
-  const ROUND_T = 40, ROUNDS = 2, HIS_HP = 288, MY_HP = 100;
-  const TAUNT = ['Come on, little boy!', 'Is that all you have?', 'My grandmother hits harder!', 'Hands up. Or go home.', 'Hm. Tickling me?', 'Stand still!'];
+  const ROUND_T = 40, ROUNDS = 2, MY_HP = 100;
+  /* the two sparring partners: Vembuli is a slow bull with lots of health, Conor is quicker and hits a little harder but wears down sooner */
+  const OPPS = {
+    vembuli: { id: 'vembuli', name: 'Vembuli', label: 'VEMBULI', hp: 288, wind: 1, dmg: 1, skin: 0x9c6a48, hair: 0x1b1410, trunk: 0xc4251c, trim: 0xf4f0e6, glove: 0x1a1a1f,
+      taunts: ['Come on, little boy!', 'Is that all you have?', 'My grandmother hits harder!', 'Hands up. Or go home.', 'Hm. Tickling me?', 'Stand still!'], hurt: 'I... I can barely see you!' },
+    conor: { id: 'conor', name: 'Conor', label: 'CONOR', hp: 210, wind: .8, dmg: 1.1, skin: 0xe6bfa3, hair: 0x7a4a26, trunk: 0x1f7a3a, trim: 0xe8832a, glove: 0xf2f2f2,
+      taunts: ['Precision beats power, kid.', 'Is that your best? Cute.', 'I am not even warmed up.', 'Keep your hands up. Oh, too late.', 'Too slow. Way too slow.', 'Who taught you to punch? Nobody?'], hurt: 'Okay... okay, that one I felt.' },
+  };
   const CORNER = ['Palm up, thambi!', 'Watch his shoulder before the swing!', 'Counter! He is open!', 'Keep moving. Breathe!', 'Jab! Push it straight at him!'];
 
   /* ---------------------------------------------------------- hand tracking */
@@ -104,11 +110,11 @@
   }
 
   /* ---------------------------------------------------------------- Vembuli */
-  function buildVembuli(env) {
-    const { T, mat, add, outline } = env, SKIN = 0x7a4e32, DARK = 0x1b1410, TRUNK = 0xc4251c;
+  function buildFighter(env, o) {
+    const { T, mat, add, outline } = env, SKIN = o.skin, DARK = 0x1b1410, HAIR = o.hair, TRUNK = o.trunk;
     const root = new T.Group(), hips = new T.Group(); hips.position.y = .95; root.add(hips);
     for (const s of [-1, 1]) { add(root, new T.CylinderGeometry(.2, .17, .95, 10), mat(SKIN), s * .22, .5, 0, false); add(root, new T.BoxGeometry(.3, .14, .45), mat(0x20222a), s * .22, .07, .08, false); }
-    add(hips, new T.CylinderGeometry(.5, .46, .42, 14), mat(TRUNK), 0, .05, 0, false); add(hips, new T.CylinderGeometry(.52, .52, .09, 14), mat(0xf4f0e6), 0, .27, 0, false);
+    add(hips, new T.CylinderGeometry(.5, .46, .42, 14), mat(TRUNK), 0, .05, 0, false); add(hips, new T.CylinderGeometry(.52, .52, .09, 14), mat(o.trim), 0, .27, 0, false);
     const torso = new T.Group(); torso.position.y = .3; hips.add(torso);
     const chest = add(torso, new T.SphereGeometry(.62, 16, 12), mat(SKIN), 0, .6, 0, false); chest.scale.set(1.2, .95, .8); outline(chest, 1.04);
     const belly = add(torso, new T.SphereGeometry(.5, 14, 10), mat(SKIN), 0, .15, .08, false); belly.scale.set(1.05, .9, .85);
@@ -116,18 +122,19 @@
     const head = new T.Group(); head.position.y = 1.5; torso.add(head);
     const skull = add(head, new T.SphereGeometry(.3, 16, 12), mat(SKIN).clone(), 0, 0, 0, false); skull.scale.set(1, 1.1, 1.04); outline(skull, 1.05);
     const whites = [], pupils = [];
-    add(head, new T.BoxGeometry(.4, .17, .26), mat(DARK), 0, -.17, .12, false); add(head, new T.BoxGeometry(.26, .05, .06), mat(DARK), 0, -.07, .29, false);
+    add(head, new T.BoxGeometry(.4, .17, .26), mat(HAIR), 0, -.17, .12, false); add(head, new T.BoxGeometry(.26, .05, .06), mat(HAIR), 0, -.07, .29, false);
     for (const s of [-1, 1]) { whites.push(add(head, new T.SphereGeometry(.05, 8, 6), mat(0xf4f0e6), s * .1, .06, .27, false)); pupils.push(add(head, new T.SphereGeometry(.025, 6, 6), mat(DARK), s * .1, .06, .31, false)); const br = add(head, new T.BoxGeometry(.14, .04, .05), mat(DARK), s * .1, .14, .29, false); br.rotation.z = s * .35; add(head, new T.SphereGeometry(.06, 8, 6), mat(SKIN), s * .31, 0, 0, false); }
     add(head, new T.SphereGeometry(.05, 8, 6), mat(SKIN), 0, -.02, .31, false);
+    if (o.id === 'vembuli') {
     // thick 80s mustache: a fat middle with two heavy wings drooping past the corners of his mouth, plus bushy sideburns
-    const stache = add(head, new T.BoxGeometry(.2, .075, .08), mat(DARK), 0, -.095, .285, false); outline(stache, 1.08);
+    const stache = add(head, new T.BoxGeometry(.2, .075, .08), mat(HAIR), 0, -.095, .285, false); outline(stache, 1.08);
     for (const s of [-1, 1]) {
-      const wing = add(head, new T.BoxGeometry(.2, .07, .075), mat(DARK), s * .16, -.115, .255, false); wing.rotation.set(0, s * -.5, s * .3); outline(wing, 1.08);
-      const tip = add(head, new T.SphereGeometry(.045, 8, 6), mat(DARK), s * .27, -.17, .2, false); tip.scale.set(1, 1.5, 1);
-      const burn = add(head, new T.BoxGeometry(.06, .22, .1), mat(DARK), s * .285, -.04, .14, false); burn.rotation.z = s * .1;
+      const wing = add(head, new T.BoxGeometry(.2, .07, .075), mat(HAIR), s * .16, -.115, .255, false); wing.rotation.set(0, s * -.5, s * .3); outline(wing, 1.08);
+      const tip = add(head, new T.SphereGeometry(.045, 8, 6), mat(HAIR), s * .27, -.17, .2, false); tip.scale.set(1, 1.5, 1);
+      const burn = add(head, new T.BoxGeometry(.06, .22, .1), mat(HAIR), s * .285, -.04, .14, false); burn.rotation.z = s * .1;
     }
     // curly 80s perm: a tight cloud of curls over the crown, back and sides, with the hairline kept clear of the face
-    const curl = (x, y, z, r) => { const c = add(head, new T.SphereGeometry(r, 8, 6), mat(DARK), x, y, z, false); c.scale.y = .9; return c; };
+    const curl = (x, y, z, r) => { const c = add(head, new T.SphereGeometry(r, 8, 6), mat(HAIR), x, y, z, false); c.scale.y = .9; return c; };
     for (let i = 0; i < 70; i++) {
       const u = (i + .5) / 70, th = Math.acos(1 - u * 1.55), ph = i * 2.39996;   // golden-angle spread over the upper ~115 degrees of the skull
       const x = Math.sin(th) * Math.sin(ph), y = Math.cos(th), z = Math.sin(th) * Math.cos(ph);
@@ -136,6 +143,14 @@
     }
     for (let i = 0; i < 16; i++) { const a = i / 16 * 6.283; curl(Math.sin(a) * .39, .24 + (i % 2) * .05, -Math.abs(Math.cos(a)) * .3 - .06, .09); }   // outer ring of bigger curls for the poofy volume
     curl(0, .38, .02, .11); curl(-.12, .36, -.06, .1); curl(.12, .36, -.06, .1);
+    } else {
+      // swept-back auburn hair with a short quiff, faded sides, and tattoos across the chest
+      const cap = add(head, new T.SphereGeometry(.315, 14, 10, 0, 6.283, 0, 1.2), mat(HAIR), 0, .02, -.02, false); cap.scale.set(1, 1.12, 1.07); outline(cap, 1.04);
+      for (const s of [-1, 1]) { add(head, new T.SphereGeometry(.12, 8, 6), mat(HAIR), s * .17, .02, -.2, false); add(head, new T.SphereGeometry(.08, 8, 6), mat(HAIR), s * .27, .08, -.04, false); }
+      add(head, new T.SphereGeometry(.14, 8, 6), mat(HAIR), 0, -.05, -.24, false);
+      const quiff = add(head, new T.BoxGeometry(.24, .1, .2), mat(HAIR), 0, .35, .1, false); quiff.rotation.x = -.35;
+      for (const [x, y, r] of [[-.34, .85, .12], [.3, .95, .1], [-.2, .55, .09]]) { const tat = add(torso, new T.SphereGeometry(r, 8, 6), mat(0x2f3b36), x, y, .5, false); tat.scale.set(1.1, 1.4, .25); }
+    }
     // damage: lumps that grow from nothing as he takes punches (eyes first, then cheeks, brows and lip)
     const puff = (c, r, x, y, z) => { const m = add(head, new T.SphereGeometry(r, 10, 8), mat(c), x, y, z, false); m.scale.setScalar(.001); return m; };
     const swell = { skull, whites, pupils, eye: [puff(0x6b2f5c, .085, -.1, .07, .29), puff(0x6b2f5c, .085, .1, .07, .29)], cheek: [puff(0xb85a52, .1, -.17, -.08, .24), puff(0xb85a52, .1, .17, -.08, .24)],
@@ -149,11 +164,11 @@
       add(sh, new T.CylinderGeometry(.17, .15, .55, 10), mat(SKIN), 0, -.28, 0, false);
       const el = new T.Group(); el.position.y = -.55; sh.add(el);
       add(el, new T.CylinderGeometry(.14, .12, .5, 10), mat(SKIN), 0, -.25, 0, false);
-      const gl = add(el, new T.SphereGeometry(.2, 12, 10), mat(0x1a1a1f).clone(), 0, -.6, 0, false); gl.scale.set(1, .95, 1.1); outline(gl, 1.06);
+      const gl = add(el, new T.SphereGeometry(.2, 12, 10), mat(o.glove).clone(), 0, -.6, 0, false); gl.scale.set(1, .95, 1.1); outline(gl, 1.06);
       arms.push({ sh, el, gl, s });
     }
     root.scale.setScalar(.8);
-    return { root, hips, torso, head, arms, swell, stars };
+    return { root, hips, torso, head, arms, swell, stars, skin: o.skin, glove: o.glove };
   }
   function armTarget(name, s, t) {   // s = -1 left arm, +1 right arm of Vembuli (his own left / right, seen mirrored by us)
     const lead = s === -1;
@@ -173,7 +188,9 @@
     const { T, scene, camera, g, ring, beep, chime } = env;
     let resolveFn; const promise = new Promise(r => { resolveFn = r; });
     const hud = $('boxHud'), video = $('bxVideo'), pv = $('bxCanvas');
-    const V = buildVembuli(env); g.add(V.root);
+    const OPP = OPPS[env.opp] || OPPS.vembuli, HIS_HP = OPP.hp;
+    const V = buildFighter(env, OPP); g.add(V.root);
+    $('bxHimName').textContent = OPP.label;
     const vx0 = ring.x, vz0 = ring.z - .3;
     V.root.position.set(vx0, ring.top, vz0);
     const me = { hp: MY_HP, guard: false, gMeter: 100, gBroken: 0, slipCd: 0, dodgeT: 0, dodgeCd: 0, off: 0, offT: 0, shake: 0, flash: 0, kb: { l: 0, r: 0 } };
@@ -260,9 +277,9 @@
     function chooseAction() {
       const r = Math.random(), hard = st.round === 2 ? .12 : 0;
       if (r < .6 + hard) {
-        const k = Math.random(); him.atk = k < .4 ? { kind: 'jab', wind: .5, dmg: 7, arm: 0, heavy: false } : k < .75 ? { kind: 'cross', wind: .55, dmg: 9, arm: 1, heavy: false } : { kind: 'hook', wind: .78, dmg: 14, arm: Math.random() < .5 ? 0 : 1, heavy: true };
-        him.state = him.atk.kind === 'hook' ? 'hookwind' : 'windup'; him.t = him.atk.wind * (st.round === 2 ? .88 : 1); him.strikeDone = false; beep(240, .08, 'triangle', .03);
-      } else if (r < .85) { him.state = 'guard'; him.t = .9 + Math.random() * .5; if (Math.random() < .5) sub('Vembuli', pick(TAUNT)); }
+        const k = Math.random(); him.atk = k < .4 ? { kind: 'jab', wind: .5, dmg: 7 * OPP.dmg, arm: 0, heavy: false } : k < .75 ? { kind: 'cross', wind: .55, dmg: 9 * OPP.dmg, arm: 1, heavy: false } : { kind: 'hook', wind: .78, dmg: 14 * OPP.dmg, arm: Math.random() < .5 ? 0 : 1, heavy: true };
+        him.state = him.atk.kind === 'hook' ? 'hookwind' : 'windup'; him.t = him.atk.wind * OPP.wind * (st.round === 2 ? .88 : 1); him.strikeDone = false; beep(240, .08, 'triangle', .03);
+      } else if (r < .85) { him.state = 'guard'; him.t = .9 + Math.random() * .5; if (Math.random() < .5) sub(OPP.name, pick(OPP.taunts)); }
       else { him.latT = .55; him.lat = (Math.random() < .5 ? -1 : 1) * .55; him.state = 'idle'; him.think = .5; }
     }
 
@@ -404,7 +421,7 @@
         else if (him.state === 'strike' || him.state === 'hookstrike') { if (!him.strikeDone && him.t < .09) { him.strikeDone = true; hisStrike(); } if (him.t <= 0) { him.state = 'recover'; him.t = him.atk.heavy ? .85 : .55; } }
         else if (him.state === 'recover') { if (him.t <= 0) { him.state = 'idle'; him.think = .35 + Math.random() * .7 - (st.round === 2 ? .15 : 0); } }
         else if (him.state === 'guard' || him.state === 'stagger') { if (him.t <= 0) { him.state = 'idle'; him.think = .4; } }
-        if (st.tauntT <= 0 && st.phase === 'fight') { st.tauntT = 6 + Math.random() * 4; sub(Math.random() < .5 ? 'Vembuli' : 'Rayappan', pick(Math.random() < .5 ? TAUNT : CORNER)); }
+        if (st.tauntT <= 0 && st.phase === 'fight') { st.tauntT = 6 + Math.random() * 4; { const him_ = Math.random() < .5; sub(him_ ? OPP.name : 'Rayappan', pick(him_ ? OPP.taunts : CORNER)); }; }
       } else if (st.phase === 'break') { st.t2 -= dt; if (st.t2 <= 0) { st.round++; startRound(); } }
       // Vembuli pose
       const sway = Math.sin(now * 2.2) * .04, advance = him.state === 'windup' || him.state === 'hookwind' ? .12 : him.state === 'strike' || him.state === 'hookstrike' ? .45 : 0;
@@ -419,7 +436,7 @@
         const tg = armTarget(pose === 'down' || pose === 'win' ? 'idle' : pose, a.s, now);
         a.sh.rotation.y = lerp(a.sh.rotation.y, tg.sy || 0, k); a.sh.rotation.x = lerp(a.sh.rotation.x, tg.sx, k); a.sh.rotation.z = lerp(a.sh.rotation.z, tg.sz, k); a.el.rotation.x = lerp(a.el.rotation.x, tg.ex, k);
         const glow = (name === 'windup' || name === 'hookwind') && ((him.atk.arm === 0) === lead) ? 1 : 0;
-        a.gl.material.color.setHex(glow ? 0xff3a2a : 0x1a1a1f);
+        a.gl.material.color.setHex(glow ? 0xff3a2a : V.glove);
       });
       const twist = name === 'windup' ? -.35 : name === 'strike' ? .3 : name === 'hookwind' ? (him.atk.arm ? .5 : -.5) : name === 'hookstrike' ? (him.atk.arm ? -.45 : .45) : 0;
       V.torso.rotation.y = lerp(V.torso.rotation.y, twist, k); V.torso.rotation.x = lerp(V.torso.rotation.x, (name === 'down' ? .9 : name === 'guard' ? .12 : .04 + Math.sin(now * 2.4) * .02) - him.kick * him.kick * .22, k);
@@ -432,11 +449,11 @@
       sw.eye[0].scale.set(.001 + eR * 1.5, .001 + eR * 1.05, .001 + eR * .8); sw.eye[1].scale.set(.001 + eL * 1.5, .001 + eL * 1.05, .001 + eL * .8);
       sw.whites[0].scale.y = sw.pupils[0].scale.y = 1 - .85 * eR; sw.whites[1].scale.y = sw.pupils[1].scale.y = 1 - .85 * eL;
       sw.cheek.forEach(m => m.scale.setScalar(.001 + ch * 1.4)); sw.brow.forEach(m => m.scale.set(.001 + br * 1.5, .001 + br * .9, .001 + br * .9)); sw.lip.scale.set(.001 + lp * 1.9, .001 + lp * .8, .001 + lp * .9);
-      sw.skull.material.color.setHex(0x7a4e32).lerp(FLUSH, clamp(sn * 1.1, 0, 1) * .5);
+      sw.skull.material.color.setHex(V.skin).lerp(FLUSH, clamp(sn * 1.1, 0, 1) * .5);
       V.stars.visible = him.state === 'down'; if (V.stars.visible) { V.stars.rotation.y = now * 5; V.stars.children.forEach(c => { c.position.y = Math.sin(now * 6 + c.userData.i * 1.6) * .05; }); }
       if (st.phase === 'fight') {
         if (sn > .3 && !him.said.a) { him.said.a = 1; sub('Rayappan', 'His eye is puffing up. Keep going for the head!'); }
-        if (sn > .65 && !him.said.b) { him.said.b = 1; sub('Vembuli', 'I... I can barely see you!'); }
+        if (sn > .65 && !him.said.b) { him.said.b = 1; sub(OPP.name, OPP.hurt); }
       }
       V.root.position.y = ring.top + (name === 'down' ? -.35 : Math.abs(Math.sin(now * 4.4)) * .03);
       // camera: first person at the ring edge
