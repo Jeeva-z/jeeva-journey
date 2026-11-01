@@ -517,7 +517,7 @@ const INT = { x: 300, z: -223, W: 34, D: 22 }; let INTGLASS = null;
     const hold = (P, i) => add(P.arms[i], new T.CylinderGeometry(.055, .045, .11, 10), mat(0xf4f0e6), 0, -.7, .06, false);
     const tag = (P, name, y) => { const tex = textCanvas(256, 64, (x, w, h) => { x.fillStyle = '#000000aa'; x.beginPath(); x.roundRect ? x.roundRect(8, 8, w - 16, h - 16, 16) : x.rect(8, 8, w - 16, h - 16); x.fill(); x.font = '700 30px system-ui, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#fff'; x.fillText(name, w / 2, h / 2 + 1); });
       const s = new T.Sprite(new T.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false })); s.scale.set(1.9, .48, 1); s.position.set(P.g.position.x, y, P.g.position.z); g.add(s); return s; };
-    const portfolioTag = (P, y, ready) => { const tex = textCanvas(320, 64, (x, w, h) => { x.fillStyle = ready ? '#163e32ee' : '#51442fee'; x.beginPath(); x.roundRect ? x.roundRect(8, 8, w - 16, h - 16, 16) : x.rect(8, 8, w - 16, h - 16); x.fill(); x.font = '800 28px system-ui, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = ready ? '#c8ffdc' : '#ffe6b0'; x.fillText(ready ? 'PORTFOLIO ↗' : 'PORTFOLIO SOON', w / 2, h / 2 + 1); });
+    const portfolioTag = (P, y, ready, label = 'PORTFOLIO ↗') => { const tex = textCanvas(320, 64, (x, w, h) => { x.fillStyle = ready ? '#163e32ee' : '#51442fee'; x.beginPath(); x.roundRect ? x.roundRect(8, 8, w - 16, h - 16, 16) : x.rect(8, 8, w - 16, h - 16); x.fill(); x.font = '800 28px system-ui, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = ready ? '#c8ffdc' : '#ffe6b0'; x.fillText(ready ? label : 'PORTFOLIO SOON', w / 2, h / 2 + 1); });
       const s = new T.Sprite(new T.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false })); s.scale.set(1.7, .36, 1); s.position.set(P.g.position.x, y, P.g.position.z); s.renderOrder = 10; g.add(s); return s; };
     // Keerthi, 23: pretty bulky and fit, full beard
     const K = person({ shirt: 0x38b0c8, pants: 0x3a4660, skin: 0xd09468, beard: true, brow: true, hair: 'bald', hairColor: 0x15100d, scale: 1.1 });
@@ -534,7 +534,7 @@ const INT = { x: 300, z: -223, W: 34, D: 22 }; let INTGLASS = null;
     const Bh = person({ shirt: 0xf2c040, pants: 0x7a6a58, skin: 0x5a3a2a, beard: true, brow: true, hair: 'bald', hairColor: 0x14100e, scale: 1.0 });
     torso(Bh).scale.set(1.12, 1, 1.05); Bh.arms.forEach(a => a.scale.set(1.1, 1, 1.1)); crop(Bh, 0x1c1a1a, .318, -.05);
     for (const sg of [-1, 1]) { const w = box(Bh.head, .09, .035, .06, 0x14100e, sg * .09, -.1, .265, false); w.rotation.z = sg * .3; } box(Bh.head, .2, .04, .06, 0x14100e, 0, -.09, .27, false);
-    Bh.g.position.set(-14.2, .11, -1.7); Bh.g.rotation.y = 2.75; g.add(Bh.g); tag(Bh, 'Bharath', 2.8); portfolioTag(Bh, 3.22, false); hold(Bh, 0);
+    Bh.g.position.set(-14.2, .11, -1.7); Bh.g.rotation.y = 2.75; g.add(Bh.g); tag(Bh, 'Bharath', 2.8); portfolioTag(Bh, 3.22, true, 'PROJECT ↗'); hold(Bh, 0);
     for (const [P, lx, lz] of [[K, -14.7, -5.6], [Dh, -12.4, -3.6], [Bh, -14.2, -1.7]]) solidP(lx, lz, .55);
     // chat stations: stand beside each of them and press E
     const CHAT = { keerthi: ['Keerthi', 'Chai? I just made a fresh batch. Careful, it is strong, like my deadlifts.', 'Twenty-three, and the gym is the only place where I do not get merge conflicts.'], dhanush: ['Dhanush', 'You walked in right on time. The whole team reaches this pantry at the same minute every day. Classic race condition.', 'I keep the coffee strong and the commits small. Works for both.'], bharath: ['Bharath', 'Short in height, tall in deploys. Ask anyone here.', 'The secret to good code is the same as good biscuits: dunk it at the right moment and do not let it fall apart.'] };
@@ -543,10 +543,11 @@ const INT = { x: 300, z: -223, W: 34, D: 22 }; let INTGLASS = null;
       const w = wp(lx, lz), r = ringAt(w.x, w.z, 0xffb86a);
       STN.push({ id, x: w.x, z: w.z, label: 'Chat · ' + CHAT[id][0], kind: 'chat', ...r });
     }
-    const PROFILE_URL = { keerthi: 'https://keerthivibisan.com/', dhanush: 'https://dhanushkarthik.com/', bharath: '' };
+    const PROFILE_URL = { keerthi: 'https://keerthivibisan.com/', dhanush: 'https://dhanushkarthik.com/', bharath: 'https://orcflows.com/' };
     for (const [id, lx, lz] of [['keerthi', -13.5, -5.6], ['dhanush', -11.2, -3.6], ['bharath', -13.0, -1.7]]) {
       const w = wp(lx, lz), r = ringAt(w.x, w.z, 0x73c79a);
-      STN.push({ id: 'portfolio-' + id, x: w.x, z: w.z, label: 'Portfolio · ' + CHAT[id][0], kind: 'portfolio', url: PROFILE_URL[id], ...r });
+      const project = id === 'bharath';
+      STN.push({ id: (project ? 'project-' : 'portfolio-') + id, x: w.x, z: w.z, label: project ? 'Project · OrcFlows · Bharath' : 'Portfolio · ' + CHAT[id][0], kind: project ? 'project' : 'portfolio', url: PROFILE_URL[id], ...r });
     }
     (globalThis.PREAMB = globalThis.PREAMB || []).push(t => {
       K.arms[0].rotation.x = -1.2 + Math.sin(t * 3.2) * .18; K.arms[1].rotation.x = -.9 + Math.sin(t * 3.2 + 1) * .08; K.body.rotation.y = Math.sin(t * 1.1) * .08;
@@ -1245,19 +1246,72 @@ await wait(0);
     const seaRect = (x0, x1, z0, z1) => { if (x1 <= HOLE.x0 || x0 >= HOLE.x1 || z1 <= HOLE.z0 || z0 >= HOLE.z1) { sea(x0, x1, z0, z1); return; }
       sea(x0, HOLE.x0, z0, z1); sea(HOLE.x1, x1, z0, z1); const hx0 = Math.max(x0, HOLE.x0), hx1 = Math.min(x1, HOLE.x1); sea(hx0, hx1, z0, HOLE.z0); sea(hx0, hx1, HOLE.z1, z1); };
     seaRect(X0 - FR, X0, pcz - PH / 2 - FR, pcz + PH / 2 + FR); seaRect(X1, X1 + FR, pcz - PH / 2 - FR, pcz + PH / 2 + FR); seaRect(X0, X1, Z0 - FR, Z0); seaRect(X0, X1, Z1, Z1 + FR); }
-  // waves lapping the shore: three foam bands that surge in turn
-  const foams = [-.2, 1.0, 2.3].map(off => {
-    const c = mkCanvas(), cx = c.getContext('2d'), im = cx.createImageData(CW, CH), d = im.data, o = SHORE + off;
-    for (let i = 0, n = CW * CH; i < n; i++) {
-      const band = 1 - Math.abs(DN[i] - o) / .9; if (band <= 0) continue;
-      const x = X0 + ((i % CW) + .5) / PX, z = Z0 + (((i / CW) | 0) + .5) / PX, lace = .55 + .45 * Math.sin(x * 1.1 + Math.sin(z * .6) * 2.2) * Math.sin(z * 1.3 + Math.sin(x * .5) * 1.7);
-      d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = 255; d[i * 4 + 3] = 255 * clamp(band * 1.3, 0, 1) * clamp(lace + (Math.random() - .5) * .5, 0, 1);
-    }
-    cx.putImageData(im, 0, 0);
-    const m = sheet(new T.MeshBasicMaterial({ map: mkTex(c), transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3 }), BY + .01); m.renderOrder = 3; return m;
+  // Encode the existing shoreline distance field once; animate surf on the GPU.
+  // Two channels retain sub-centimetre precision without requiring float textures.
+  const surfCanvas = mkCanvas(), surfCtx = surfCanvas.getContext('2d');
+  const surfImage = surfCtx.createImageData(CW, CH);
+  for (let i = 0; i < DN.length; i++) {
+    const distance = Math.round(clamp(DN[i] / 256, 0, 1) * 65535);
+    surfImage.data[i * 4] = distance >> 8;
+    surfImage.data[i * 4 + 1] = distance & 255;
+    surfImage.data[i * 4 + 3] = 255;
+  }
+  surfCtx.putImageData(surfImage, 0, 0);
+  const surfDistance = new T.CanvasTexture(surfCanvas);
+  surfDistance.generateMipmaps = false;
+  surfDistance.minFilter = surfDistance.magFilter = T.LinearFilter;
+  const surfMat = new T.ShaderMaterial({
+    uniforms: {
+      distanceMap: { value: surfDistance },
+      time: { value: 0 },
+      shore: { value: SHORE },
+      extent: { value: new T.Vector2(PW, PH) }
+    },
+    transparent: true, depthWrite: false,
+    polygonOffset: true, polygonOffsetFactor: -3,
+    vertexShader: `
+      varying vec2 surfUv;
+      void main() {
+        surfUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform sampler2D distanceMap;
+      uniform float time;
+      uniform float shore;
+      uniform vec2 extent;
+      varying vec2 surfUv;
+      void main() {
+        vec2 encoded = texture2D(distanceMap, surfUv).rg;
+        float distance = dot(encoded, vec2(65280.0, 255.0)) * (256.0 / 65535.0);
+        float water = distance - shore;
+        if (water < -2.6 || water > 32.0) discard;
+        vec2 p = surfUv * extent;
+        float irregular = sin(p.x * .29 + p.y * .18) * .28
+                        + sin(p.y * .63 - p.x * .21) * .16;
+        // Increasing time moves each crest toward smaller shoreline distances.
+        float phase = (water + irregular) * .78 + time * 1.25;
+        float crest = pow(.5 + .5 * cos(phase), 18.0);
+        float lace = .65 + .35 * sin(p.x * 1.8 + sin(p.y * 1.3) + time * .7)
+                              * sin(p.y * 2.1 - time * .5);
+        float seaMask = smoothstep(-.5, 1.2, water)
+                      * (1.0 - smoothstep(15.0, 32.0, water));
+        float breaker = crest * lace * seaMask;
+        // A slower, thin wash advances onto wet sand and drains away.
+        float washEdge = -.65 + 1.15 * sin(time * .8 + irregular);
+        float wash = (1.0 - smoothstep(.08, .65, abs(water - washEdge))) * lace;
+        float ripple = pow(.5 + .5 * sin(water * 2.4 + time * 1.8 + irregular), 8.0)
+                     * seaMask * .09;
+        float alpha = clamp(breaker * .66 + wash * .65 + ripple, 0.0, .82);
+        gl_FragColor = vec4(mix(vec3(.64, .91, .91), vec3(.97, .99, .96),
+                               clamp(breaker + wash, 0.0, 1.0)), alpha);
+      }
+    `
   });
-  AMB.push(t => foams.forEach((f, k) => { f.material.opacity = .9 * Math.pow(Math.max(0, Math.sin(t * 1.0 - k * 1.15)), 1.3); }));
-  // Shoreline foam above follows the distance field; avoid straight wave planes that cross inland.
+  const surf = sheet(surfMat, BY + .025);
+  surf.renderOrder = 3;
+  AMB.push(t => { surfMat.uniforms.time.value = t; });
 
   // ---- helpers
   const bm = (p, w, h, d, c, x, y, z) => add(p, new T.BoxGeometry(w, h, d), mat(c), x, y, z, false);
@@ -1681,7 +1735,7 @@ const FOLIO = {
     ['Open Keerthi’s portfolio', 'https://keerthivibisan.com/'], ['About · sample link', 'https://keerthivibisan.com/#about'], ['Projects · sample link', 'https://keerthivibisan.com/#projects'], ['Contact · sample link', 'https://keerthivibisan.com/#contact'] ] },
   dhanush: { icon: '💻', title: 'Dhanush', sub: 'Software engineer · Strong coffee, small commits', description: 'Dhanush keeps the coffee strong and the commits small. Visit his portfolio for a preview of his work and projects.', links: [
     ['Open Dhanush’s portfolio', 'https://dhanushkarthik.com/'], ['About · sample link', 'https://dhanushkarthik.com/#about'], ['Projects · sample link', 'https://dhanushkarthik.com/#projects'], ['Contact · sample link', 'https://dhanushkarthik.com/#contact'] ] },
-  bharath: { icon: '🧑🏾‍💻', title: 'Bharath', sub: 'Software engineer · Short in height, tall in deploys', description: 'Bharath brings a sense of humor to the team and likes getting software deployed. His portfolio details and sample links can be added here.', portfolioPending: true },
+  bharath: { icon: '🧑🏾‍💻', title: 'Bharath', sub: 'Software engineer · Short in height, tall in deploys', description: 'Explore Bharath’s project OrcFlows, a visual AI workflow automation platform.', linksHeading: 'Project', links: [['Open OrcFlows', 'https://orcflows.com/']] },
 };
 const esc = t => String(t).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 function openFolio(id) {
@@ -1690,7 +1744,7 @@ function openFolio(id) {
   if (d.description) h += `<div class="fblock"><p>${esc(d.description)}</p></div>`;
   for (const b of d.blocks || []) h += `<div class="fblock">${b.h ? `<h3>${esc(b.h)}</h3>` : ''}${b.meta ? `<small>${esc(b.meta)}</small>` : ''}<ul>${b.items.map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>`;
   if (d.chips) h += d.chips.map(([k, v]) => `<div class="fblock"><h3>${k}</h3><div class="chips">${v.map(x => `<span>${esc(x)}</span>`).join('')}</div></div>`).join('');
-  if (d.links) h += `<div class="fblock"><h3>Portfolio links</h3>${d.links.map(([label, url], i) => `<a class="clink" href="${url}" target="_blank" rel="noopener noreferrer">${i ? '↗' : '🌐'} ${esc(label)}</a>`).join('')}</div>`;
+  if (d.links) h += `<div class="fblock"><h3>${esc(d.linksHeading || 'Portfolio links')}</h3>${d.links.map(([label, url], i) => `<a class="clink" href="${url}" target="_blank" rel="noopener noreferrer">${i ? '↗' : '🌐'} ${esc(label)}</a>`).join('')}</div>`;
   if (d.portfolioPending) h += '<div class="fblock"><h3>Portfolio links</h3><p>Coming soon</p><ul><li>About · sample link</li><li>Projects · sample link</li><li>Contact · sample link</li></ul></div>';
   if (d.contact) h += '<div class="fblock">' + d.contact.map(([e, t, u]) => `<a class="clink" href="${u}">${e} ${esc(t)}</a>`).join('') + '</div>';
   $('folioBody').innerHTML = h; $('folio').hidden = false; $('folioBody').scrollTop = 0; state.mode = 'folio'; chime();
@@ -2280,7 +2334,7 @@ async function runSpar(R, opp) {
 async function interactStation(s) {
   if (s.kind === 'side') { await runRayappan(); return; }
   if (s.kind === 'hologram') { openFolio('portfolio'); return; }
-  if (s.kind === 'portfolio') { if (s.url) { window.open(s.url, '_blank', 'noopener,noreferrer'); } else toast('Portfolio coming soon', 'Bharath’s portfolio link is not available yet.'); return; }
+  if (s.kind === 'portfolio' || s.kind === 'project') { if (s.url) { window.open(s.url, '_blank', 'noopener,noreferrer'); } else toast('Link coming soon', 'This link is not available yet.'); return; }
   if (s.kind === 'chat') { const c = INT.chat[s.id]; busy = true; await say(c.slice(1).map(t => A(c[0], t))); busy = false; return; }
   if (s.kind === 'print') { await printResume(); return; }
   if (s.kind === 'term') { openTerm(s.id); return; }
@@ -2391,7 +2445,7 @@ function slidesFor(id) {
   if (d.description) out.push({ id, html: `<div class="slideBody"><div class="sTag">${d.icon} ${esc(d.title)}</div><p>${esc(d.description)}</p></div>` });
   for (const b of d.blocks || []) out.push({ id, html: `<div class="slideBody"><div class="sTag">${d.icon} ${esc(d.title)}</div>${b.h ? `<h3>${esc(b.h)}</h3>` : ''}${b.meta ? `<small>${esc(b.meta)}</small>` : ''}<ul>${(b.items || []).map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>` });
   if (d.chips) out.push({ id, html: `<div class="slideBody"><div class="sTag">${d.icon} ${esc(d.title)}</div>${d.chips.map(([k, v]) => `<h3>${k}</h3><div class="chips">${v.map(x => `<span>${esc(x)}</span>`).join('')}</div>`).join('')}</div>` });
-  if (d.links) out.push({ id, html: `<div class="slideBody"><div class="sTag">${d.icon} ${esc(d.title)}</div><h3>Portfolio links</h3>${d.links.map(([label, url]) => `<a class="clink" href="${url}" target="_blank" rel="noopener noreferrer">↗ ${esc(label)}</a>`).join('')}</div>` });
+  if (d.links) out.push({ id, html: `<div class="slideBody"><div class="sTag">${d.icon} ${esc(d.title)}</div><h3>${esc(d.linksHeading || 'Portfolio links')}</h3>${d.links.map(([label, url]) => `<a class="clink" href="${url}" target="_blank" rel="noopener noreferrer">↗ ${esc(label)}</a>`).join('')}</div>` });
   if (d.portfolioPending) out.push({ id, html: `<div class="slideBody"><div class="sTag">${d.icon} ${esc(d.title)}</div><h3>Portfolio links</h3><p>Coming soon</p></div>` });
   if (d.contact) out.push({ id, html: '<div class="slideBody"><div class="sTag">' + d.icon + ' ' + esc(d.title) + '</div>' + d.contact.map(([e, t, u]) => `<a class="clink" href="${u}">${e} ${esc(t)}</a>`).join('') + '</div>' });
   return out;
