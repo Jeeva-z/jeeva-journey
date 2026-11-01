@@ -22,7 +22,7 @@
 .fnbtns button{padding:10px 20px;font-size:15px;border-radius:14px;border:2px solid var(--wood);background:var(--gold);color:var(--ink);font-weight:700;box-shadow:0 4px 0 #8a5a36}
 .fnbtns button:nth-child(2){background:#fffaf0}.fnbtns button:nth-child(3){background:#bfe3a0}
 @media(max-width:760px){#jbar span{font-size:0;gap:0}#jbar{padding:6px 10px;gap:3px;max-width:94vw}#jbar b{width:8px}#quest{top:64px}}
-#tabs{position:absolute;top:16px;left:50%;transform:translateX(-50%);display:flex;gap:8px;pointer-events:auto;z-index:5}#tabs a{display:flex;align-items:center;gap:6px;padding:8px 16px;background:var(--glass);border:2px solid #a77a4a77;border-radius:999px;color:var(--rust);font-weight:800;font-size:13px;letter-spacing:.05em;text-decoration:none;box-shadow:0 4px 14px #3b2a2230}#tabs a:hover{background:#fff6e4}#tabs a i{font-style:normal}
+#tabs{position:absolute;top:16px;left:50%;transform:translateX(-50%);display:flex;gap:8px;pointer-events:auto;z-index:5}#tabs a,#tabs button{display:flex;align-items:center;gap:6px;padding:8px 16px;background:var(--glass);border:2px solid #a77a4a77;border-radius:999px;color:var(--rust);font-weight:800;font-size:13px;letter-spacing:.05em;text-decoration:none;box-shadow:0 4px 14px #3b2a2230}#tabs a:hover,#tabs button:hover{background:#fff6e4}#tabs a i{font-style:normal}
 @media(max-width:760px){#tabs{left:auto;right:12px;transform:none}}
 #term{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(680px,92vw);height:min(400px,70vh);background:#0e1320ee;border:1px solid #33405e;border-radius:12px;box-shadow:0 20px 60px #0008,0 0 0 1px #ffffff10 inset;z-index:60;display:flex;flex-direction:column;font:14px/1.55 ui-monospace,Menlo,Consolas,monospace;color:#c9d4e8;overflow:hidden}
 #term .tbar{display:flex;align-items:center;gap:7px;padding:9px 12px;background:#1b2236;border-bottom:1px solid #2a3450}#term .tbar i{width:11px;height:11px;border-radius:50%;background:#ff6b5e}#term .tbar i:nth-child(2){background:#ffc65a}#term .tbar i:nth-child(3){background:#5fd38a}
@@ -104,12 +104,24 @@
 
 <div id="hud" hidden>
   <canvas id="miniMap" width="180" height="180" title="Map (M)"></canvas>
-  <nav id="tabs"><a href="#" id="tabMap">Map <i>&#128506;</i></a><a href="#" id="tabResume">Resume <i>&#128424;</i></a></nav>
+  <nav id="tabs"><a href="#" id="tabMap">Map <i>&#128506;</i></a><a href="#" id="tabResume">Resume <i>&#128424;</i></a><button id="gotoBtn" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="gotoWheel">Go to <span aria-hidden="true">➤</span></button></nav>
   <div class="panel" id="quest" style="top:76px">
     <small id="qChapter">Chapter 1</small>
     <strong id="qTitle">The Gully</strong>
     <p id="qText"></p>
     <div id="qArrowRow"><span id="qArrow">↑</span><span id="qDist"></span></div>
+  </div>
+  <div id="gotoWheel" hidden>
+    <div class="gotoCircle" role="dialog" aria-modal="true" aria-labelledby="gotoTitle">
+      <button id="gotoClose" type="button" aria-label="Close destinations">×</button>
+      <div class="gotoCenter"><strong id="gotoTitle">Go to</strong><small>Pick a place</small></div>
+      <button class="gotoPlace" data-goto="ravi" style="--gx:0;--gy:-1"><span aria-hidden="true">🏏</span>Cricket</button>
+      <button class="gotoPlace" data-goto="thatha" style="--gx:.866;--gy:-.5"><span aria-hidden="true">♟</span>Chess</button>
+      <button class="gotoPlace" data-goto="rayappan" style="--gx:.866;--gy:.5"><span aria-hidden="true">🥊</span>Boxing</button>
+      <button class="gotoPlace" data-goto="stunt" style="--gx:0;--gy:1"><span aria-hidden="true">🏍</span>Stunt</button>
+      <button class="gotoPlace" data-goto="office" style="--gx:-.866;--gy:.5"><span aria-hidden="true">🏢</span>Office</button>
+      <button class="gotoPlace" data-goto="edu" style="--gx:-.866;--gy:-.5"><span aria-hidden="true">🎓</span>College</button>
+    </div>
   </div>
   <div id="prompt" hidden></div>
   <div id="toast" hidden></div>
@@ -196,7 +208,7 @@
 
 <div id="term" hidden><div class="tbar"><i></i><i></i><i></i><span id="termTitle"></span></div><div id="termBody"></div><div id="termHint">E · skip</div></div>
 <div id="cap" hidden><b id="capH"></b><span id="capP"></span></div>
-<div id="mapBig" hidden><div class="mapbox"><h3>The road so far</h3><canvas id="mapBigCv" width="1100" height="431"></canvas><p>M or click to close · <span style="color:#d8402a">●</span> stories <span style="color:#e8a33d">●</span> places <span style="color:#8f7cff">●</span> agent desks <span style="color:#2fb8a0">●</span> resume printer <span style="color:#c9a040">◆</span> memories · golden arrows on the road give a speed boost</p></div></div>
+<div id="mapBig" hidden><div class="mapbox"><h3>The road so far</h3><canvas id="mapBigCv" width="1100" height="431"></canvas><p>M or click to close · <span style="color:#d8402a">●</span> stories <span style="color:#e8a33d">●</span> places <span style="color:#8f7cff">●</span> agent desks <span style="color:#2fb8a0">●</span> resume printer <span style="color:#c9a040">◆</span> memories · <span style="color:#996000">⚡</span> boost pads · ride over ⚡ in either direction for a speed boost</p></div></div>
 <div id="stuntTxt" hidden></div>
 <div id="arHud" hidden><b>STUNT CHALLENGE</b><span>Jump <b id="arCount">0 / 1</b></span><span>Time <b id="arTime">25s</b></span><button id="arExit" type="button">Exit · Esc</button></div>
 <div id="arBanner" hidden></div>
