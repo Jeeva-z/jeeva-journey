@@ -921,14 +921,24 @@ const STN_S = STN.map(s => sOf(s.x, s.z));
 const nearStation = (x, z, d) => STN.some(s => Math.hypot(s.x - x, s.z - z) < d);
 // boost pads
 const PADS = [];
+// Lightning denotes speed, without implying a required travel direction.
+function boostSymbol(parent, material) {
+  const sh = new T.Shape();
+  sh.moveTo(.25, 1.5); sh.lineTo(-1, -.15); sh.lineTo(-.15, -.15);
+  sh.lineTo(-.35, -1.5); sh.lineTo(1, .3); sh.lineTo(.1, .3); sh.closePath();
+  material.side = T.DoubleSide;
+  const symbol = new T.Mesh(new T.ShapeGeometry(sh), material);
+  symbol.rotation.x = -Math.PI / 2; symbol.renderOrder = 4; parent.add(symbol);
+}
+
 for (let s = 22; s < TOTAL - 45; s += 34) {
   const q = along(s, 0); if (nearStation(q.x, q.z, 9)) continue;
   const g = new T.Group(); g.position.set(q.x, .075, q.z); g.rotation.y = q.ry; world.add(g);
   const m = new T.MeshBasicMaterial({ color: new T.Color(0xffc24a).multiplyScalar(1.3), transparent: true, opacity: .85, depthWrite: false });
-  for (let k = 0; k < 3; k++) { const sh = new T.Shape(); sh.moveTo(-.9, 0); sh.lineTo(0, -.7); sh.lineTo(.9, 0); sh.lineTo(.9, .35); sh.lineTo(0, -.35); sh.lineTo(-.9, .35); sh.closePath(); const mm = m.clone(); mm.side = T.DoubleSide; const c = new T.Mesh(new T.ShapeGeometry(sh), mm); c.rotation.x = -Math.PI / 2; c.position.z = (k - 1) * .85; g.add(c); }
+  boostSymbol(g, m);
   PADS.push({ x: q.x, z: q.z, g, cool: 0 });
 }
-AMB.push(t => { for (const P of PADS) P.g.children.forEach((c, k) => { c.material.opacity = .35 + .6 * Math.max(0, Math.sin(t * 6 - k * 1.2)); }); });
+AMB.push(t => { for (const P of PADS) P.g.children.forEach((c, k) => { c.material.opacity = P.cool > 0 ? .45 : .75 + .25 * Math.max(0, Math.sin(t * 6 - k * 1.2)); }); });
 // memory orbs
 const MEMS = [
   'Summer holidays: cricket from sunrise until someone\'s amma called everyone home.',
@@ -1165,10 +1175,10 @@ function rampH(p) {
   for (const R of ARENA.ramps) { const v = R.r.localToWorld(new T.Vector3(R.lx, 0, 0)), w0 = R.r.localToWorld(new T.Vector3(0, 0, 0)), w1 = R.r.localToWorld(new T.Vector3(1, 0, 0)); R.x = v.x; R.z = v.z; R.dx = w1.x - w0.x; R.dz = w1.z - w0.z; }
   // booster pads on both curves so nobody reaches a kicker too slowly to clear the gap
   for (const [pts, i, sgn] of [[entry, Math.floor(entry.length * .88), 1], [exit, Math.floor(exit.length * .12), -1]]) {
-    const c = pts[i], n = pts[i + sgn], fx = n.x - c.x, fz = n.z - c.z; // arrows point up the curve towards the kicker
+    const c = pts[i], n = pts[i + sgn], fx = n.x - c.x, fz = n.z - c.z; // orient the symbol with the lane
     const pg = new T.Group(); pg.position.set(c.x, LY + .012, c.z); pg.rotation.y = Math.atan2(fx, fz); g.add(pg);
     const bm = new T.MeshBasicMaterial({ color: new T.Color(0xffc24a).multiplyScalar(1.3), transparent: true, opacity: .85, depthWrite: false });
-    for (let k = 0; k < 3; k++) { const sh = new T.Shape(); sh.moveTo(-.9, 0); sh.lineTo(0, -.7); sh.lineTo(.9, 0); sh.lineTo(.9, .35); sh.lineTo(0, -.35); sh.lineTo(-.9, .35); sh.closePath(); const mm = bm.clone(); mm.side = T.DoubleSide; const ar = new T.Mesh(new T.ShapeGeometry(sh), mm); ar.rotation.x = -Math.PI / 2; ar.position.z = (k - 1) * .85; pg.add(ar); }
+    boostSymbol(pg, bm);
     const w = W(c.x, c.z); PADS.push({ x: w.x, z: w.z, g: pg, cool: 0 });
   }
   const _pv = new T.Vector3(), EXD = (() => { const e0 = W(0, LANE), e1 = W(1, LANE); return { x: e1.x - e0.x, z: e1.z - e0.z }; })();
@@ -1951,7 +1961,16 @@ function lifeStep(t, dt) {
   for (const f of AMB) f(t, dt, pp);
   if (boostT > 0) boostT -= dt;
   if (state.mode !== 'explore') return;
-  for (const P of PADS) { P.cool -= dt; if (P.cool <= 0 && Math.hypot(P.x - pp.x, P.z - pp.z) < 2.1) { P.cool = 2; boostT = 1.6; player.v = Math.max(player.v, player.veh.cfg.max * 1.5); beep(520, .08, 'triangle', .05); setTimeout(() => beep(880, .12, 'triangle', .05), 70); poof(pp.x, pp.z, 0xffc24a); } }
+  for (const P of PADS) {
+    P.cool -= dt;
+    const onPad = Math.hypot(P.x - pp.x, P.z - pp.z) < 2.1;
+    if (onPad && !P.occupied && P.cool <= 0 && !busy && !player.onFoot && !player.inside && player.v > .5) {
+      P.cool = 2; boostT = 1.6; player.v = Math.max(player.v, player.veh.cfg.max * 1.5);
+      beep(520, .08, 'triangle', .05); setTimeout(() => beep(880, .12, 'triangle', .05), 70);
+      poof(pp.x, pp.z, 0xffc24a); toast('⚡ Speed boost', 'Golden boost pad activated.');
+    }
+    P.occupied = onPad;
+  }
   save.orbs = save.orbs || [];
   for (const O of ORBS) { if (O.got) continue; if (Math.hypot(O.x - pp.x, O.z - pp.z) < 1.9) { O.got = true; O.g.visible = false; if (!save.orbs.includes(O.i)) save.orbs.push(O.i); persist(); poof(O.x, O.z, 0xffe9a8); chime(); toast(`Memory ${save.orbs.length} of ${ORBS.length}`, MEMS[O.i]); } }
 }
@@ -2012,6 +2031,19 @@ function drawMap(cv, big) {
     x.strokeStyle = '#7a5a3a66'; x.lineWidth = Math.max(5, 6 * sc); x.stroke(); x.strokeStyle = '#e8c88f'; x.lineWidth = Math.max(3, 4.4 * sc); x.stroke();
   }
   { const gr = x.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .3, W / 2, H / 2, Math.max(W, H) * .7); gr.addColorStop(0, '#0000'); gr.addColorStop(1, '#3b2a2255'); x.fillStyle = gr; x.fillRect(0, 0, W, H); }
+  // Draw boosts on both maps using the same positions as the road triggers.
+  for (const P of PADS) {
+    const bx = X(P.x, P.z), by = Y(P.x, P.z), r = big ? 7 : 5;
+    if (bx < -r || bx > W + r || by < -r || by > H + r) continue;
+    x.save(); x.translate(bx, by);
+    x.fillStyle = P.cool > 0 ? '#c5b799' : '#ffcd4a';
+    x.strokeStyle = '#674216'; x.lineWidth = 1.5;
+    x.beginPath(); x.arc(0, 0, r + 2, 0, Math.PI * 2); x.fill(); x.stroke();
+    x.fillStyle = '#51310c'; x.beginPath();
+    x.moveTo(1, -r); x.lineTo(-r * .65, 1); x.lineTo(0, 1);
+    x.lineTo(-1, r); x.lineTo(r * .65, -1); x.lineTo(0, -1);
+    x.closePath(); x.fill(); x.restore();
+  }
   if (big) for (const O of ORBS) if (!O.got) { x.fillStyle = '#ffe9a8'; x.strokeStyle = '#8a6a2a'; x.lineWidth = 1; x.beginPath(); const ox = X(O.x, O.z), oy = Y(O.x, O.z); x.moveTo(ox, oy - 4); x.lineTo(ox + 3, oy); x.lineTo(ox, oy + 4); x.lineTo(ox - 3, oy); x.closePath(); x.fill(); x.stroke(); }
   const cur = curAct(), a = ACTS[cur];
   for (const s of STN) {
@@ -2435,6 +2467,65 @@ async function leaveOffice() {
   hideVehicle(false); player.legs.forEach(l => l.rotation.x = 0); player.arms.forEach(a => a.rotation.x = 0); player.heading = Math.PI * .5 + .3; player.g.rotation.y = player.heading; player.v = 0; poof(B.x, B.z, 0xffe9a8);
   state.mode = 'explore'; busy = false; beep(520, .1, 'triangle', .05); toast('Back on the road', 'Ride on. The road still has a way to go.');
 }
+/* ---- quick travel: keep the current vehicle and its permanent upgrade memory */
+function toggleGoto(open) {
+  if (open && (state.mode !== 'explore' || busy || away)) return;
+  $('gotoWheel').hidden = !open;
+  $('gotoBtn').setAttribute('aria-expanded', String(open));
+  keys.clear(); joy.x = joy.z = 0; $('knob').style.transform = '';
+  player.v = 0;
+  if (open) {
+    state.mode = 'goto';
+    $('prompt').hidden = true;
+    $('gotoWheel').querySelector('[data-goto]').focus();
+  } else {
+    if (state.mode === 'goto') state.mode = 'explore';
+    $('gotoBtn').focus();
+  }
+}
+async function gotoLocation(id) {
+  if (state.mode !== 'goto' || busy) return;
+  const destination = id === 'stunt' ? along(CUM[9] + 12 - 38, 0) : STN.find(s => s.id === id);
+  if (!destination) return;
+  const names = { ravi: 'Cricket', thatha: 'Chess', rayappan: 'Boxing', stunt: 'Stunt lane', office: 'Grootan office', edu: 'College' };
+  const vehicle = player.veh.type;
+  // Save the strongest ride before changing regions or leaving the office.
+  save.vrank = Math.max(save.vrank || 0, VRANK[vehicle], VRANK[OFFICE.veh] || 0);
+  toggleGoto(false); busy = true; state.mode = 'cut';
+  if (AR.active) arenaCancel(null);
+  stunt = null; boostT = 0; $('stuntTxt').hidden = true;
+  try {
+    await portal(() => {
+      if (parkedBike) { world.remove(parkedBike.g); parkedBike = null; }
+      player.inside = false; player.onFoot = false;
+      setVehicle(VBYRANK[save.vrank]); hideVehicle(false);
+      player.g.position.set(destination.x, .07, destination.z);
+      player.heading = id === 'stunt' ? destination.ry : Math.PI;
+      player.vdir = player.heading; player.v = 0; player.lean = 0; player.slip = 0;
+      player.g.rotation.set(0, player.heading, 0);
+      player.veh.d.g.rotation.set(0, 0, 0);
+      player.body.rotation.set(0, 0, 0); setSeat(); rideAnim(0, 0);
+      const k = .62 + .38 * player.g.scale.x;
+      camera.position.set(destination.x, 12.5 * k, destination.z + 15 * k);
+      camera.lookAt(destination.x, 1.2, destination.z + .5 * k);
+      persist();
+    });
+    toast(names[id], 'You have arrived. Your ride is ready.');
+  } finally { busy = false; state.mode = 'explore'; }
+}
+$('gotoBtn').onclick = () => toggleGoto($('gotoWheel').hidden);
+$('gotoClose').onclick = () => toggleGoto(false);
+$('gotoWheel').onclick = e => { if (e.target === $('gotoWheel')) toggleGoto(false); };
+for (const button of $('gotoWheel').querySelectorAll('[data-goto]')) {
+  button.onclick = () => gotoLocation(button.dataset.goto);
+}
+$('gotoWheel').addEventListener('keydown', e => {
+  if (e.code !== 'Tab') return;
+  const buttons = [...$('gotoWheel').querySelectorAll('button')];
+  const next = (buttons.indexOf(document.activeElement) + (e.shiftKey ? -1 : 1) + buttons.length) % buttons.length;
+  e.preventDefault(); buttons[next].focus();
+});
+
 /* ---- project folios as slideshows */
 const SL = { slides: [], i: 0 };
 const DECK = ['exp', 'ibm', 'ibb', 'city', 'skills'];
@@ -2602,6 +2693,8 @@ addEventListener('keydown', e => {
   if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
   if (e.repeat) { keys.add(e.code); return; }
   keys.add(e.code);
+  if (state.mode === 'goto') { if (['Escape', 'KeyG'].includes(e.code)) toggleGoto(false); return; }
+  if (state.mode === 'explore' && !busy && e.code === 'KeyG') { toggleGoto(true); return; }
   if (state.mode === 'folio') { if (['Escape', 'KeyE'].includes(e.code)) closeFolio(); else if (['ArrowRight', 'KeyD', 'Space', 'Enter'].includes(e.code)) slideNext(); else if (['ArrowLeft', 'KeyA'].includes(e.code)) showSlide(SL.i - 1); return; }
   if (state.mode === 'box') { if (e.code === 'Escape') boxQuit(); return; }
   if (state.mode === 'crab') { if (e.code === 'Escape') crabQuit(); else if (['KeyE', 'Space', 'Enter'].includes(e.code)) crabGrab(); return; }
