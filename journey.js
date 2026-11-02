@@ -65,15 +65,34 @@ const hemi = new T.HemisphereLight(0xd6ecff, 0x86a860, 1.05); scene.add(hemi);
 const sun = new T.DirectionalLight(0xfff0cf, 2.5);
 sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
 Object.assign(sun.shadow.camera, { left: -34, right: 34, top: 34, bottom: -34, near: 1, far: 120 });
-sun.shadow.bias = -.0005;
+sun.shadow.bias = -.00035; sun.shadow.normalBias = .035; sun.shadow.radius = 3;
 scene.add(sun, sun.target);
 
 /* ------------------------------------------------------------- helpers */
 const mats = new Map();
-const toonGrad = (() => { const d = new Uint8Array([120, 120, 120, 255, 185, 185, 185, 255, 235, 235, 235, 255, 255, 255, 255, 255]); const t = new T.DataTexture(d, 4, 1, T.RGBAFormat); t.minFilter = t.magFilter = T.NearestFilter; t.needsUpdate = true; return t; })();
-const mat = (c, r = .85, m = 0) => { const k = c; if (!mats.has(k)) mats.set(k, new T.MeshToonMaterial({ color: c, gradientMap: toonGrad })); return mats.get(k); };
+// Soft tonal steps and a reusable, deterministic pigment wash for scenery.
+const toonGrad = (() => {
+  const d = new Uint8Array([112,112,112,255, 158,158,158,255, 195,195,195,255, 224,224,224,255, 245,245,245,255]);
+  const t = new T.DataTexture(d, 5, 1, T.RGBAFormat);
+  t.minFilter = t.magFilter = T.LinearFilter; t.needsUpdate = true; return t;
+})();
+const pigmentTex = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const ctx = c.getContext('2d'); ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,128,128);
+  let seed = 41; const r = () => (seed = seed * 16807 % 2147483647) / 2147483647;
+  for(let i=0;i<500;i++) {
+    ctx.fillStyle = `rgba(91,105,95,${.015+r()*.035})`;
+    ctx.beginPath(); ctx.ellipse(r()*128,r()*128,2+r()*12,1+r()*4,r()*3.14,0,Math.PI*2); ctx.fill();
+  }
+  const t = new T.CanvasTexture(c); t.colorSpace = T.SRGBColorSpace;
+  t.wrapS = t.wrapT = T.RepeatWrapping; t.anisotropy = 4; return t;
+})();
+const mat = (c, r = .85, m = 0) => {
+  if (!mats.has(c)) mats.set(c, new T.MeshToonMaterial({ color: c, map: pigmentTex, gradientMap: toonGrad }));
+  return mats.get(c);
+};
 const INK = 0x3b2a22, inkMat = new T.MeshBasicMaterial({ color: INK, side: T.BackSide });
-function outline(mesh, k = 1.07) { const o = new T.Mesh(mesh.geometry, inkMat); o.scale.setScalar(k); mesh.add(o); return o; }
+function outline(mesh, k = 1.07) { const o = new T.Mesh(mesh.geometry, inkMat); o.scale.setScalar(1 + (k - 1) * .65); mesh.add(o); return o; }
 function add(parent, geo, material, x, y, z, shadow = true) { const m = new T.Mesh(geo, material); m.position.set(x, y, z); m.castShadow = shadow; m.receiveShadow = true; parent.add(m); return m; }
 const box = (p, w, h, d, c, x, y, z, sh = true) => add(p, new T.BoxGeometry(w, h, d), mat(c), x, y, z, sh);
 const cyl = (p, rt, rb, h, c, x, y, z, seg = 8) => add(p, new T.CylinderGeometry(rt, rb, h, seg), mat(c), x, y, z);
@@ -100,18 +119,46 @@ function signBoard(parent, text, w, h, x, y, z, sub) {
 
 const far = new T.Group(); scene.add(far);
 /* --------------------------------------------------------------- world */
+const SEASONS = [
+  { name: 'Spring', icon: '🌱', color: new T.Color('#acd482') },
+  { name: 'Summer', icon: '🌿', color: new T.Color('#8fb569') },
+  { name: 'Autumn', icon: '🍂', color: new T.Color('#d8b774') },
+  { name: 'Winter', icon: '❄️', color: new T.Color('#bec9b3') }
+];
+const SEASON = { phase: 0, seconds: 120, material: null, target: new T.Color() };
+function seasonStep(dt) {
+  SEASON.phase = (SEASON.phase + dt / SEASON.seconds) % SEASONS.length;
+  const index = Math.floor(SEASON.phase), fraction = SEASON.phase - index;
+  // Hold each palette, then ease into the next one during its final 40 seconds.
+  const u = clamp((fraction - 2 / 3) * 3, 0, 1), blend = u * u * (3 - 2 * u);
+  SEASON.target.copy(SEASONS[index].color).lerp(SEASONS[(index + 1) % SEASONS.length].color, blend);
+  if (SEASON.material) SEASON.material.color.lerp(SEASON.target, 1 - Math.exp(-dt * 1.5));
+  const button = $('seasonHud'), label = SEASONS[index].icon + ' ' + SEASONS[index].name;
+  if (button && button.textContent !== label) button.textContent = label;
+}
+function seasonNext() { SEASON.phase = (Math.floor(SEASON.phase) + 1) % SEASONS.length; seasonStep(0); }
+if ($('seasonHud')) $('seasonHud').onclick = seasonNext;
+
 {
   const c = document.createElement('canvas'); c.width = c.height = 512; const x = c.getContext('2d');
-  x.fillStyle = '#86bd5a'; x.fillRect(0, 0, 512, 512);
+  x.fillStyle = '#91ac70'; x.fillRect(0, 0, 512, 512);
   let sd = 3; const r = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
-  const tones = ['#9acb64', '#74ad52', '#a8d46e', '#6aa64f'];
+  const tones = ['#b2c789', '#7f9e67', '#c0ce96', '#6d8f63'];
   for (let i = 0; i < 900; i++) { x.globalAlpha = .22; x.fillStyle = tones[i % 4]; x.beginPath(); x.ellipse(r() * 512, r() * 512, 10 + r() * 34, 6 + r() * 20, r() * 3, 0, 7); x.fill(); }
-  x.globalAlpha = .55; x.strokeStyle = '#5f9a47'; x.lineWidth = 1.6;
+  x.globalAlpha = .55; x.strokeStyle = '#66855a'; x.lineWidth = 1.6;
   for (let i = 0; i < 1100; i++) { const a = r() * 512, b = r() * 512; x.beginPath(); x.moveTo(a, b); x.lineTo(a - 2, b - 6 - r() * 4); x.moveTo(a + 2, b); x.lineTo(a + 3, b - 5 - r() * 3); x.stroke(); }
   x.globalAlpha = 1; const fl = ['#ffffff', '#fff3a8', '#ffc4de'];
   for (let i = 0; i < 70; i++) { x.fillStyle = fl[i % 3]; x.beginPath(); x.arc(r() * 512, r() * 512, 2 + r() * 1.5, 0, 7); x.fill(); }
-  const tex = new T.CanvasTexture(c); tex.wrapS = tex.wrapT = T.RepeatWrapping; tex.repeat.set(120, 120); tex.colorSpace = T.SRGBColorSpace; tex.anisotropy = 8;
+  // Neutral pigment retains the painted blades and mottling under every palette.
+  const pixels = x.getImageData(0, 0, 512, 512);
+  for (let i = 0; i < pixels.data.length; i += 4) {
+    const value = Math.min(255, .299*pixels.data[i] + .587*pixels.data[i+1] + .114*pixels.data[i+2] + 45);
+    pixels.data[i] = pixels.data[i+1] = pixels.data[i+2] = value;
+  }
+  x.putImageData(pixels, 0, 0);
+  const tex = new T.CanvasTexture(c); tex.wrapS = tex.wrapT = T.RepeatWrapping; tex.repeat.set(75, 75); tex.colorSpace = T.SRGBColorSpace; tex.anisotropy = 8;
   const gm = new T.Mesh(new T.PlaneGeometry(900, 900), new T.MeshToonMaterial({ map: tex, gradientMap: toonGrad }));
+  SEASON.material = gm.material; gm.material.color.copy(SEASONS[0].color);
   gm.rotation.x = -Math.PI / 2; gm.receiveShadow = true; gm.position.set(0, 0, -140); world.add(gm);
 }
 const dirtTex = (() => {
@@ -131,19 +178,33 @@ function house(x, z, w, d, wall, roof) {
   walls.push({ x0: x - w / 2 - .3, x1: x + w / 2 + .3, z0: z - d / 2 - .3, z1: z + d / 2 + .3 });
   return g;
 }
+function leafyCrown(parent, radius, color, x, y, z, sx = 1, sy = 1, sz = 1) {
+  const geo = new T.SphereGeometry(radius, 20, 14), pos = geo.attributes.position;
+  const colors = new Float32Array(pos.count * 3), base = new T.Color(color);
+  for (let i = 0; i < pos.count; i++) {
+    const px = pos.getX(i)/radius, py = pos.getY(i)/radius, pz = pos.getZ(i)/radius;
+    const ripple = 1 + .065*Math.sin(px*13+pz*7)*Math.cos(py*11-pz*9);
+    pos.setXYZ(i,pos.getX(i)*ripple,pos.getY(i)*ripple,pos.getZ(i)*ripple);
+    const tint = base.clone().lerp(new T.Color(0xc7d598), Math.max(0,py)*.22);
+    tint.multiplyScalar(.86 + (py+1)*.09); tint.toArray(colors,i*3);
+  }
+  geo.setAttribute('color',new T.BufferAttribute(colors,3)); geo.computeVertexNormals();
+  const mesh = add(parent,geo,new T.MeshToonMaterial({color:0xffffff,vertexColors:true,map:pigmentTex,gradientMap:toonGrad}),x,y,z);
+  mesh.scale.set(sx,sy,sz); return mesh;
+}
 function tree(x, z, s = 1, kind = 0) {
   const g = new T.Group(); g.position.set(x, 0, z); g.scale.setScalar(s); world.add(g);
   const tr = cyl(g, .2, .34, 2.4, 0x8a6044, 0, 1.2, 0, 7); tr.rotation.z = Math.sin(x) * .06;
-  const pal = [[0x6fb550, 0x5da04a, 0x82c860], [0x4f9a4c, 0x3f8a46, 0x66b35a], [0x8bc34f, 0x76b043, 0xa4d66a]][Math.abs(Math.floor(x * 3 + z)) % 3];
-  if (kind === 1) { for (let i = 0; i < 3; i++) sph(g, 1.5 - i * .35, pal[i % 3], 0, 2.9 + i * 1.15, 0, 1, .85, 1); }
-  else for (const [dx, dy, dz, r, k] of [[0, 3.6, 0, 1.55, 0], [-1.05, 3.2, .3, 1.15, 1], [1.1, 3.3, -.2, 1.2, 2], [.2, 4.5, .1, 1.05, 2], [.2, 3.1, 1.0, 1, 1]]) sph(g, r, pal[k], dx, dy, dz);
+  const pal = [[0x789957, 0x527b50, 0xa0b777], [0x5e8c67, 0x416c58, 0x8aaf7b], [0x98ac65, 0x6c8b51, 0xb7c984]][Math.abs(Math.floor(x * 3 + z)) % 3];
+  if (kind === 1) { for (let i = 0; i < 3; i++) leafyCrown(g, 1.5 - i * .35, pal[i % 3], 0, 2.9 + i * 1.15, 0, 1, .85, 1); }
+  else for (const [dx, dy, dz, r, k] of [[0, 3.6, 0, 1.55, 0], [-1.05, 3.2, .3, 1.15, 1], [1.1, 3.3, -.2, 1.2, 2], [.2, 4.5, .1, 1.05, 2], [.2, 3.1, 1.0, 1, 1]]) leafyCrown(g, r, pal[k], dx, dy, dz);
   rounds.push({ x, z, r: .6 * s });
   return g;
 }
 function bigTree(x, z, fruit) {
   const g = new T.Group(); g.position.set(x, 0, z); world.add(g);
   cyl(g, .7, 1.1, 5, 0x6b4c38, 0, 2.5, 0, 8);
-  for (const [dx, dy, dz, r] of [[0, 6.5, 0, 3.6], [-2.6, 5.6, .6, 2.6], [2.8, 5.8, -.4, 2.8], [.4, 8, -.8, 2.4], [-1, 5, 2.4, 2.2], [1.6, 5, 2.2, 2.2]]) sph(g, r, 0x3f7a3a, dx, dy, dz);
+  for (const [dx, dy, dz, r] of [[0, 6.5, 0, 3.6], [-2.6, 5.6, .6, 2.6], [2.8, 5.8, -.4, 2.8], [.4, 8, -.8, 2.4], [-1, 5, 2.4, 2.2], [1.6, 5, 2.2, 2.2]]) leafyCrown(g, r, 0x3f7a3a, dx, dy, dz);
   if (fruit) for (let i = 0; i < 9; i++) sph(g, .26, 0xc9d94a, Math.cos(i * 2.3) * 2.6, 4.4 + (i % 3) * .5, 1.4 + Math.sin(i * 2.3) * 1.6, 1, 1.3, 1);
   rounds.push({ x, z, r: 1.4 });
   return g;
@@ -264,22 +325,6 @@ function person(o) {
   if (o.moustache) { const mm = box(head, .22, .045, .07, 0xf2f0ea, 0, -.08, .27, false); }
   if (o.beard) { const bd = add(head, new T.SphereGeometry(.2, 12, 8, 0, Math.PI * 2, Math.PI * .5, Math.PI * .5), hc, 0, -.08, .05); bd.scale.set(1, .9, 1); }
   let setAge = () => { };
-  if (o.me) {
-    const hm = tm(o.hairColor ?? 0x1e1512), kid = new T.Group(), man = new T.Group(); head.add(kid, man);
-    const cap0 = add(kid, new T.SphereGeometry(.325, 18, 12, 0, Math.PI * 2, 0, Math.PI * .56), hm, 0, .04, -.03); outline(cap0, 1.05);
-    for (const [x, y, z, r] of [[-.2, .2, .2, .11], [-.07, .26, .22, .12], [.07, .27, .22, .12], [.2, .2, .2, .11], [.27, .08, .12, .1], [-.27, .08, .12, .1]]) { const f = add(kid, new T.SphereGeometry(r, 8, 6), hm, x, y, z); f.scale.set(1, .85, .8); }
-    const cap1 = add(man, new T.SphereGeometry(.33, 18, 12, 0, Math.PI * 2, 0, Math.PI * .54), hm, 0, .06, -.07); cap1.rotation.x = -.22; outline(cap1, 1.05);
-    for (const [x, y, z, r, sy] of [[-.15, .33, .1, .14, .9], [0, .39, .06, .17, .95], [.15, .35, .04, .14, .9], [0, .34, -.1, .2, .85], [-.2, .28, -.02, .12, .9], [.21, .29, -.02, .12, .9], [0, .31, .2, .1, .8], [0, .22, -.24, .17, .9]]) { const b = add(man, new T.SphereGeometry(r, 10, 8), hm, x, y, z); b.scale.set(1, sy, 1.05); outline(b, 1.06); }
-    for (const [x, rz] of [[-.1, .5], [.05, -.1], [.17, -.5]]) { const t = add(man, new T.ConeGeometry(.05, .15, 5), hm, x, .56, .02, false); t.rotation.z = rz; }
-    for (const sg of [-1, 1]) { const sb = add(man, new T.SphereGeometry(.06, 8, 6), hm, sg * .285, -.02, .04); sb.scale.set(.55, 1.4, .8); }
-    const stache = new T.Group(); head.add(stache); add(stache, new T.BoxGeometry(.2, .032, .05), hm, 0, -.083, .275, false);
-    for (const sg of [-1, 1]) { const w = add(stache, new T.BoxGeometry(.08, .03, .05), hm, sg * .09, -.1, .262, false); w.rotation.z = sg * .35; }
-    const goat = new T.Group(); head.add(goat);
-    const ch = add(goat, new T.SphereGeometry(.2, 14, 8, 0, Math.PI * 2, Math.PI * .56, Math.PI * .44), new T.MeshToonMaterial({ color: 0x1e1512, gradientMap: toonGrad, transparent: true, opacity: .8 }), 0, -.08, .04, false); ch.scale.set(1, .95, 1.02);
-    add(goat, new T.SphereGeometry(.05, 8, 6), hm, 0, -.2, .24, false).scale.set(1.3, 1.1, .8);
-    setAge = kind => { kid.visible = kind === 'kid'; man.visible = kind !== 'kid'; stache.visible = kind !== 'kid'; goat.visible = kind === 'adult'; };
-    setAge('adult');
-  }
   const legs = [], arms = [];
   if (o.dress) { add(body, new T.CylinderGeometry(.3, .58, .95, 10), legMat, 0, .5, 0); }
   for (const s of [-1, 1]) {
@@ -298,8 +343,123 @@ function person(o) {
   const hook = add(umbrella, new T.TorusGeometry(.09, .024, 5, 10, Math.PI), tm(0x59432d), 0, 1.12, .07, false); hook.rotation.x = Math.PI / 2;
   g.scale.setScalar(o.scale || 1);
   const p = { g, body, legs, arms, torsoMat, legMat, head, setAge, umbrella };
+  if (o.me) upgradeJeeva(p, torso, skin);
   WEATHER_PEOPLE.push(p);
   return p;
+}
+// Photo-directed hero: keep the public limb pivots used by vehicles and activities.
+function upgradeJeeva(p, torso, skin) {
+  const { head, body, arms, torsoMat } = p;
+  head.clear();
+  const toon = c => new T.MeshToonMaterial({ color: c, gradientMap: toonGrad });
+  const hair = toon(0x211b18), hairLight = toon(0x30251f), lip = toon(0x865343);
+  const oval = (parent, material, x, y, z, sx, sy, sz) => {
+    const m = add(parent, new T.SphereGeometry(1, 24, 16), material, x, y, z);
+    m.scale.set(sx, sy, sz); return m;
+  };
+  const stroke = (parent, material, points, radius) => add(parent,
+    new T.TubeGeometry(new T.CatmullRomCurve3(points.map(v => new T.Vector3(...v))), 16, radius, 6, false), material, 0, 0, 0, false);
+  // Taper the lower face while retaining a broad forehead and soft cheeks.
+  const geo = new T.SphereGeometry(.3, 32, 24), vertices = geo.attributes.position;
+  for (let i = 0; i < vertices.count; i++) {
+    const y = vertices.getY(i), lower = Math.max(0, -y / .3);
+    vertices.setXYZ(i, vertices.getX(i) * (.95 - lower * .2), y * 1.1, vertices.getZ(i) * .91);
+  }
+  geo.computeVertexNormals();
+  outline(add(head, geo, skin, 0, 0, 0), 1.025);
+  const neck = add(body, new T.CylinderGeometry(.105, .13, .25, 16), skin, 0, 1.66, 0);
+  for (const side of [-1, 1]) {
+    oval(head, skin, side * .285, -.015, -.005, .052, .085, .045);
+    oval(head, toon(0xa16b50), side * .3, -.015, .025, .022, .046, .012);
+  }
+  const eyes = [];
+  for (const side of [-1, 1]) {
+    const eye = new T.Group(); eye.position.set(side * .105, .025, .254); eye.scale.x = 1.08; head.add(eye); eyes.push(eye);
+    oval(eye, toon(0xeee5d2), 0, 0, 0, .064, .03, .018);
+    oval(eye, toon(0x38251c), side * -.004, 0, .016, .026, .027, .009);
+    oval(eye, toon(0x181311), side * -.004, 0, .023, .014, .021, .005);
+    oval(eye, new T.MeshBasicMaterial({ color: 0xfff3d9 }), -.008, .01, .028, .006, .006, .003);
+    stroke(eye, hair, [[-.062,0,0],[-.03,.028,.012],[.025,.029,.012],[.062,.002,0]], .006);
+    stroke(head, hair, [[side*.045,.095,.257],[side*.1,.116,.255],[side*.157,.099,.235]], .014);
+  }
+  oval(head, skin, 0, -.025, .272, .032, .067, .032);
+  oval(head, skin, 0, -.065, .297, .043, .028, .035);
+  stroke(head, lip, [[-.075,-.148,.235],[0,-.154,.257],[.075,-.142,.235]], .008);
+  oval(head, lip, 0, -.17, .239, .047, .009, .012);
+  const beard = new T.Group(); head.add(beard);
+  for (const side of [-1, 1]) stroke(beard, hairLight,
+    [[side*.008,-.105,.275],[side*.04,-.113,.269],[side*.077,-.128,.246]], .01);
+  oval(beard, hairLight, 0, -.252, .175, .083, .023, .016);
+  oval(beard, hairLight, 0, -.207, .221, .025, .015, .008);
+  const grownHair = new T.Group(); grownHair.name = 'Jeeva adult hair'; head.add(grownHair);
+  // A continuous shell covers the crown, sides and nape. Lift only the front
+  // hairline, leaving the rear covered from the game's elevated follow camera.
+  const hairShell = new T.SphereGeometry(.35, 32, 24, 0, Math.PI * 2, 0, Math.PI * .85);
+  const hp = hairShell.attributes.position;
+  for (let i = 0; i < hp.count; i++) {
+    const x = hp.getX(i), y = hp.getY(i), z = hp.getZ(i);
+    const front = Math.max(0, Math.min(1, (z - .015) / .13));
+    hp.setXYZ(i, x * 1.03, Math.max(y, -.21 + front * .35), z);
+  }
+  hairShell.computeVertexNormals();
+  const cap = add(grownHair, hairShell, hair, 0, .045, -.035); outline(cap, 1.018);
+  // Curved, tapering locks give a drawn anime silhouette instead of round beads.
+  const lock = (points, width, depth) => {
+    const curve = new T.CatmullRomCurve3(points.map(v => new T.Vector3(...v)));
+    const geometry = new T.TubeGeometry(curve, 20, 1, 10, false);
+    const positions = geometry.attributes.position;
+    for (let ring = 0; ring <= 20; ring++) {
+      const u = ring / 20, center = curve.getPointAt(u);
+      const radius = Math.max(.003, Math.sin(Math.PI * (.14 + u * .86)) * width);
+      for (let j = 0; j <= 10; j++) {
+        const i = ring * 11 + j;
+        positions.setXYZ(i, center.x + (positions.getX(i)-center.x)*radius,
+          center.y + (positions.getY(i)-center.y)*radius,
+          center.z + (positions.getZ(i)-center.z)*radius*depth);
+      }
+    }
+    geometry.computeVertexNormals();
+    outline(add(grownHair, geometry, hair, 0,0,0), 1.015);
+  };
+  // Low swept fringe: no tall quiff or outward-pointing side tufts.
+  lock([[-.24,.22,.15],[-.18,.28,.24],[-.08,.24,.30],[-.015,.16,.30]], .075,.65);
+  lock([[-.07,.28,.18],[.05,.30,.24],[.16,.23,.29],[.2,.15,.26]], .075,.65);
+  stroke(grownHair, hairLight, [[-.22,.29,.20],[-.12,.32,.24],[-.035,.28,.28]], .005);
+  const youngHair = grownHair.clone(); youngHair.name = 'Jeeva child hair';
+  // Keep shell clearance identical at every age; never squash it into the skull.
+  head.add(youngHair);
+  torso.scale.set(1.13,1,.82);
+  // Collar, placket and buttons follow the story's existing shirt palette.
+  const details = new T.Group(); body.add(details);
+  for (const side of [-1,1]) {
+    const collar = add(details,new T.BoxGeometry(.12,.16,.035),torsoMat,side*.075,1.55,.14);
+    collar.rotation.z = side*.4;
+  }
+  add(details,new T.BoxGeometry(.025,.64,.025),torsoMat,0,1.14,.201);
+  for (let i=0;i<4;i++) oval(details,toon(0x34282a),0,1.4-i*.15,.22,.013,.013,.008);
+  arms.forEach((arm,i) => {
+    arm.clear(); const side = i ? 1 : -1;
+    const sleeve = add(arm,new T.CapsuleGeometry(.09,.22,6,12),torsoMat,0,-.16,0); outline(sleeve,1.025);
+    add(arm,new T.CylinderGeometry(.094,.094,.065,16),torsoMat,0,-.32,0);
+    oval(arm,skin,0,-.46,0,.065,.16,.065);
+    oval(arm,skin,0,-.64,.01,.064,.09,.04);
+    oval(arm,skin,-side*.052,-.61,.03,.025,.045,.025);
+    if (i===1) {
+      add(arm,new T.CylinderGeometry(.071,.071,.055,16),toon(0x25252a),0,-.555,0);
+      add(arm,new T.BoxGeometry(.085,.075,.025),toon(0x181e22),0,-.555,.068);
+    }
+  });
+  p.setAge = kind => {
+    const child = kind === 'kid';
+    grownHair.visible = !child; youngHair.visible = child; beard.visible = !child;
+    head.scale.setScalar(child ? 1.08 : 1);
+    torso.scale.x = child ? 1 : 1.13; neck.visible = !child; details.visible = !child;
+  };
+  p.updateFace = t => {
+    const phase = t % 4.7, blink = phase < .16 ? Math.max(.08, Math.abs(phase-.08)/.08) : 1;
+    eyes.forEach(e => { e.scale.y = blink * 1.25; });
+  };
+  p.setAge('adult');
 }
 function walkAnim(p, phase, amt) {
   const s = Math.sin(phase) * .8 * amt;
@@ -727,7 +887,7 @@ const VRANK = { trike: 0, bike: 1, moto: 2 }, VBYRANK = ['trike', 'bike', 'moto'
 // a vehicle upgrade is permanent: never fall back to an older one
 function stageVeh() { const r = save.reach || 0; save.vrank = Math.max(save.vrank || 0, r > S_COLLEGE ? 2 : r > S_CHESS ? 1 : 0); return VBYRANK[save.vrank]; }
 // ---- sky / light progression
-const SKY = { day: ['#3f86d8', '#7fbbea', '#cfe6ee', '#f6ecd0'], gold: ['#4a7fd0', '#a8c8e8', '#f9dfb0', '#ffd9a0'], storm: ['#2a3a78', '#6a6aa8', '#d49ab0', '#ffd09a'], dawn: ['#2e5fae', '#f2a8b8', '#ffd7a0', '#fff3c4'] };
+const SKY = { day: ['#568fa9', '#96c4cf', '#d4e3dc', '#f4e8cd'], gold: ['#4a7fd0', '#a8c8e8', '#f9dfb0', '#ffd9a0'], storm: ['#2a3a78', '#6a6aa8', '#d49ab0', '#ffd09a'], dawn: ['#2e5fae', '#f2a8b8', '#ffd7a0', '#fff3c4'] };
 const mixHex = (a, b, t) => '#' + new T.Color(a).lerp(new T.Color(b), t).getHexString();
 function skyFor(p, aw) {
   let A, B, t;
@@ -739,13 +899,13 @@ const KF = [  // hour, sky (top, mid, low, horizon), sun colour + intensity, hem
   { h: 0, sky: ['#050a1e', '#0a1636', '#16285a', '#24386a'], sun: '#9fb4ff', si: .5, hs: '#4a5f9a', hg: '#1a2238', hi: .5, day: 0 },
   { h: 5.2, sky: ['#050a1e', '#0a1636', '#16285a', '#24386a'], sun: '#9fb4ff', si: .5, hs: '#4a5f9a', hg: '#1a2238', hi: .5, day: 0 },
   { h: 6.6, sky: SKY.dawn, sun: '#ffc38a', si: 1.6, hs: '#ffd9c0', hg: '#8a7860', hi: .8, day: .55 },
-  { h: 8.8, sky: SKY.day, sun: '#fff0cf', si: 2.5, hs: '#d6ecff', hg: '#86a860', hi: 1.05, day: 1 },
-  { h: 16.2, sky: SKY.day, sun: '#fff0cf', si: 2.5, hs: '#d6ecff', hg: '#86a860', hi: 1.05, day: 1 },
+  { h: 8.8, sky: SKY.day, sun: '#ffe6bc', si: 2.05, hs: '#cfdfed', hg: '#8e9975', hi: 1.2, day: 1 },
+  { h: 16.2, sky: SKY.day, sun: '#ffe6bc', si: 2.05, hs: '#cfdfed', hg: '#8e9975', hi: 1.2, day: 1 },
   { h: 18.2, sky: ['#2a3a78', '#d0708a', '#ffa070', '#ffd09a'], sun: '#ff9a60', si: 1.6, hs: '#ffc0a0', hg: '#6a5a50', hi: .8, day: .55 },
   { h: 19.9, sky: ['#050a1e', '#0a1636', '#16285a', '#24386a'], sun: '#9fb4ff', si: .5, hs: '#4a5f9a', hg: '#1a2238', hi: .5, day: 0 },
   { h: 24, sky: ['#050a1e', '#0a1636', '#16285a', '#24386a'], sun: '#9fb4ff', si: .5, hs: '#4a5f9a', hg: '#1a2238', hi: .5, day: 0 }];
 const CLIM = {   // cover = cloud cover, sunK/hemiK light multipliers, fn/ff fog distances, gray = how washed-out the sky is
-  clear: { name: 'Clear', icon: '☀', cover: .2, sunK: 1, hemiK: 1, fn: 90, ff: 320, gray: 0, rain: 0, wind: .15, storm: 0 },
+  clear: { name: 'Clear', icon: '☀', cover: .2, sunK: 1, hemiK: 1, fn: 65, ff: 285, gray: 0, rain: 0, wind: .15, storm: 0 },
   cloudy: { name: 'Cloudy', icon: '☁', cover: .85, sunK: .45, hemiK: .92, fn: 70, ff: 280, gray: .35, rain: 0, wind: .45, storm: 0 },
   rain: { name: 'Rain', icon: '🌧', cover: 1, sunK: .18, hemiK: .74, fn: 40, ff: 200, gray: .6, rain: .7, wind: .6, storm: 0 },
   storm: { name: 'Thunderstorm', icon: '⛈', cover: 1, sunK: .12, hemiK: .58, fn: 28, ff: 150, gray: .75, rain: 1, wind: 1, storm: 1 },
@@ -785,6 +945,7 @@ function thunder() {
 }
 const hex3 = (a, b, t) => mixHex(a, b, clamp(t, 0, 1));
 function envStep(dt, t, aw) {
+  seasonStep(state.mode === 'title' ? 0 : dt);
   const E = ENV, pp = player.g.position;
   E.hour = (E.hour + dt * E.speed) % 24;
   E.next -= dt; if (E.auto && E.next <= 0) envPick();
@@ -2624,6 +2785,7 @@ const clock = new T.Clock();
 function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), .05), t = clock.elapsedTime;
+  player.updateFace(t);
   if (state.mode === 'chess') { ChessGame.update(dt); draw(ChessGame.scene, ChessGame.camera); return; }
   if (dlg && !dlg.full) { dlg.pos += dt * 55; const l = dlg.q[dlg.i]; const n = Math.floor(dlg.pos); $('dlgText').textContent = l.text.slice(0, n); if (n % 3 === 0) beep(300 + (n % 5) * 20, .02, 'square', .012); if (n >= l.text.length) finishText(); }
   if (state.mode === 'explore' && player.veh && !away) { const n = pathNear(player.g.position.x, player.g.position.z); if (n.d < 45 && n.s > (save.reach || 0)) { save.reach = n.s; const v = stageVeh(); if (v !== player.veh.type) { swapVehicle(v); persist(); } } }

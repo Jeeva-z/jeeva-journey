@@ -89,7 +89,7 @@
 #bxSkip{padding:5px 12px;border-radius:999px;border:2px solid #a77a4a77;background:#fff;color:#b5532b;font:800 11px system-ui,sans-serif;cursor:pointer}
 #boxHud .bxHelp{position:absolute;left:16px;bottom:16px;max-width:min(380px,calc(100vw - 260px));font-size:12px;opacity:.92}
 @media (max-width:700px){#bxCam{width:120px}#bxCam.big{width:170px}#boxHud .bxHelp{display:none}#bxCoach{top:70px}}
-#envHud{position:absolute;left:16px;bottom:16px;padding:7px 14px;border-radius:999px;border:2px solid #a77a4a77;background:var(--glass,#fdf6e3);color:#3b2a22;font:700 13px system-ui,sans-serif;pointer-events:auto;cursor:pointer;box-shadow:0 4px 14px #3b2a2230}
+#envHud,#seasonHud{position:absolute;left:16px;bottom:16px;padding:7px 14px;border-radius:999px;border:2px solid #a77a4a77;background:var(--glass,#fdf6e3);color:#3b2a22;font:700 13px system-ui,sans-serif;pointer-events:auto;cursor:pointer;box-shadow:0 4px 14px #3b2a2230}
 #flash.bolt{animation:boltgo .7s ease-out}@keyframes boltgo{0%{opacity:.7}10%{opacity:.05}22%{opacity:.6}100%{opacity:0}}
 /* The first visible frame is the scene's sky, with no loading overlay. */
 #game{background:linear-gradient(#5798d2,#a8d3ec 65%,#edf1df);overflow:hidden}
@@ -125,6 +125,7 @@
   </div>
   <div id="prompt" hidden></div>
   <div id="toast" hidden></div>
+  <button id="seasonHud" type="button" style="bottom:58px" title="Change season · grass changes automatically every two minutes" aria-label="Change grass season">🌱 Spring</button>
   <div id="envHud" title="Click or press C to change the weather · T skips 3 hours"></div>
   <div id="help">WASD / arrows move · E interact · M map · C weather · T time</div>
 </div>
@@ -249,7 +250,7 @@ for (const [id, fresh] of [['btnNew', true], ['btnCont', false]]) {
 <script src="chess.js?v=1793300000"></script>
 <script src="cricket.js?v=1792681426"></script>
 <script src="boxing.js?v=1794800000"></script>
-<script src="post.js?v=1792681426"></script>
-<script src="journey.js?v=1794700005"></script>
+<script src="post.js?v=1794700007"></script>
+<script src="journey.js?v=1794700008"></script>
 </body>
 </html>

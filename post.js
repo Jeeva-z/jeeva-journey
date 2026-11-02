@@ -12,19 +12,21 @@ window.Post = function (renderer) {
       s += (texture2D(tex, vUv + dir * 3.2307692308).rgb + texture2D(tex, vUv - dir * 3.2307692308).rgb) * 0.0702702703;
       gl_FragColor = vec4(s, 1.0); }`, { tex: { value: null }, dir: { value: new T.Vector2() } });
   const copy = mk('uniform sampler2D tex; varying vec2 vUv; void main(){ gl_FragColor = vec4(texture2D(tex, vUv).rgb, 1.0); }', { tex: { value: null } });
-  const comp = mk(`uniform sampler2D tScene, b1, b2; uniform vec2 res; varying vec2 vUv;
+  const comp = mk(`uniform sampler2D tScene, b1, b2; uniform vec2 res; uniform float exposure; varying vec2 vUv;
     void main(){
       vec3 c = texture2D(tScene, vUv).rgb;
-      c += texture2D(b1, vUv).rgb * .22 + texture2D(b2, vUv).rgb * .30;
-      c = c / (1.0 + c * .18);
+      c += texture2D(b1, vUv).rgb * .10 + texture2D(b2, vUv).rgb * .14;
+      c *= exposure;
+      // Filmic highlight rolloff, applied once to the linear HDR scene.
+      c = clamp((c * (2.51*c + .03)) / (c * (2.43*c + .59) + .14), 0.0, 1.0);
       float l = dot(c, vec3(.299,.587,.114));
-      c = mix(vec3(l), c, 1.14);
-      c *= vec3(1.03, 1.0, .94);
-      c = (c - .5) * 1.04 + .5 + .02;
-      vec2 d = vUv - .5; c *= 1.0 - dot(d, d) * .55;
-      c += (fract(sin(dot(floor(vUv * res * .5), vec2(12.9898, 78.233))) * 43758.5453) - .5) * .012;
+      c = mix(vec3(l), c, 1.02);
+      c *= vec3(1.015, 1.0, .975);
+      c = (c - .5) * .98 + .5;
+      vec2 d = vUv - .5; c *= 1.0 - dot(d, d) * .22;
+      c += (fract(sin(dot(floor(vUv * res * .5), vec2(12.9898, 78.233))) * 43758.5453) - .5) * .004;
       gl_FragColor = vec4(pow(max(c, 0.0), vec3(1.0 / 2.2)), 1.0); }`,
-    { tScene: { value: null }, b1: { value: null }, b2: { value: null }, res: { value: new T.Vector2(1, 1) } });
+    { tScene: { value: null }, b1: { value: null }, b2: { value: null }, res: { value: new T.Vector2(1, 1) }, exposure: { value: 1 } });
   const quad = new T.Mesh(new T.PlaneGeometry(2, 2), copy); quad.frustumCulled = false;
   const qs = new T.Scene(); qs.add(quad); const qc = new T.OrthographicCamera(-1, 1, 1, -1, 0, 1);
   const opts = { type: T.HalfFloatType, minFilter: T.LinearFilter, magFilter: T.LinearFilter, depthBuffer: false };
@@ -39,7 +41,7 @@ window.Post = function (renderer) {
     comp.uniforms.res.value.set(w, h);
   }
   function render(scene, camera) {
-    resize(); renderer.setRenderTarget(rtS); renderer.clear(); renderer.render(scene, camera);
+    resize(); comp.uniforms.exposure.value = renderer.toneMappingExposure; renderer.setRenderTarget(rtS); renderer.clear(); renderer.render(scene, camera);
     bright.uniforms.tex.value = rtS.texture; pass(bright, levels[0].a);
     levels.forEach((l, i) => {
       if (i > 0) { copy.uniforms.tex.value = levels[i - 1].a.texture; pass(copy, l.a); }
