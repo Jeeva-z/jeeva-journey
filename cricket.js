@@ -11,6 +11,7 @@ window.runCricket = function (env) {
     hud.hidden = false;
     const pg = player.g;
     const saved = { pos: pg.position.clone(), rot: pg.rotation.y, body: player.body.position.y, bpos: bowler.g.position.clone(), brot: bowler.g.rotation.y };
+    const battingSaved = { bodyRotation: player.body.rotation.clone(), arms: player.arms.map(a => a.rotation.clone()), legs: player.legs.map(l => l.rotation.clone()) };
     const fieldSaved = fielders.map(f => ({ p: f.g.position.clone(), r: f.g.rotation.y }));
     const stumpSaved = stumps.map(s => ({ p: s.position.clone(), r: s.rotation.clone() }));
     env.hideVehicle(true);
@@ -22,12 +23,19 @@ window.runCricket = function (env) {
         player.legs[0].rotation.x = .12; player.legs[1].rotation.x = -.12; player.arms[0].rotation.x = -1.0; player.arms[1].rotation.x = -1.1;
 
     // bat
-    const bat = new T.Group(); bat.rotation.order = 'YXZ'; bat.position.set(.05, 1.3, .35); pg.add(bat);
-    const wood = new T.MeshBasicMaterial({ color: 0xf6dc9a }), grip = new T.MeshToonMaterial({ color: 0xd8402a }), ink = new T.MeshBasicMaterial({ color: 0x2b1a10, side: T.BackSide });
+    const bat = new T.Group(); bat.rotation.order = 'YXZ'; bat.position.set(.05, 1.3, .35); player.body.add(bat);
+    const wood = new T.MeshToonMaterial({ color: 0xf6dc9a }), grip = new T.MeshToonMaterial({ color: 0xd8402a }), ink = new T.MeshBasicMaterial({ color: 0x2b1a10, side: T.BackSide });
     const blade = new T.Mesh(new T.BoxGeometry(.3, 1.0, .1), wood); blade.position.y = -.82; blade.castShadow = true; bat.add(blade);
     const bladeInk = new T.Mesh(blade.geometry, ink); bladeInk.scale.setScalar(1.08); bladeInk.position.copy(blade.position); bat.add(bladeInk);
     const spine = new T.Mesh(new T.BoxGeometry(.12, .9, .06), new T.MeshBasicMaterial({ color: 0xd9a050 })); spine.position.set(0, -.82, -.07); bat.add(spine);
     const handle = new T.Mesh(new T.CylinderGeometry(.045, .045, .42, 8), grip); handle.position.y = -.2; bat.add(handle);
+    // Blade markings and wrapped grip stay readable at the batting camera distance.
+    for (let i = 0; i < 6; i++) {
+      const wrap = new T.Mesh(new T.TorusGeometry(.046, .006, 4, 12), ink);
+      wrap.rotation.x = Math.PI / 2; wrap.position.y = -.035 - i * .06; bat.add(wrap);
+    }
+    const badge = new T.Mesh(new T.PlaneGeometry(.21, .22), new T.MeshBasicMaterial({ color: 0x397c86 }));
+    badge.position.set(0, -.57, .052); bat.add(badge);
     bat.scale.setScalar(1.15);
     const setBat = (yaw, pitch, roll = 0) => { bat.rotation.y = yaw; bat.rotation.x = pitch; bat.rotation.z = roll; };
     setBat(.9, -.55, -.85);
@@ -37,6 +45,53 @@ window.runCricket = function (env) {
     const bshadow = new T.Mesh(new T.CircleGeometry(.13, 12), new T.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: .35 })); bshadow.rotation.x = -Math.PI / 2; bshadow.visible = false; scene.add(bshadow);
     // landing marker on the pitch (subtle cue)
     const cue = new T.Mesh(new T.RingGeometry(.18, .28, 24), new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .7 })); cue.rotation.x = -Math.PI / 2; cue.visible = false; scene.add(cue);
+
+    // A short world-space ribbon follows the actual blade, with no per-frame meshes.
+    const trailGeo = new T.BufferGeometry(), trailVertices = new Float32Array(12 * 6 * 3);
+    trailGeo.setAttribute('position', new T.BufferAttribute(trailVertices, 3).setUsage(T.DynamicDrawUsage));
+    trailGeo.setDrawRange(0, 0);
+    const trail = new T.Mesh(trailGeo, new T.MeshBasicMaterial({ color: 0xffe6ac, transparent: true, opacity: .28, side: T.DoubleSide, depthWrite: false }));
+    trail.frustumCulled = false; scene.add(trail);
+    const samples = []; let fxTime = 0, impactAge = 1;
+    const impact = new T.Group(); impact.visible = false; scene.add(impact);
+    const flash = new T.Mesh(new T.RingGeometry(.12, .17, 32), new T.MeshBasicMaterial({ color: 0xfff2c5, transparent: true, opacity: 0, side: T.DoubleSide, depthWrite: false })); impact.add(flash);
+    const rays = [];
+    for (let i = 0; i < 10; i++) {
+      const ray = new T.Mesh(new T.PlaneGeometry(.025, .16), new T.MeshBasicMaterial({ color: 0xffdda0, transparent: true, opacity: 0, depthWrite: false, side: T.DoubleSide }));
+      ray.rotation.z = -i * Math.PI * 2 / 10; impact.add(ray); rays.push(ray);
+    }
+    function strikeFX(defended = false) {
+      impactAge = 0; impact.position.copy(ball.position); impact.scale.setScalar(defended ? .65 : 1);
+      impact.visible = true; beep(defended ? 420 : 880, .045, 'triangle', .045);
+    }
+    const downAxis = new T.Vector3(0, -1, 0), gripPoint = new T.Vector3();
+    function updateSwingFX(dt) {
+      fxTime += dt; impactAge += dt;
+      player.body.updateWorldMatrix(true, true);
+      // Aim both hands at their grip positions as the torso turns with the shot.
+      player.arms.forEach((arm, i) => {
+        gripPoint.set(0, -.09 - i * .14, 0); bat.localToWorld(gripPoint);
+        player.body.worldToLocal(gripPoint); gripPoint.sub(arm.position).normalize();
+        arm.quaternion.setFromUnitVectors(downAxis, gripPoint);
+      });
+      if (swingT >= 0 && swingT < .36 && (!contactShot || contactShot.anim !== 'block')) {
+        samples.push({ time: fxTime, tip: bat.localToWorld(new T.Vector3(0, -1.32, 0)), heel: bat.localToWorld(new T.Vector3(0, -.57, 0)) });
+      }
+      while (samples.length && (samples[0].time < fxTime - .12 || samples.length > 13)) samples.shift();
+      let offset = 0;
+      for (let i = 1; i < samples.length; i++) {
+        const a = samples[i-1], b = samples[i];
+        for (const v of [a.tip,a.heel,b.tip,a.heel,b.heel,b.tip]) { v.toArray(trailVertices, offset); offset += 3; }
+      }
+      trailGeo.attributes.position.needsUpdate = true; trailGeo.setDrawRange(0, offset / 3);
+      trail.material.opacity = samples.length ? .3 * Math.max(0, 1 - (fxTime-samples[samples.length-1].time)/.12) : 0;
+      impact.visible = impactAge < .28;
+      if (impact.visible) {
+        impact.quaternion.copy(camera.quaternion);
+        const u = impactAge / .28; flash.scale.setScalar(1 + u * 3); flash.material.opacity = (1-u)*.8;
+        rays.forEach((ray,i) => { const a = i * Math.PI * 2 / 10, r = .22+u*.55; ray.position.set(Math.sin(a)*r,Math.cos(a)*r,0); ray.material.opacity = (1-u)*.9; ray.scale.y = 1-u*.7; });
+      }
+    }
 
     // state
     let bigShot = false, contactShot = null, st = 'ready', timer = 1.8, ballNo = 0, runs = 0, t = 0, Tflight = 1.2, line = 0, swung = false, swingT = -1, contact = null, shot = null, last = null, look = new T.Vector3(cx, 1, cz - 3), done = false, bowled = false, results = [];
@@ -64,6 +119,7 @@ window.runCricket = function (env) {
       fielders.forEach((f, i) => { f.g.position.copy(fieldSaved[i].p); f.g.position.y = .07; });
       ball.visible = false; bshadow.visible = false; cue.visible = false;
       bowler.g.position.set(cx, .14, cz - 10.2); bowler.g.rotation.y = 0; pose.bowlerA = 0;
+      samples.length = 0; trailGeo.setDrawRange(0, 0); impactAge = 1; impact.visible = false;
       swung = false; swingT = -1; contact = null; contactShot = null; bigShot = false; shot = null; bowled = false; setBat(.9, -.55, -.85);
       line = (Math.random() - .5) * .4;
       del = DELIVERIES[Math.floor(Math.random() * DELIVERIES.length)];
@@ -97,15 +153,17 @@ window.runCricket = function (env) {
         else if (r === 6) { r = 4; label = 'FOUR!'; }
       }
       contact = { time: t + .1, e, r, label, shot: sh, caught, block }; contactShot = sh;
-      beep(r || block ? 700 : 200, .08, r || block ? 'triangle' : 'sawtooth');
+      beep(240, .06, 'sine', .015);
     }
     const onKey = ev => { if (ev.code === 'Escape') { ev.preventDefault(); quit(); return; } if (ev.code === 'Space' || ev.code === 'Enter' || ev.code === 'KeyE') { ev.preventDefault(); swing(); } };
     const exitBtn = $('ckExit'); const onExit = ev => { ev.preventDefault(); ev.stopPropagation(); quit(); };
-    if (exitBtn) { exitBtn.addEventListener('pointerdown', ev => ev.stopPropagation()); exitBtn.addEventListener('click', onExit); }
+    const onExitPointer = ev => ev.stopPropagation();
+    if (exitBtn) { exitBtn.addEventListener('pointerdown', onExitPointer); exitBtn.addEventListener('click', onExit); }
     const onTap = ev => { ev.preventDefault(); swing(); };
     addEventListener('keydown', onKey); hud.addEventListener('pointerdown', onTap);
 
     function launch(c) {
+      strikeFX();
       // direction: early = leg side (left on screen), late = off side (right), plus A/D aim
       const aim = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0) + joy.x;
       const th = clamp(c.shot.base + c.e * 5 + aim * .35, -1.25, 1.25);
@@ -159,7 +217,7 @@ window.runCricket = function (env) {
       else if (st === 'flight') {
         t += dt; if (window.__ckForce && !swung && t + .1 >= Tflight - .005) { const F = window.__ckForce; F.keys.forEach(k => keys.add(k)); swing(); F.keys.forEach(k => keys.delete(k)); if (F.once) window.__ckForce = null; }
         if (t > .12) bowler.arms[1].rotation.x = lerp(bowler.arms[1].rotation.x, 0, dt * 6);
-        if (contact && t >= contact.time) { const c = contact; contact = null; if (c.block) { results.push(0); finishBall('DEFENDED!', c.shot.name + ' · solid, dead bat. No run, no wicket.'); ballNoNext(); } else if (c.r > 0 || c.caught) { ball.position.set(bx + .85, .8, zHit - .1); launch(c); } }
+        if (contact && t >= contact.time) { const c = contact; contact = null; if (c.block) { strikeFX(true); results.push(0); finishBall('DEFENDED!', c.shot.name + ' · solid, dead bat. No run, no wicket.'); ballNoNext(); } else if (c.r > 0 || c.caught) { ball.position.set(bx + .85, .8, zHit - .1); launch(c); } }
         else {
           const p = ballPos(t); ball.position.copy(p); ball.rotation.x += dt * 12; bshadow.position.set(p.x, .03, p.z); bshadow.scale.setScalar(clamp(1 - p.y * .25, .4, 1));
           if (t > Tflight + .02 && p.z >= stumpZ - .1) {
@@ -191,8 +249,8 @@ window.runCricket = function (env) {
         block: { y: [.6, .4], p: [-.4, -.75], b: [-.1, .05], roll: [-.5, -.1], low: 0 },
       };
       if (swingT >= 0) {
-        swingT += dt; const A = ANIM[(contactShot && contactShot.anim) || 'cover'], k = clamp(swingT / .22, 0, 1), ek = k * k * (3 - 2 * k);
-        const fk = clamp((swingT - .22) / .38, 0, 1), fe = fk * fk * (3 - 2 * fk), F = A.ft || [A.y[1] - .5, A.p[1] + .5, 1.0];
+        swingT += dt; const A = ANIM[(contactShot && contactShot.anim) || 'cover'], k = clamp(swingT / .1, 0, 1), ek = k * k * (3 - 2 * k);
+        const fk = clamp((swingT - .1) / .5, 0, 1), fe = fk * fk * (3 - 2 * fk), F = A.ft || [A.y[1] - .5, A.p[1] + .5, 1.0];
         // swing through the ball, then a flowing follow-through over the shoulder
         setBat(lerp(lerp(A.y[0], A.y[1], ek), F[0], fe), lerp(lerp(A.p[0], A.p[1], ek), F[1], fe), lerp(lerp(A.roll[0], A.roll[1], ek), F[2], fe));
         player.body.rotation.y = lerp(A.b[0], A.b[1], ek) + (A.spin || 0) * fe;
@@ -204,6 +262,8 @@ window.runCricket = function (env) {
         const q = performance.now() / 1000; setBat(.4, -2.6 + Math.sin(q * 6) * .1, -.2);
         player.body.position.y = Math.abs(Math.sin(q * 5)) * .18; player.body.rotation.y += dt * 2.2;
       } else { player.body.position.y = lerp(player.body.position.y, 0, dt * 8); player.body.rotation.y = lerp(player.body.rotation.y, -.3, dt * 6); if (st !== 'result' && st !== 'shot') { const q = performance.now() / 1000, tap = Math.max(0, Math.sin(q * 3.1)); setBat(.9, -.45 + tap * .35 - Math.sin(q * 2.4) * .05, -.85 + tap * .1); } }
+
+      updateSwingFX(dt);
 
       // camera
       const ft = st === 'shot' && shot ? ball.position : null;
@@ -218,9 +278,17 @@ window.runCricket = function (env) {
     let finished = false;
     function finish(res) {
       if (finished) return; finished = true; done = true;
-      removeEventListener('keydown', onKey); hud.removeEventListener('pointerdown', onTap); if (exitBtn) exitBtn.removeEventListener('click', onExit); hud.hidden = true;
-      pg.remove(bat); scene.remove(ball, bshadow, cue); setTicker(null);
-      pg.position.copy(saved.pos); pg.rotation.y = saved.rot; player.body.position.y = saved.body; player.body.rotation.y = 0;
+      removeEventListener('keydown', onKey); hud.removeEventListener('pointerdown', onTap); if (exitBtn) { exitBtn.removeEventListener('click', onExit); exitBtn.removeEventListener('pointerdown', onExitPointer); } hud.hidden = true;
+      player.body.remove(bat); scene.remove(ball, bshadow, cue, trail, impact); setTicker(null);
+      const geometries = new Set(), materials = new Set();
+      for (const root of [bat, ball, bshadow, cue, trail, impact]) root.traverse(o => {
+        if (o.geometry) geometries.add(o.geometry);
+        if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => materials.add(m));
+      });
+      geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose());
+      pg.position.copy(saved.pos); pg.rotation.y = saved.rot; player.body.position.y = saved.body; player.body.rotation.copy(battingSaved.bodyRotation);
+      player.arms.forEach((a,i) => a.rotation.copy(battingSaved.arms[i]));
+      player.legs.forEach((l,i) => l.rotation.copy(battingSaved.legs[i]));
       bowler.g.position.copy(saved.bpos); bowler.g.rotation.y = saved.brot; bowler.arms[1].rotation.x = 0; bowler.g.scale.copy(bowlerScale0); camera.zoom = zoom0; camera.updateProjectionMatrix();
       fielders.forEach((f, i) => { f.g.position.copy(fieldSaved[i].p); f.g.rotation.y = fieldSaved[i].r; });
       stumps.forEach((s, i) => { s.position.copy(stumpSaved[i].p); s.rotation.copy(stumpSaved[i].r); });

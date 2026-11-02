@@ -112,44 +112,99 @@
   /* ---------------------------------------------------------------- Vembuli */
   function buildFighter(env, o) {
     const { T, mat, add, outline } = env, SKIN = o.skin, DARK = 0x1b1410, HAIR = o.hair, TRUNK = o.trunk;
+    const heavy = o.id === 'vembuli';
+    const oval = (parent, color, x,y,z,sx,sy,sz) => {
+      const m = add(parent,new T.SphereGeometry(1,24,16),mat(color),x,y,z,false); m.scale.set(sx,sy,sz); return m;
+    };
+    const curve = (parent,color,points,r) => add(parent,new T.TubeGeometry(new T.CatmullRomCurve3(points.map(p=>new T.Vector3(...p))),18,r,8,false),mat(color),0,0,0,false);
     const root = new T.Group(), hips = new T.Group(); hips.position.y = .95; root.add(hips);
-    for (const s of [-1, 1]) { add(root, new T.CylinderGeometry(.2, .17, .95, 10), mat(SKIN), s * .22, .5, 0, false); add(root, new T.BoxGeometry(.3, .14, .45), mat(0x20222a), s * .22, .07, .08, false); }
-    add(hips, new T.CylinderGeometry(.5, .46, .42, 14), mat(TRUNK), 0, .05, 0, false); add(hips, new T.CylinderGeometry(.52, .52, .09, 14), mat(o.trim), 0, .27, 0, false);
-    const torso = new T.Group(); torso.position.y = .3; hips.add(torso);
-    const chest = add(torso, new T.SphereGeometry(.62, 16, 12), mat(SKIN), 0, .6, 0, false); chest.scale.set(1.2, .95, .8); outline(chest, 1.04);
-    const belly = add(torso, new T.SphereGeometry(.5, 14, 10), mat(SKIN), 0, .15, .08, false); belly.scale.set(1.05, .9, .85);
-    add(torso, new T.CylinderGeometry(.2, .25, .22, 10), mat(SKIN), 0, 1.2, 0, false);
-    const head = new T.Group(); head.position.y = 1.5; torso.add(head);
-    const skull = add(head, new T.SphereGeometry(.3, 16, 12), mat(SKIN).clone(), 0, 0, 0, false); skull.scale.set(1, 1.1, 1.04); outline(skull, 1.05);
-    const whites = [], pupils = [];
-    add(head, new T.BoxGeometry(.4, .17, .26), mat(HAIR), 0, -.17, .12, false); add(head, new T.BoxGeometry(.26, .05, .06), mat(HAIR), 0, -.07, .29, false);
-    for (const s of [-1, 1]) { whites.push(add(head, new T.SphereGeometry(.05, 8, 6), mat(0xf4f0e6), s * .1, .06, .27, false)); pupils.push(add(head, new T.SphereGeometry(.025, 6, 6), mat(DARK), s * .1, .06, .31, false)); const br = add(head, new T.BoxGeometry(.14, .04, .05), mat(DARK), s * .1, .14, .29, false); br.rotation.z = s * .35; add(head, new T.SphereGeometry(.06, 8, 6), mat(SKIN), s * .31, 0, 0, false); }
-    add(head, new T.SphereGeometry(.05, 8, 6), mat(SKIN), 0, -.02, .31, false);
-    if (o.id === 'vembuli') {
-    // thick 80s mustache: a fat middle with two heavy wings drooping past the corners of his mouth, plus bushy sideburns
-    const stache = add(head, new T.BoxGeometry(.2, .075, .08), mat(HAIR), 0, -.095, .285, false); outline(stache, 1.08);
-    for (const s of [-1, 1]) {
-      const wing = add(head, new T.BoxGeometry(.2, .07, .075), mat(HAIR), s * .16, -.115, .255, false); wing.rotation.set(0, s * -.5, s * .3); outline(wing, 1.08);
-      const tip = add(head, new T.SphereGeometry(.045, 8, 6), mat(HAIR), s * .27, -.17, .2, false); tip.scale.set(1, 1.5, 1);
-      const burn = add(head, new T.BoxGeometry(.06, .22, .1), mat(HAIR), s * .285, -.04, .14, false); burn.rotation.z = s * .1;
+    const legs = [];
+    for (const side of [-1,1]) {
+      const upper=add(root,new T.CylinderGeometry(heavy?.21:.17,heavy?.17:.135,1,16),mat(SKIN),0,0,0,false);
+      const lower=add(root,new T.CylinderGeometry(heavy?.17:.135,heavy?.12:.10,1,16),mat(SKIN),0,0,0,false);
+      const knee=oval(root,SKIN,side*.22,.5,0,heavy?.17:.135,.16,heavy?.17:.135);
+      const foot=add(root,new T.BoxGeometry(.28,.14,.43),mat(0x20222a),side*.22,.07,side*(heavy?.1:.24),false);
+      legs.push({side,upper,lower,knee,foot});
     }
-    // curly 80s perm: a tight cloud of curls over the crown, back and sides, with the hairline kept clear of the face
+
+    add(hips, new T.CylinderGeometry(heavy ? .5 : .42, heavy ? .46 : .4, .42, 20), mat(TRUNK), 0, .05, 0, false); add(hips, new T.CylinderGeometry(heavy ? .52 : .44, heavy ? .52 : .44, .09, 20), mat(o.trim), 0, .27, 0, false);
+    const torso = new T.Group(); torso.position.y = .3; hips.add(torso);
+    // Broad upper chest tapering into the waist, rather than a spherical belly.
+    const profile = [[.42,0],[.43,.2],[.5,.45],[.66,.75],[.64,.93],[.36,1.08]].map(([r,y])=>new T.Vector2(r*(heavy?1:.86),y));
+    const chest = add(torso,new T.LatheGeometry(profile,32),mat(SKIN),0,0,0,false);
+    chest.scale.z = heavy ? .72 : .64; outline(chest,1.025);
+    for(const side of [-1,1]) {
+      oval(torso,SKIN,side*(heavy?.29:.25),.76,.29,heavy?.33:.28,.22,.17);
+      const trap = oval(torso,SKIN,side*.27,1.03,0,.29,.16,.23); trap.rotation.z = -side*.25;
+      for(let row=0;row<3;row++) oval(torso,SKIN,side*.115,.49-row*.17,.29,.13,.105,.055);
+    }
+    add(torso,new T.CylinderGeometry(heavy?.21:.16,heavy?.28:.21,.28,20),mat(SKIN),0,1.18,0,false);
+    const head = new T.Group(); head.position.y = 1.5; torso.add(head);
+    const faceGeo = new T.SphereGeometry(.3,32,24), fp=faceGeo.attributes.position;
+    for(let i=0;i<fp.count;i++) {
+      const y=fp.getY(i), lower=Math.max(0,-y/.3);
+      fp.setXYZ(i,fp.getX(i)*(heavy?1.08-lower*.08:.94-lower*.12),y*(heavy?1.08:1.16),fp.getZ(i)*(heavy?1.02:.97));
+    }
+    faceGeo.computeVertexNormals();
+    const skull = add(head,faceGeo,mat(SKIN).clone(),0,0,0,false); outline(skull,1.025);
+    const whites = [], pupils = [];
+    for (const side of [-1,1]) {
+      // Bake almond proportions into geometry so swelling can still animate scale.y.
+      const eyeGeo = new T.SphereGeometry(.05,16,12); eyeGeo.scale(1.16,.62,.48);
+      whites.push(add(head,eyeGeo,mat(0xeee5d6),side*.105,.06,.276,false));
+      const irisGeo = new T.SphereGeometry(.025,14,10); irisGeo.scale(.85,1,.4);
+      pupils.push(add(head,irisGeo,mat(heavy?0x302219:0x718d91),side*.105,.06,.301,false));
+      oval(pupils[pupils.length-1],DARK,0,0,.01,.011,.019,.004);
+      oval(pupils[pupils.length-1],0xffffff,-.007,.011,.014,.005,.005,.002);
+      curve(head,HAIR,[[side*.045,.13,.277],[side*.105,.15,.268],[side*.17,.142,.241]],heavy?.022:.014);
+      curve(head,DARK,[[side*.05,.065,.279],[side*.105,.091,.29],[side*.16,.068,.258]],.006);
+      oval(head,SKIN,side*(heavy?.315:.287),-.005,0,.047,.074,.04);
+      oval(head,SKIN,side*.19,-.055,.22,.075,.067,.04);
+    }
+    oval(head,SKIN,0,.003,.289,heavy?.042:.032,.078,.035);
+    oval(head,SKIN,0,-.052,.32,heavy?.062:.046,.031,.037);
+    curve(head,heavy?0x674134:0xa66d59,[[-.085,-.163,.245],[0,-.17,.268],[.085,-.158,.245]],.009);
+    if (o.id === 'vembuli') {
+    // Vembuli's dominant moustache, sideburns and exposed chin.
+    for (const side of [-1,1]) {
+      curve(head,HAIR,[[side*.012,-.091,.306],[side*.085,-.098,.29],[side*.16,-.13,.26],[side*.18,-.18,.22]],.026);
+      oval(head,HAIR,side*.294,-.025,.055,.032,.105,.052);
+    }
+    // Dense curly crown: a tight cloud of curls over the crown, back and sides, with the hairline kept clear of the face
     const curl = (x, y, z, r) => { const c = add(head, new T.SphereGeometry(r, 8, 6), mat(HAIR), x, y, z, false); c.scale.y = .9; return c; };
     for (let i = 0; i < 70; i++) {
       const u = (i + .5) / 70, th = Math.acos(1 - u * 1.55), ph = i * 2.39996;   // golden-angle spread over the upper ~115 degrees of the skull
       const x = Math.sin(th) * Math.sin(ph), y = Math.cos(th), z = Math.sin(th) * Math.cos(ph);
       if (z > 0 && y < .55) continue;   // keep the forehead and face clear
-      curl(x * .33, y * .37 + .04, z * .33, .075 + (i % 3) * .012);
+      curl(x * .33, y * .34 + .04, z * .33, .06 + (i % 3) * .008);
     }
-    for (let i = 0; i < 16; i++) { const a = i / 16 * 6.283; curl(Math.sin(a) * .39, .24 + (i % 2) * .05, -Math.abs(Math.cos(a)) * .3 - .06, .09); }   // outer ring of bigger curls for the poofy volume
+    for (let i = 0; i < 16; i++) { const a = i / 16 * 6.283; curl(Math.sin(a) * .33, .21 + (i % 2) * .04, -Math.abs(Math.cos(a)) * .28 - .04, .07); }   // outer ring of bigger curls for the poofy volume
     curl(0, .38, .02, .11); curl(-.12, .36, -.06, .1); curl(.12, .36, -.06, .1);
     } else {
-      // swept-back auburn hair with a short quiff, faded sides, and tattoos across the chest
-      const cap = add(head, new T.SphereGeometry(.315, 14, 10, 0, 6.283, 0, 1.2), mat(HAIR), 0, .02, -.02, false); cap.scale.set(1, 1.12, 1.07); outline(cap, 1.04);
-      for (const s of [-1, 1]) { add(head, new T.SphereGeometry(.12, 8, 6), mat(HAIR), s * .17, .02, -.2, false); add(head, new T.SphereGeometry(.08, 8, 6), mat(HAIR), s * .27, .08, -.04, false); }
-      add(head, new T.SphereGeometry(.14, 8, 6), mat(HAIR), 0, -.05, -.24, false);
-      const quiff = add(head, new T.BoxGeometry(.24, .1, .2), mat(HAIR), 0, .35, .1, false); quiff.rotation.x = -.35;
-      for (const [x, y, r] of [[-.34, .85, .12], [.3, .95, .1], [-.2, .55, .09]]) { const tat = add(torso, new T.SphereGeometry(r, 8, 6), mat(0x2f3b36), x, y, .5, false); tat.scale.set(1.1, 1.4, .25); }
+      // UFC 205-style short crown and fade. Follow the elongated skull rather
+      // than shrinking a hemisphere below its surface (which exposed the crown).
+      const capGeo=new T.SphereGeometry(1,32,20,0,Math.PI*2,0,1);
+      const cp=capGeo.attributes.position, uv=capGeo.attributes.uv, shades=[];
+      for(let i=0;i<cp.count;i++) {
+        const phi=uv.getX(i)*Math.PI*2, front=Math.max(0,Math.sin(phi)), back=Math.max(0,-Math.sin(phi));
+        const theta=(1-uv.getY(i))*(1.53-front*.52+back*.3);
+        const x=-.309*.94*Math.cos(phi)*Math.sin(theta), y=.309*1.16*Math.cos(theta)+.008, z=.309*.97*Math.sin(phi)*Math.sin(theta);
+        cp.setXYZ(i,x,y,z);
+        const fade=Math.max(0,Math.min(1,(.19-y)/.17));
+        new T.Color(0x493529).lerp(new T.Color(SKIN),fade*.66).toArray(shades,i*3);
+      }
+      capGeo.setAttribute('color',new T.Float32BufferAttribute(shades,3));capGeo.computeVertexNormals();
+      const cap=add(head,capGeo,new T.MeshToonMaterial({color:0xffffff,vertexColors:true}),0,0,0,false);
+      cap.name='Conor 2016 cropped fade';
+      const beardGeo=new T.SphereGeometry(.29,28,18,0,Math.PI*2,Math.PI*.48,Math.PI*.52);
+      const bp=beardGeo.attributes.position;
+      for(let i=0;i<bp.count;i++) {const y=bp.getY(i);bp.setX(i,bp.getX(i)*(1-Math.max(0,-y)*.7));}
+      beardGeo.computeVertexNormals();
+      const beard=add(head,beardGeo,mat(HAIR),0,-.035,.035,false);beard.scale.set(.98,1.13,1);
+      for(const side of [-1,1]) curve(head,HAIR,[[side*.005,-.1,.306],[side*.05,-.109,.301],[side*.1,-.135,.272]],.016);
+      oval(head,SKIN,0,-.15,.289,.072,.018,.014);
+      curve(head,0x9b6553,[[-.064,-.155,.303],[0,-.16,.307],[.064,-.15,.298]],.006);
+
     }
     // damage: lumps that grow from nothing as he takes punches (eyes first, then cheeks, brows and lip)
     const puff = (c, r, x, y, z) => { const m = add(head, new T.SphereGeometry(r, 10, 8), mat(c), x, y, z, false); m.scale.setScalar(.001); return m; };
@@ -159,16 +214,72 @@
     for (let i = 0; i < 4; i++) { const star = add(stars, new T.SphereGeometry(.035, 6, 5), new T.MeshBasicMaterial({ color: 0xffe27a }), Math.cos(i * 1.571) * .3, 0, Math.sin(i * 1.571) * .3, false); star.userData.i = i; }
     const arms = [];
     for (const s of [-1, 1]) {
-      const sh = new T.Group(); sh.position.set(s * .78, 1.0, 0); torso.add(sh);
-      add(sh, new T.SphereGeometry(.24, 10, 8), mat(SKIN), 0, 0, 0, false);
-      add(sh, new T.CylinderGeometry(.17, .15, .55, 10), mat(SKIN), 0, -.28, 0, false);
+      const sh = new T.Group(); sh.position.set(s * (heavy ? .72 : .62), .95, 0); torso.add(sh);
+      add(sh, new T.SphereGeometry(heavy ? .24 : .19, 20, 14), mat(SKIN), 0, 0, 0, false);
+      add(sh, new T.CylinderGeometry(heavy ? .18 : .14, heavy ? .15 : .12, .55, 16), mat(SKIN), 0, -.28, 0, false);
       const el = new T.Group(); el.position.y = -.55; sh.add(el);
-      add(el, new T.CylinderGeometry(.14, .12, .5, 10), mat(SKIN), 0, -.25, 0, false);
+      add(el, new T.CylinderGeometry(heavy ? .15 : .12, heavy ? .12 : .1, .5, 16), mat(SKIN), 0, -.25, 0, false);
       const gl = add(el, new T.SphereGeometry(.2, 12, 10), mat(o.glove).clone(), 0, -.6, 0, false); gl.scale.set(1, .95, 1.1); outline(gl, 1.06);
       arms.push({ sh, el, gl, s });
     }
+    const tattooResources = [];
+    if (!heavy) {
+      // 2016-inspired atlas: front art occupies x=0..0.69; sleeve x=0.70..1.
+      // Texture transforms crop the atlas without altering the generated alpha.
+      const atlas = new T.TextureLoader().load('assets/characters/conor-2016-tattoos.png');
+      atlas.colorSpace = T.SRGBColorSpace; atlas.anisotropy = 4;
+      atlas.repeat.set(.69,1);
+      const tattooMat = new T.MeshToonMaterial({ map: atlas, transparent: true, alphaTest: .04, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1, opacity: .88 });
+      // Ray-project the decal onto the actual chest/pecs/abdomen to avoid floating ink.
+      torso.updateWorldMatrix(true,true);
+      const surfaces = torso.children.filter(c => c.isMesh && c.material.color.getHex() === SKIN);
+      const decalGeo = new T.PlaneGeometry(1.02,1.04,40,48), dp=decalGeo.attributes.position;
+      const ray = new T.Raycaster(), origin = new T.Vector3(), direction = new T.Vector3(0,0,-1);
+      const hitLocal = new T.Vector3();
+      for(let i=0;i<dp.count;i++) {
+        const x=dp.getX(i), y=dp.getY(i)+.56;
+        origin.set(x,y,2); torso.localToWorld(origin); ray.set(origin,direction);
+        const hits=ray.intersectObjects(surfaces,false);
+        if(hits.length) {hitLocal.copy(hits[0].point);torso.worldToLocal(hitLocal);dp.setXYZ(i,x,y,hitLocal.z+.006);}
+        else dp.setXYZ(i,x,y,.005);
+      }
+      decalGeo.computeVertexNormals();
+      const decal = add(torso,decalGeo,tattooMat,0,0,0,false);decal.name='Conor 2016 torso tattoos';
+      const sleeve = atlas.clone(); sleeve.repeat.set(.30,1); sleeve.offset.set(.70,0); sleeve.needsUpdate=true;
+      const sleeveMat=tattooMat.clone();sleeveMat.map=sleeve;
+      const leftArm=arms.find(a=>a.s===1);
+      const sleeveGeo=new T.CylinderGeometry(.123,.103,.48,32,12,true);
+      const sleeveMesh=add(leftArm.el,sleeveGeo,sleeveMat,0,-.25,0,false);sleeveMesh.rotation.y=Math.PI;sleeveMesh.name='Conor left forearm tattoo';
+      tattooResources.push(decalGeo,sleeveGeo,tattooMat,sleeveMat,atlas,sleeve);
+    }
     root.scale.setScalar(.8);
-    return { root, hips, torso, head, arms, swell, stars, skin: o.skin, glove: o.glove };
+    const fighter = { root, hips, torso, head, arms, legs, heavy, swell, stars, disposeTattoos: () => tattooResources.forEach(r => r.dispose()), skin: o.skin, glove: o.glove };
+    poseFootwork(fighter,0,'idle',0,0);
+    return fighter;
+  }
+  // Cosmetic footwork uses the existing state machine; it never creates hits.
+  function poseFootwork(V,time,state,dt,bounce) {
+    const active=state==='idle'||state==='recover'||state==='guard';
+    const punch=state==='strike'||state==='hookstrike';
+    const pace=V.heavy?3.4:4.6, sway=active?Math.sin(time*pace):0;
+    V.hips.position.y=.95-(active?Math.abs(sway)*(V.heavy?.035:.02):0);
+    V.hips.rotation.z=active?sway*.018:0;
+    V.legs.forEach(leg=>{
+      const side=leg.side, stride=active?Math.sin(time*pace+side*Math.PI*.5):0;
+      const lift=active?Math.max(0,stride)*.025:0;
+      const foot=leg.foot;
+      foot.position.set(side*(V.heavy?.23:.27),.07-bounce/.8+lift,side*(V.heavy?.1:.24)+stride*.035);
+      foot.rotation.y=side*(V.heavy?.08:.2)+(punch&&side===1?.25:0);
+      foot.rotation.x=punch&&side===1?-.16:0;
+      const hip=foot.position.clone().set(side*.22,V.hips.position.y,0);
+      const ankle=foot.position.clone();ankle.y+=.055;
+      const knee=hip.clone().lerp(ankle,.5);knee.z+=active?.13+Math.abs(sway)*.04:.1;
+      leg.knee.position.copy(knee);
+      for(const [mesh,a,b] of [[leg.upper,hip,knee],[leg.lower,knee,ankle]]) {
+        const delta=b.clone().sub(a);mesh.position.copy(a).add(b).multiplyScalar(.5);
+        mesh.scale.y=delta.length();mesh.quaternion.setFromUnitVectors(hip.clone().set(0,1,0),delta.normalize());
+      }
+    });
   }
   function armTarget(name, s, t) {   // s = -1 left arm, +1 right arm of Vembuli (his own left / right, seen mirrored by us)
     const lead = s === -1;
@@ -297,7 +408,7 @@
     function cleanup(res) {
       closed = true; env.setTicker(null);
       if (tracker) { try { tracker.stream.getTracks().forEach(t => t.stop()); tracker.lm.close(); } catch (er) { } } video.srcObject = null;
-      camera.remove(rig); sparks.forEach(sp => camera.remove(sp)); g.remove(V.root); hud.hidden = true; resolveFn(res);
+      camera.remove(rig); sparks.forEach(sp => camera.remove(sp)); g.remove(V.root); V.disposeTattoos(); hud.hidden = true; resolveFn(res);
     }
     function startRound() { st.phase = 'fight'; st.clock = ROUND_T; him.state = 'idle'; him.think = 1; msg(st.round === 1 ? 'FIGHT!' : 'ROUND 2', 1000, '#ffd36a'); beep(880, .25, 'triangle', .08); $('bxRound').textContent = 'ROUND ' + st.round; sub('Rayappan', pick(CORNER)); }
 
@@ -424,7 +535,9 @@
         if (st.tauntT <= 0 && st.phase === 'fight') { st.tauntT = 6 + Math.random() * 4; { const him_ = Math.random() < .5; sub(him_ ? OPP.name : 'Rayappan', pick(him_ ? OPP.taunts : CORNER)); }; }
       } else if (st.phase === 'break') { st.t2 -= dt; if (st.t2 <= 0) { st.round++; startRound(); } }
       // Vembuli pose
-      const sway = Math.sin(now * 2.2) * .04, advance = him.state === 'windup' || him.state === 'hookwind' ? .12 : him.state === 'strike' || him.state === 'hookstrike' ? .45 : 0;
+      const mobile = (him.state === 'idle' || him.state === 'recover' || him.state === 'guard') && !st.done;
+      const lively = OPP.id === 'conor' && mobile;
+      const sway = Math.sin(now * (lively ? 3.1 : 2.2)) * (lively ? .075 : .04), advance = him.state === 'windup' || him.state === 'hookwind' ? .12 : him.state === 'strike' || him.state === 'hookstrike' ? .45 : 0;
       V.root.position.x = lerp(V.root.position.x, vx0 + (him.latT > 0 ? him.lat : 0) + sway, Math.min(1, dt * 6));
       V.root.position.z = lerp(V.root.position.z, vz0 + advance + (him.state === 'down' ? -.1 : 0) - him.kick * him.kick * .16, Math.min(1, dt * 12));
       const k = Math.min(1, dt * 14), name = him.state;
@@ -434,20 +547,37 @@
         if ((name === 'hookwind' || name === 'hookstrike') && him.atk && ((him.atk.arm === 0) !== lead)) pose = 'idle';
         if (name === 'recover') pose = 'idle';
         const tg = armTarget(pose === 'down' || pose === 'win' ? 'idle' : pose, a.s, now);
+        if (mobile && OPP.id === 'vembuli') { tg.sx -= .12; tg.ex -= .12; tg.sz += Math.sin(now*3.4+a.s)*.035; }
+        if (lively) { tg.sx += Math.sin(now*4+a.s)*.07; tg.ex += (a.s===1 ? .25 : -.08); tg.sz += a.s*.06; }
         a.sh.rotation.y = lerp(a.sh.rotation.y, tg.sy || 0, k); a.sh.rotation.x = lerp(a.sh.rotation.x, tg.sx, k); a.sh.rotation.z = lerp(a.sh.rotation.z, tg.sz, k); a.el.rotation.x = lerp(a.el.rotation.x, tg.ex, k);
         const glow = (name === 'windup' || name === 'hookwind') && ((him.atk.arm === 0) === lead) ? 1 : 0;
         a.gl.material.color.setHex(glow ? 0xff3a2a : V.glove);
       });
       const twist = name === 'windup' ? -.35 : name === 'strike' ? .3 : name === 'hookwind' ? (him.atk.arm ? .5 : -.5) : name === 'hookstrike' ? (him.atk.arm ? -.45 : .45) : 0;
-      V.torso.rotation.y = lerp(V.torso.rotation.y, twist, k); V.torso.rotation.x = lerp(V.torso.rotation.x, (name === 'down' ? .9 : name === 'guard' ? .12 : .04 + Math.sin(now * 2.4) * .02) - him.kick * him.kick * .22, k);
+      V.torso.rotation.y = lerp(V.torso.rotation.y, twist + (lively ? .1 + Math.sin(now*2.1)*.055 : 0), k); V.torso.rotation.x = lerp(V.torso.rotation.x, (name === 'down' ? .9 : name === 'guard' ? .12 : .04 + Math.sin(now * 2.4) * .02) - him.kick * him.kick * .22, k);
       him.kick = Math.max(0, him.kick - dt * 4); const kk2 = him.kick * him.kick;
       V.head.rotation.x = -kk2 * .55; V.head.rotation.y = him.kickSide * kk2 * .75; V.head.rotation.z = him.kickSide * kk2 * .3; V.root.rotation.y = kk2 * Math.sin(now * 70) * .05;
+      if (lively) {
+        V.head.rotation.y += Math.sin(now*1.7)*.045;
+        V.head.rotation.z += Math.sin(now*2.2)*.022;
+        V.head.rotation.x += -.025 + Math.sin(now*2.7)*.018;
+      }
+      if (mobile && OPP.id === 'vembuli') {
+        V.head.rotation.z += Math.sin(now*3.4)*.035;
+        V.head.rotation.x += .035+Math.abs(Math.sin(now*3.4))*.025;
+      }
+      V.torso.rotation.z = mobile ? Math.sin(now*(lively?2.3:3.4))*(lively?.025:.045) : 0;
+      V.torso.scale.z = 1 + (OPP.id === 'conor' && name !== 'down' ? Math.sin(now*2.8)*.012 : 0);
       // his face takes the damage
       const target = clamp((1 - him.hp / HIS_HP) * .85 + him.faceW, 0, 1), sw = V.swell, ease = x => { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); };
       him.swellNow += ((him.state === 'down' ? Math.max(.95, target) : target) + him.bump - him.swellNow) * Math.min(1, dt * 3); him.bump = Math.max(0, him.bump - dt * .5);
       const sn = him.swellNow, eR = ease((sn - .10) / .45), eL = ease((sn - .30) / .5), ch = ease((sn - .2) / .6), br = ease((sn - .35) / .5), lp = ease((sn - .45) / .45);
       sw.eye[0].scale.set(.001 + eR * 1.5, .001 + eR * 1.05, .001 + eR * .8); sw.eye[1].scale.set(.001 + eL * 1.5, .001 + eL * 1.05, .001 + eL * .8);
       sw.whites[0].scale.y = sw.pupils[0].scale.y = 1 - .85 * eR; sw.whites[1].scale.y = sw.pupils[1].scale.y = 1 - .85 * eL;
+      if (OPP.id === 'conor' && name !== 'down') {
+        const phase = now % 3.9, blink = phase < .15 ? Math.max(.09,Math.abs(phase-.075)/.075) : 1;
+        sw.whites.forEach((eye,i) => { eye.scale.y *= blink; sw.pupils[i].scale.y *= blink; });
+      }
       sw.cheek.forEach(m => m.scale.setScalar(.001 + ch * 1.4)); sw.brow.forEach(m => m.scale.set(.001 + br * 1.5, .001 + br * .9, .001 + br * .9)); sw.lip.scale.set(.001 + lp * 1.9, .001 + lp * .8, .001 + lp * .9);
       sw.skull.material.color.setHex(V.skin).lerp(FLUSH, clamp(sn * 1.1, 0, 1) * .5);
       V.stars.visible = him.state === 'down'; if (V.stars.visible) { V.stars.rotation.y = now * 5; V.stars.children.forEach(c => { c.position.y = Math.sin(now * 6 + c.userData.i * 1.6) * .05; }); }
@@ -455,7 +585,8 @@
         if (sn > .3 && !him.said.a) { him.said.a = 1; sub('Rayappan', 'His eye is puffing up. Keep going for the head!'); }
         if (sn > .65 && !him.said.b) { him.said.b = 1; sub(OPP.name, OPP.hurt); }
       }
-      V.root.position.y = ring.top + (name === 'down' ? -.35 : Math.abs(Math.sin(now * 4.4)) * .03);
+      V.root.position.y = ring.top + (name === 'down' ? -.35 : Math.abs(Math.sin(now * (lively ? 5.2 : 4.4))) * (lively ? .045 : .03));
+      poseFootwork(V,now,st.done ? 'down' : name,dt,name==='down' ? 0 : V.root.position.y-ring.top);
       // camera: first person at the ring edge
       const sh = me.shake > 0 ? me.shake * .06 : 0;
       g.updateWorldMatrix(true, false);
