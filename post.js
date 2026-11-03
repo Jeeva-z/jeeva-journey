@@ -1,4 +1,4 @@
-/* Soft painterly post-processing: HDR scene -> gentle bloom -> warm grade, light vignette, faint paper grain. */
+/* HD-2D inspired finishing: continuous-resolution scene, miniature focus, amber bloom and cool shadows. */
 window.Post = function (renderer) {
   const T = THREE;
   const vs = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
@@ -15,15 +15,25 @@ window.Post = function (renderer) {
   const comp = mk(`uniform sampler2D tScene, b1, b2; uniform vec2 res; uniform float exposure; varying vec2 vUv;
     void main(){
       vec3 c = texture2D(tScene, vUv).rgb;
-      c += texture2D(b1, vUv).rgb * .10 + texture2D(b2, vUv).rgb * .14;
+      // A narrow focus falloff keeps the playable center crisp. Sample the
+      // full-resolution scene, never snap screen coordinates or animation.
+      float defocus = smoothstep(.24, .50, abs(vUv.y - .48));
+      vec2 px = vec2(1.5) / res;
+      vec3 soft = (texture2D(tScene, vUv + vec2(px.x, px.y)).rgb
+        + texture2D(tScene, vUv + vec2(-px.x, px.y)).rgb
+        + texture2D(tScene, vUv + vec2(px.x, -px.y)).rgb
+        + texture2D(tScene, vUv - px).rgb) * .25;
+      c = mix(c, soft, defocus * .75);
+      c += (texture2D(b1, vUv).rgb * .16 + texture2D(b2, vUv).rgb * .23) * vec3(1.08, 1.0, .84);
       c *= exposure;
       // Filmic highlight rolloff, applied once to the linear HDR scene.
       c = clamp((c * (2.51*c + .03)) / (c * (2.43*c + .59) + .14), 0.0, 1.0);
       float l = dot(c, vec3(.299,.587,.114));
-      c = mix(vec3(l), c, 1.02);
+      c = mix(vec3(l), c, .90);
+      c *= mix(vec3(.83, .94, 1.09), vec3(1.10, 1.025, .88), smoothstep(.08, .8, l));
       c *= vec3(1.015, 1.0, .975);
-      c = (c - .5) * .98 + .5;
-      vec2 d = vUv - .5; c *= 1.0 - dot(d, d) * .22;
+      c = (c - .5) * 1.08 + .5;
+      vec2 d = vUv - .5; c *= 1.0 - dot(d, d) * .55;
       c += (fract(sin(dot(floor(vUv * res * .5), vec2(12.9898, 78.233))) * 43758.5453) - .5) * .004;
       gl_FragColor = vec4(pow(max(c, 0.0), vec3(1.0 / 2.2)), 1.0); }`,
     { tScene: { value: null }, b1: { value: null }, b2: { value: null }, res: { value: new T.Vector2(1, 1) }, exposure: { value: 1 } });

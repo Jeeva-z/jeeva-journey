@@ -70,22 +70,26 @@ scene.add(sun, sun.target);
 
 /* ------------------------------------------------------------- helpers */
 const mats = new Map();
-// Soft tonal steps and a reusable, deterministic pigment wash for scenery.
+// HD-2D inspired palette steps and world-space pixel pigment.
+// Texture detail is quantized; camera and simulation remain continuous.
 const toonGrad = (() => {
-  const d = new Uint8Array([112,112,112,255, 158,158,158,255, 195,195,195,255, 224,224,224,255, 245,245,245,255]);
+  const d = new Uint8Array([80,80,80,255, 128,128,128,255, 176,176,176,255, 218,218,218,255, 255,255,255,255]);
   const t = new T.DataTexture(d, 5, 1, T.RGBAFormat);
-  t.minFilter = t.magFilter = T.LinearFilter; t.needsUpdate = true; return t;
+  t.minFilter = t.magFilter = T.NearestFilter; t.needsUpdate = true; return t;
 })();
 const pigmentTex = (() => {
-  const c = document.createElement('canvas'); c.width = c.height = 128;
-  const ctx = c.getContext('2d'); ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,128,128);
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const ctx = c.getContext('2d'); ctx.fillStyle = '#e8e2ce'; ctx.fillRect(0, 0, 64, 64);
   let seed = 41; const r = () => (seed = seed * 16807 % 2147483647) / 2147483647;
-  for(let i=0;i<500;i++) {
-    ctx.fillStyle = `rgba(91,105,95,${.015+r()*.035})`;
-    ctx.beginPath(); ctx.ellipse(r()*128,r()*128,2+r()*12,1+r()*4,r()*3.14,0,Math.PI*2); ctx.fill();
+  const palette = ['#b6b7a2', '#ccc9b3', '#ddd6bf', '#f6ecd3'];
+  for (let i = 0; i < 780; i++) {
+    ctx.fillStyle = palette[Math.floor(r() * palette.length)];
+    ctx.fillRect(Math.floor(r() * 64), Math.floor(r() * 64), 1 + Math.floor(r() * 3), 1 + Math.floor(r() * 2));
   }
   const t = new T.CanvasTexture(c); t.colorSpace = T.SRGBColorSpace;
-  t.wrapS = t.wrapT = T.RepeatWrapping; t.anisotropy = 4; return t;
+  t.wrapS = t.wrapT = T.RepeatWrapping;
+  t.magFilter = T.NearestFilter; t.minFilter = T.LinearMipmapLinearFilter;
+  return t;
 })();
 const mat = (c, r = .85, m = 0) => {
   if (!mats.has(c)) mats.set(c, new T.MeshToonMaterial({ color: c, map: pigmentTex, gradientMap: toonGrad }));
@@ -298,7 +302,7 @@ const motes = (() => {
 
 function person(o) {
   const g = new T.Group(), body = new T.Group(); g.add(body);
-  const tm = c => new T.MeshToonMaterial({ color: c, gradientMap: toonGrad });
+  const tm = c => new T.MeshToonMaterial({ color: c, map: pigmentTex, gradientMap: toonGrad });
   const skin = tm(o.skin || 0xf0b98a), torsoMat = tm(o.shirt || 0xf08a4b), legMat = tm(o.pants || 0x35507a);
   const ink = (m, k) => outline(m, k);
   const torso = add(body, new T.CapsuleGeometry(.24, .5, 4, 12), torsoMat, 0, 1.12, 0); ink(torso, 1.08);
@@ -351,7 +355,7 @@ function person(o) {
 function upgradeJeeva(p, torso, skin) {
   const { head, body, arms, torsoMat } = p;
   head.clear();
-  const toon = c => new T.MeshToonMaterial({ color: c, gradientMap: toonGrad });
+  const toon = c => new T.MeshToonMaterial({ color: c, map: pigmentTex, gradientMap: toonGrad });
   const hair = toon(0x211b18), hairLight = toon(0x30251f), lip = toon(0x865343);
   const oval = (parent, material, x, y, z, sx, sy, sz) => {
     const m = add(parent, new T.SphereGeometry(1, 24, 16), material, x, y, z);
@@ -533,7 +537,7 @@ landmark('ach', 36, -168, { title: 'HALL OF FAME', sub: 'BIT Hackathon', label: 
 const OFFICE = { x: 24, z: -223, w: 26, d: 11 };
 {
   const { x, z, w, d } = OFFICE, g = new T.Group(); g.position.set(x, 0, z); world.add(g);
-  const mk = (c, tex) => new T.MeshToonMaterial({ color: c, gradientMap: toonGrad });
+  const mk = (c, tex) => new T.MeshToonMaterial({ color: c, map: pigmentTex, gradientMap: toonGrad });
   // forecourt paving is part of the ground paint decal
   box(g, w, 9, d, 0xdfe6ee, 0, 4.5, 0); box(g, w + .6, 1.4, d + .6, 0x4f6fa8, 0, 9.5, 0);
   box(g, w * .6, 3, d * .66, 0xcdd7e3, -w * .12, 11.7, -.8); box(g, w * .6 + .5, .35, d * .66 + .5, 0x3c5788, -w * .12, 13.35, -.8);

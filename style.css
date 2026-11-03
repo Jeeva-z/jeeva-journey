@@ -165,3 +165,16 @@ h1{margin:6px 0 10px;font-family:var(--serif);font-size:clamp(52px,11vw,92px);fo
 .gotoPlace:focus-visible,#gotoClose:focus-visible,#gotoBtn:focus-visible{outline:3px solid #60d7eb;outline-offset:5px}
 #gotoClose{position:absolute;right:0;top:0;width:38px;height:38px;border:1px solid #fbf1da88;border-radius:50%;color:var(--paper);background:#243c45;font-size:26px}
 @media(max-width:380px),(max-height:440px){.gotoCircle{--radius:96px}.gotoPlace{width:70px;height:70px}.gotoCenter strong{font-size:24px}}
+
+/* Restrained gilded storybook interface for the HD-2D world. */
+#quest, #stats, #toast, #dlg {
+  background: linear-gradient(145deg, rgba(28,35,39,.94), rgba(16,23,28,.93));
+  color: #f4e9cf;
+  border: 1px solid #b49a65;
+  border-radius: 3px;
+  box-shadow: 0 8px 28px #080d1466, inset 0 0 0 3px #d7bd7e12;
+}
+#quest small, #quest p, #stats .row.small, #dlgHint { color: #d4c8ad; }
+#quest small, #sAge, #qArrowRow, #toast b { color: #e5c989; }
+#dlgName { background: #263239; border: 1px solid #b49a65; border-radius: 2px; color: #f2dfb3; }
+#prompt { background: #19262eee; color: #f2dfb3; border: 1px solid #b49a65; border-radius: 3px; }
