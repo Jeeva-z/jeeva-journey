@@ -46,7 +46,7 @@
 #stuntTxt.pop{animation:stpop 1.3s ease both}@keyframes stpop{0%{opacity:.4;transform:translateX(-50%) scale(.6) rotate(-6deg)}18%{opacity:1;transform:translateX(-50%) scale(1.12) rotate(2deg)}30%{transform:translateX(-50%) scale(1) rotate(0)}80%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-14px)}}
 #arHud{white-space:nowrap;position:fixed;left:50%;top:64px;transform:translateX(-50%);z-index:45;display:flex;gap:16px;align-items:center;padding:10px 18px;border-radius:999px;border:2px solid #a77a4a77;background:var(--glass,#fdf6e3);color:#3b2a22;font:700 13px system-ui,sans-serif;box-shadow:0 6px 18px #0003}#arHud b{color:#d8402a;letter-spacing:.08em}#arHud span{font-variant-numeric:tabular-nums}#arExit{pointer-events:auto;padding:6px 12px;border-radius:999px;border:2px solid #a77a4a77;background:#fff;color:#b5532b;font:800 11px system-ui,sans-serif;cursor:pointer}
 #arBanner{position:fixed;left:50%;top:30%;transform:translateX(-50%);z-index:60;pointer-events:none;text-align:center;font:900 clamp(34px,6vw,64px)/1 Georgia,serif;font-style:italic;color:#fff;text-shadow:0 3px 0 #d8402a,0 8px 26px #0008}#arBanner small{display:block;margin-top:10px;font:700 clamp(13px,1.8vw,18px) system-ui,sans-serif;font-style:normal;letter-spacing:.1em;text-transform:uppercase}#arBanner.pop{animation:arpop .7s ease both}@keyframes arpop{0%{opacity:0;transform:translateX(-50%) scale(.6)}60%{opacity:1;transform:translateX(-50%) scale(1.08)}100%{transform:translateX(-50%) scale(1)}}
-#folioNav{display:flex;align-items:center;justify-content:center;gap:14px;margin:12px 0 4px}#folioNav button{padding:9px 18px;border-radius:999px;border:2px solid #a77a4a;background:#fffaf0;color:#b5532b;font:800 13px system-ui,sans-serif;cursor:pointer}#folioNav button:disabled{opacity:.35;cursor:default}#fDots{display:flex;gap:6px}#fDots i{width:9px;height:9px;border-radius:50%;background:#d8c8a8}#fDots i.seen{background:#e8b8a8}.inOffice #miniMap,.inOffice #tabs{display:none!important}#fDots i.on{background:#d8402a;transform:scale(1.25)}#fCount{font:700 12px system-ui,sans-serif;color:#7a5a3a;min-width:44px;text-align:center}
+#folioNav{display:flex;align-items:center;justify-content:center;gap:14px;margin:12px 0 4px}#folioNav button{padding:9px 18px;border-radius:999px;border:2px solid #a77a4a;background:#fffaf0;color:#b5532b;font:800 13px system-ui,sans-serif;cursor:pointer}#folioNav button:disabled{opacity:.35;cursor:default}#fDots{display:flex;gap:6px}#fDots i{width:9px;height:9px;border-radius:50%;background:#d8c8a8}#fDots i.seen{background:#e8b8a8}.inOffice #miniMap{display:none!important}#fDots i.on{background:#d8402a;transform:scale(1.25)}#fCount{font:700 12px system-ui,sans-serif;color:#7a5a3a;min-width:44px;text-align:center}
 .slideCover{text-align:center;padding:28px 10px}.slideCover .ficon.big{font-size:72px;line-height:1}.slideCover h2{font:800 clamp(26px,4vw,40px)/1.1 Georgia,serif;margin:14px 0 6px;color:#3b2a22}.slideCover p{font:600 16px system-ui,sans-serif;color:#7a5a3a;letter-spacing:.04em}
 .slideBody{padding:14px 6px;min-height:210px}.slideBody .sTag{font:800 12px system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#d8402a;margin-bottom:10px}.slideBody h3{font:800 clamp(20px,2.6vw,28px)/1.2 Georgia,serif;margin:6px 0;color:#3b2a22}.slideBody small{display:block;margin-bottom:10px;color:#7a5a3a;font:600 14px system-ui,sans-serif}.slideBody p{font:500 clamp(15px,1.7vw,18px)/1.6 system-ui,sans-serif;color:#2b1d16}.slideBody ul{margin:8px 0 0;padding-left:22px}.slideBody li{font:500 clamp(15px,1.7vw,18px)/1.55 system-ui,sans-serif;margin:9px 0;color:#2b1d16}
 .slideIn{animation:slin .35s ease both}@keyframes slin{from{opacity:0;transform:translateX(26px)}to{opacity:1;transform:none}}
@@ -101,7 +101,6 @@
 </head>
 <body>
 <div id="game"></div>
-
 <div id="hud" hidden>
   <canvas id="miniMap" width="180" height="180" title="Map (M)"></canvas>
   <nav id="tabs"><a href="#" id="tabMap">Map <i>&#128506;</i></a><a href="#" id="tabResume">Resume <i>&#128424;</i></a><button id="gotoBtn" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="gotoWheel">Go to <span aria-hidden="true">➤</span></button></nav>
@@ -116,11 +115,12 @@
       <button id="gotoClose" type="button" aria-label="Close destinations">×</button>
       <div class="gotoCenter"><strong id="gotoTitle">Go to</strong><small>Pick a place</small></div>
       <button class="gotoPlace" data-goto="ravi" style="--gx:0;--gy:-1"><span aria-hidden="true">🏏</span>Cricket</button>
-      <button class="gotoPlace" data-goto="thatha" style="--gx:.866;--gy:-.5"><span aria-hidden="true">♟</span>Chess</button>
-      <button class="gotoPlace" data-goto="rayappan" style="--gx:.866;--gy:.5"><span aria-hidden="true">🥊</span>Boxing</button>
-      <button class="gotoPlace" data-goto="stunt" style="--gx:0;--gy:1"><span aria-hidden="true">🏍</span>Stunt</button>
-      <button class="gotoPlace" data-goto="office" style="--gx:-.866;--gy:.5"><span aria-hidden="true">🏢</span>Office</button>
-      <button class="gotoPlace" data-goto="edu" style="--gx:-.866;--gy:-.5"><span aria-hidden="true">🎓</span>College</button>
+      <button class="gotoPlace" data-goto="thatha" style="--gx:.782;--gy:-.623"><span aria-hidden="true">♟</span>Chess</button>
+      <button class="gotoPlace" data-goto="rayappan" style="--gx:.975;--gy:.223"><span aria-hidden="true">🥊</span>Boxing</button>
+      <button class="gotoPlace" data-goto="stunt" style="--gx:.434;--gy:.901"><span aria-hidden="true">🏍</span>Stunt</button>
+      <button class="gotoPlace" data-goto="office" style="--gx:-.434;--gy:.901"><span aria-hidden="true">🏢</span>Office</button>
+      <button class="gotoPlace" data-goto="edu" style="--gx:-.975;--gy:.223"><span aria-hidden="true">🎓</span>College</button>
+      <button class="gotoPlace" data-goto="library" style="--gx:-.782;--gy:-.623"><span aria-hidden="true">📚</span>Library</button>
     </div>
   </div>
   <div id="prompt" hidden></div>
@@ -236,21 +236,30 @@
 <div id="fade"></div>
 
 <script>
-// Begin responds even while the first world is being prepared.
+// Keep the title interactive: world construction waits for an accepted click.
+window.__arrivalRequested = new Promise(resolve => { window.__requestArrival = resolve; });
+try {
+  const saved = JSON.parse(localStorage.getItem('gully-journey-v1'));
+  if (saved && (saved.done?.length || saved.visited?.length)) document.getElementById('btnCont').hidden = false;
+} catch (_) { }
 for (const [id, fresh] of [['btnNew', true], ['btnCont', false]]) {
   document.getElementById(id).addEventListener('click', event => {
     if (window.__worldReady) return;
     event.stopImmediatePropagation();
+    if (window.__pendingArrival) return;
     window.__pendingArrival = { fresh };
     document.getElementById('title').hidden = true;
+    document.getElementById('btnNew').disabled = true;
+    document.getElementById('btnCont').disabled = true;
+    window.__requestArrival();
   }, true);
 }
 </script>
-<script src="vendor/three.min.js"></script>
-<script src="chess.js?v=1793300000"></script>
-<script src="cricket.js?v=1794700009"></script>
-<script src="boxing.js?v=1794800003"></script>
-<script src="post.js?v=1794800100"></script>
-<script src="journey.js?v=1794800100"></script>
+<script defer src="vendor/three.min.js"></script>
+<script defer src="chess.js?v=1793300000"></script>
+<script defer src="cricket.js?v=1794700009"></script>
+<script defer src="boxing.js?v=1794800003"></script>
+<script defer src="post.js?v=1794800100"></script>
+<script defer src="journey.js?v=1794800106"></script>
 </body>
 </html>

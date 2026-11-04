@@ -1,7 +1,8 @@
 /* The Road So Far — a life-journey path game (Three.js) */
 (async () => {
 'use strict';
-// Paint the lightweight sky before constructing the Three.js world.
+// Accept Begin and paint the CSS sky before any expensive world construction.
+await window.__arrivalRequested;
 await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 const $ = id => document.getElementById(id);
 if (!window.THREE) { document.body.innerHTML = '<p style="padding:2rem;color:#fff;font-family:sans-serif">Three.js failed to load (vendor/three.min.js).</p>'; return; }
@@ -123,6 +124,7 @@ function signBoard(parent, text, w, h, x, y, z, sub) {
 
 const far = new T.Group(); scene.add(far);
 /* --------------------------------------------------------------- world */
+await wait(0);
 const SEASONS = [
   { name: 'Spring', icon: '🌱', color: new T.Color('#acd482') },
   { name: 'Summer', icon: '🌿', color: new T.Color('#8fb569') },
@@ -275,9 +277,7 @@ let pitchDamp = 0;
   for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) if ((i + j) % 2) box(tb, .45, .02, .45, 0x6b4a2a, -.67 + i * .45, 1.14, -.67 + j * .45, false);
   rounds.push({ x: -27, z: -90, r: 1 });
 }
-// Rolling hills + far blue mountains
-for (let i = 0; i < 22; i++) { const a = -3.2 + i * .15, r = 118 + (i % 3) * 8, h = 9 + (i * 5 % 9), m = add(far, new T.SphereGeometry(1, 18, 10), mat([0x6fae55, 0x5c9c50, 0x7dbb5f][i % 3]), Math.cos(a) * r * 1.1, 0, Math.sin(a) * r * .9 - 45, false); m.scale.set(28 + (i % 4) * 7, h, 24); }
-for (let i = 0; i < 14; i++) { const a = -3.3 + i * .24, m = add(far, new T.ConeGeometry(30 + (i % 3) * 10, 40 + (i * 7 % 22), 6), mat([0x9db8d6, 0x8fabd0, 0xa9c2dc][i % 3]), Math.cos(a) * 205, 14, Math.sin(a) * 175 - 70, false); m.scale.x = 1.6; }
+// Keep the horizon clear: mountain backdrops obstruct the opening world orbit.
 // Soft sun glow
 const SUNS = {};
 { const sg = new T.Sprite(new T.SpriteMaterial({ map: glowTex(), color: 0xfff1c0, transparent: true, opacity: .95, fog: false, depthWrite: false })); sg.scale.set(90, 90, 1); sg.position.set(-70, 80, -200); far.add(sg); SUNS.glow = sg;
@@ -473,6 +473,9 @@ function walkAnim(p, phase, amt) {
 
 
 /* ================================================================ THE JOURNEY */
+// Opening and gameplay share the completed scene and the same render loop.
+const openingOrbit = { angle: 1.15, reduced: matchMedia('(prefers-reduced-motion: reduce)').matches };
+await wait(0);
 const PATH = [[0, 44], [0, 0], [24, -14], [10, -44], [-14, -76], [-22, -100], [-6, -130], [-8, -160], [46, -160], [52, -190], [50, -215], [-20, -215], [-20, -250], [0, -285], [0, -318]];
 const CUM = [0]; for (let i = 1; i < PATH.length; i++) CUM.push(CUM[i - 1] + Math.hypot(PATH[i][0] - PATH[i - 1][0], PATH[i][1] - PATH[i - 1][1]));
 const TOTAL = CUM[CUM.length - 1], CORR = 56;
@@ -531,9 +534,29 @@ house(-16, 34, 8, 6, 0xf1d9a8, 0xb5532b); house(15, 28, 7, 6, 0xd7a6b0, 0x6b3e1d
 }
 // ---- landmarks: hackathon hall (college) and the working street
 const ST0 = PORT.length;
+// A quiet reading stop in the clearing, fifty metres west of the campus.
+landmark('library', -38, -169, { title: 'LIBRARY', sub: 'Jeeva’s bookshelf', label: 'Library · My reading list', wall: 0xeee2c7, roof: 0x567463, w: 9, d: 6,
+  prop: (g, w, d) => {
+    // Small outdoor shelves flank the entrance, with colourful book spines.
+    const colors = [0xa74938, 0xc6953c, 0x426779, 0x687747, 0x685374];
+    for (const side of [-1, 1]) {
+      const x = side * 3, z = d / 2 + .55;
+      box(g, 1.8, 1.5, .18, 0x654630, x, .95, z);
+      for (const edge of [-.9, .9]) box(g, .12, 1.6, .65, 0x795638, x + edge, .95, z + .2);
+      for (const y of [.2, .9, 1.7]) box(g, 1.9, .12, .7, 0x795638, x, y, z + .2);
+      for (const y of [.55, 1.3]) for (let i = 0; i < 5; i++) {
+        const bx = x - .64 + i * .31;
+        box(g, .24, .5 + (i % 2) * .1, .4, colors[i], bx, y, z + .22);
+        box(g, .17, .035, .02, 0xf5e7bd, bx, y + .12, z + .43, false);
+      }
+    }
+  } });
+// Stepping stones lead from the college road into the library clearing.
+for (let x = -36; x <= -10; x += 2) box(world, 1.3, .06, 1.1, 0xcdbb98, x, .08, -160.6, false);
 landmark('ach', 36, -168, { title: 'HALL OF FAME', sub: 'BIT Hackathon', label: 'Hall of Fame · BIT Hackathon', wall: 0xf3e2b8, roof: 0xc4573a, w: 8, d: 6,
   prop: (g, w, d) => { cyl(g, .55, .7, .8, 0xd9d2c0, w / 2 + 1.4, .4, d / 2 - 1, 10); cyl(g, .38, .12, .55, 0xf2c14e, w / 2 + 1.4, 1.1, d / 2 - 1, 12); cyl(g, .08, .08, .4, 0xf2c14e, w / 2 + 1.4, 1.0, d / 2 - 1, 6); sph(g, .08, 0xf2c14e, w / 2 + 1.4, 1.5, d / 2 - 1); } });
 // ---- one Grootan office: park, step off the bike and walk in (the projects are inside)
+await wait(0);
 const OFFICE = { x: 24, z: -223, w: 26, d: 11 };
 {
   const { x, z, w, d } = OFFICE, g = new T.Group(); g.position.set(x, 0, z); world.add(g);
@@ -595,6 +618,7 @@ const OFFICE = { x: 24, z: -223, w: 26, d: 11 };
   });
 }
 // ---- inside Grootan: lobby, project screens, desks (a separate room far off the map)
+await wait(0);
 const INT = { x: 300, z: -223, W: 34, D: 22 }; let INTGLASS = null;
 {
   const { x, z, W, D } = INT, g = new T.Group(); g.position.set(x, 0, z); world.add(g);
@@ -727,10 +751,11 @@ const INT = { x: 300, z: -223, W: 34, D: 22 }; let INTGLASS = null;
   INT.spawn = { x, z: z + D / 2 - 3.4 }; for (const st of STN) if (st.x > 250) { st.ring.position.y = .17; st.glow.visible = false; }
   (globalThis.PREAMB = globalThis.PREAMB || []).push(t => { typers.forEach((p, k) => { p.arms[0].rotation.x = -1.25 + Math.sin(t * 5 + k) * .07; p.arms[1].rotation.x = -1.25 + Math.sin(t * 5 + k + 2) * .07; }); rec.arms[1].rotation.x = Math.sin(t * 1.6) > .8 ? -2.4 : -.1; });
 }
-const ACT_OF = { edu: 2, ach: 2, exp: 3, ibm: 3, ibb: 3, city: 3, skills: 3 };
+const ACT_OF = { edu: 2, ach: 2, library: 2, exp: 3, ibm: 3, ibb: 3, city: 3, skills: 3 };
 for (const p of PORT) STN.push({ id: p.id, x: p.door[0], z: p.door[1], label: 'Visit · ' + p.title, kind: 'folio', act: ACT_OF[p.id], ring: p.ring, glow: p.glow });
 
 // ---- people: Ravi + cricket side, Thatha + chess side
+await wait(0);
 const A = (who, text) => ({ who, text }), NAR = text => ({ who: '', text });
 const NPCS = [];
 function npc(name, x, z, o) { const p = person(o); p.g.position.set(x, 0, z); scene.add(p.g); const n = { name, p, ph: Math.random() * 6 }; NPCS.push(n); return n; }
@@ -774,6 +799,7 @@ const GATES = [[3, 6, 'CHESS AHEAD'], [5, 8, 'COLLEGE AHEAD'], [8, 8, 'WORK AHEA
 });
 function openGate(k) { const G = GATES[k]; if (!G || G.open) return; G.open = true; for (let i = rounds.length - 1; i >= 0; i--) if (rounds[i].gate === k) rounds.splice(i, 1); }
 // ---- trees, lanterns and crystals along the way
+await wait(0);
 {
   const stn = STN.map(s => [s.x, s.z]);
   const RESV = [[CUM[3] + 14, 7.5, 5], [CUM[5] + 12, -8, 3.5], [CUM[5] + 17, -11, 3.5], [CUM[5] + 22, 8.5, 3.5], [CUM[6] + 20, 4.6, 3.5], [CUM[1] - 14, -9, 3], [CUM[11] + 16, -11, 8.5], [CUM[9] - 4, 12, 32]].map(([ss, off, r]) => { const p = pointAt(ss); return [p.x - p.tz * off, p.z + p.tx * off, r]; });
@@ -891,6 +917,7 @@ const VRANK = { trike: 0, bike: 1, moto: 2 }, VBYRANK = ['trike', 'bike', 'moto'
 // a vehicle upgrade is permanent: never fall back to an older one
 function stageVeh() { const r = save.reach || 0; save.vrank = Math.max(save.vrank || 0, r > S_COLLEGE ? 2 : r > S_CHESS ? 1 : 0); return VBYRANK[save.vrank]; }
 // ---- sky / light progression
+await wait(0);
 const SKY = { day: ['#568fa9', '#96c4cf', '#d4e3dc', '#f4e8cd'], gold: ['#4a7fd0', '#a8c8e8', '#f9dfb0', '#ffd9a0'], storm: ['#2a3a78', '#6a6aa8', '#d49ab0', '#ffd09a'], dawn: ['#2e5fae', '#f2a8b8', '#ffd7a0', '#fff3c4'] };
 const mixHex = (a, b, t) => '#' + new T.Color(a).lerp(new T.Color(b), t).getHexString();
 function skyFor(p, aw) {
@@ -1078,6 +1105,7 @@ const GLYPHS = [];
 SPIRE.words = ['CLAUDE CODE', 'CODEX', 'ASTRA', 'AUTOMATION', 'CHANGES'].map((w, i) => { const s = wordSprite(w, ['#f2a36b', '#8fd8ff', '#c7a6ff', '#9ff0b0', '#ffe9a8'][i]); s.userData = { a: i / 5 * Math.PI * 2, y: 9 + i * 3.2 }; SPIRE.g.add(s); return s; });
 
 // ---- life along the road: boost pads, memory orbs and little scenes
+await wait(0);
 const AMB = [...(globalThis.PREAMB || [])];
 function lerpAngle(a, b, k) { let d = ((b - a + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI; return a + d * k; }
 const along = (s, off) => { const p = pointAt(clamp(s, 0, TOTAL)); return { x: p.x - p.tz * off, z: p.z + p.tx * off, ry: Math.atan2(p.tx, p.tz), p }; };
@@ -1746,6 +1774,7 @@ await wait(0);
   });
 }
 /* ------------------------------------------------- ground paint: dirt road, office forecourt and stunt lane share one soft-edged decal */
+await wait(0);
 {
   const PX = 5, X0 = Math.min(...PATH.map(p => p[0])) - 8, X1 = Math.max(...PATH.map(p => p[0])) + 8, Z0 = Math.min(...PATH.map(p => p[1])) - 8, Z1 = Math.max(...PATH.map(p => p[1])) + 8;
   const CW = Math.ceil((X1 - X0) * PX), CH = Math.ceil((Z1 - Z0) * PX);
@@ -1874,6 +1903,10 @@ function showCard(emoji, title, text, age) {
 
 /* ------------------------------------------------------------ portfolio */
 const FOLIO = {
+  library: { icon: '📚', title: 'My Library', sub: 'Jeeva’s bookshelf', blocks: [
+    { h: 'Currently reading', items: ['Origin — Dan Brown'] },
+    { h: 'Books I’ve read', items: ['Kallikaatu Ithigasam — Vairamuthu', 'Ponniyin Selvan series — Kalki', 'Che Guevara', 'Think and Grow Rich — Napoleon Hill'] }
+  ] },
   exp: { icon: '🏢', title: 'Experience', sub: 'Grootan Technologies · Chennai', photo: true, blocks: [
     { h: 'Software Engineer Level 1', meta: 'May 2024 – Present', items: [
       'Engineered secure authentication systems for 3 major banking clients in Europe with 1M+ users.',
@@ -2633,8 +2666,32 @@ async function leaveOffice() {
   state.mode = 'explore'; busy = false; beep(520, .1, 'triangle', .05); toast('Back on the road', 'Ride on. The road still has a way to go.');
 }
 /* ---- quick travel: keep the current vehicle and its permanent upgrade memory */
+// Navigation must sit above panels and remain available inside buildings.
+document.body.append($('tabs'), $('gotoWheel'));
+$('tabs').hidden = true;
+let gotoPending = false;
+function requestGoto() {
+  if (state.mode === 'goto') { toggleGoto(false); return; }
+  if (['title', 'arrival'].includes(state.mode)) return;
+  if (gotoPending) { gotoPending = false; $('gotoBtn').innerHTML = 'Go to <span aria-hidden="true">➤</span>'; return; }
+  gotoPending = true;
+  if (state.mode === 'map') toggleMap(false);
+  if (state.mode === 'folio') closeFolio();
+  if (state.mode === 'dialog') closeConversation();
+  flushGoto();
+}
+function flushGoto() {
+  if (!gotoPending) return;
+  if (state.mode !== 'explore' || busy || ticker) {
+    $('gotoBtn').textContent = 'Go to · queued';
+    return;
+  }
+  gotoPending = false;
+  $('gotoBtn').innerHTML = 'Go to <span aria-hidden="true">➤</span>';
+  toggleGoto(true);
+}
 function toggleGoto(open) {
-  if (open && (state.mode !== 'explore' || busy || away)) return;
+  if (open && (state.mode !== 'explore' || busy || ticker)) return;
   $('gotoWheel').hidden = !open;
   $('gotoBtn').setAttribute('aria-expanded', String(open));
   keys.clear(); joy.x = joy.z = 0; $('knob').style.transform = '';
@@ -2652,10 +2709,12 @@ async function gotoLocation(id) {
   if (state.mode !== 'goto' || busy) return;
   const destination = id === 'stunt' ? along(CUM[9] + 12 - 38, 0) : STN.find(s => s.id === id);
   if (!destination) return;
-  const names = { ravi: 'Cricket', thatha: 'Chess', rayappan: 'Boxing', stunt: 'Stunt lane', office: 'Grootan office', edu: 'College' };
+  const names = { ravi: 'Cricket', thatha: 'Chess', rayappan: 'Boxing', stunt: 'Stunt lane', office: 'Grootan office', edu: 'College', library: 'Library' };
   const vehicle = player.veh.type;
   // Save the strongest ride before changing regions or leaving the office.
-  save.vrank = Math.max(save.vrank || 0, VRANK[vehicle], VRANK[OFFICE.veh] || 0);
+  save.vrank = Math.max(save.vrank || 0, VRANK[vehicle] || 0, VRANK[OFFICE.veh] || 0);
+  // Quick travel replaces the printer's return destination.
+  away = null;
   toggleGoto(false); busy = true; state.mode = 'cut';
   if (AR.active) arenaCancel(null);
   stunt = null; boostT = 0; $('stuntTxt').hidden = true;
@@ -2678,7 +2737,7 @@ async function gotoLocation(id) {
     toast(names[id], 'You have arrived. Your ride is ready.');
   } finally { busy = false; state.mode = 'explore'; }
 }
-$('gotoBtn').onclick = () => toggleGoto($('gotoWheel').hidden);
+$('gotoBtn').onclick = requestGoto;
 $('gotoClose').onclick = () => toggleGoto(false);
 $('gotoWheel').onclick = e => { if (e.target === $('gotoWheel')) toggleGoto(false); };
 for (const button of $('gotoWheel').querySelectorAll('[data-goto]')) {
@@ -2695,8 +2754,30 @@ $('gotoWheel').addEventListener('keydown', e => {
 const SL = { slides: [], i: 0 };
 const DECK = ['exp', 'ibm', 'ibb', 'city', 'skills'];
 const FULL_DECK = ['portfolio', 'edu', 'ach', 'exp', 'projects', 'skills', 'contact'];
+function libraryShelf() {
+  const books = [
+    { style: 'earth', title: 'Kallikaatu Ithigasam', author: 'Vairamuthu', motif: '☀', note: 'Tamil literature' },
+    { style: 'royal', title: 'Ponniyin Selvan', author: 'Kalki', motif: '♜', note: 'The complete series' },
+    { style: 'revolution', title: 'Che Guevara', author: '', motif: '★', note: 'Che Guevara' },
+    { style: 'gold', title: 'Think and Grow Rich', author: 'Napoleon Hill', motif: '✦', note: 'Think · Believe · Achieve' },
+    { style: 'origin', title: 'Origin', author: 'Dan Brown', motif: '◎', note: 'Currently reading', current: true }
+  ];
+  return `<section class="libraryView" aria-label="Jeeva’s bookshelf">
+    <header class="libraryHeading"><span>THE READING ROOM</span><h2>My bookshelf</h2><p>Four reads behind me. A new world in progress.</p></header>
+    <div class="bookcase">${books.map(b => `<article class="shelfBook">
+      <div class="bookCover cover-${b.style}">
+        <span class="coverNote">${esc(b.note)}</span><h3>${esc(b.title)}</h3>
+        <span class="coverArt" aria-hidden="true">${b.motif}</span>
+        <span class="coverAuthor">${esc(b.author)}</span>
+        ${b.style === 'royal' ? '<span class="seriesVolumes" aria-label="Five volumes">I · II · III · IV · V</span>' : ''}
+      </div><p class="bookStatus${b.current ? ' reading' : ''}">${b.current ? '● Currently reading' : '✓ Read'}</p>
+    </article>`).join('')}</div>
+    <p class="libraryFootnote">Personal cover designs · Stories that stay with me</p>
+  </section>`;
+}
 function slidesFor(id) {
   const d = FOLIO[id], out = []; if (!d) return out;
+  if (id === 'library') return [{ id, html: libraryShelf() }];
   out.push({ id, html: `<div class="slideCover">${d.photo ? '<img class="mePhoto" src="assets/me.jpg" alt="" onerror="this.remove()">' : ''}<div class="ficon big">${d.icon}</div><h2>${esc(d.title)}</h2><p>${esc(d.sub)}</p></div>` });
   if (d.description) out.push({ id, html: `<div class="slideBody"><div class="sTag">${d.icon} ${esc(d.title)}</div><p>${esc(d.description)}</p></div>` });
   for (const b of d.blocks || []) out.push({ id, html: `<div class="slideBody"><div class="sTag">${d.icon} ${esc(d.title)}</div>${b.h ? `<h3>${esc(b.h)}</h3>` : ''}${b.meta ? `<small>${esc(b.meta)}</small>` : ''}<ul>${(b.items || []).map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>` });
@@ -2715,6 +2796,7 @@ function openFolio(id) {
 }
 function showSlide(n) {
   SL.i = clamp(n, 0, SL.slides.length - 1); const S = SL.slides[SL.i], b = $('folioBody'); b.innerHTML = S.html; b.classList.remove('slideIn'); void b.offsetWidth; b.classList.add('slideIn'); b.scrollTop = 0;
+  $('folio').classList.toggle('isLibrary', S.id === 'library');
   if (!save.visited.includes(S.id)) { save.visited.push(S.id); save.xp += 40; persist(); refreshHud(); }
   $('fDots').innerHTML = SL.slides.map((x, k) => `<i class="${k === SL.i ? 'on' : (k < SL.i ? 'seen' : '')}"></i>`).join(''); $('fCount').textContent = (SL.i + 1) + ' / ' + SL.slides.length;
   $('fPrev').disabled = SL.i === 0; $('fNext').textContent = SL.i === SL.slides.length - 1 ? 'Done' : 'Next ›'; beep(520 + (SL.i % 8) * 40, .04, 'sine', .03);
@@ -2788,6 +2870,8 @@ function movePlayer(dt) {
 const clock = new T.Clock();
 function animate() {
   requestAnimationFrame(animate);
+  $('tabs').hidden = ['title', 'arrival'].includes(state.mode);
+  flushGoto();
   const dt = Math.min(clock.getDelta(), .05), t = clock.elapsedTime;
   player.updateFace(t);
   if (state.mode === 'chess') { ChessGame.update(dt); draw(ChessGame.scene, ChessGame.camera); return; }
@@ -2826,9 +2910,9 @@ function animate() {
   mp.needsUpdate = true; motes.position.set(pp.x, 0, pp.z);
   motes.visible = !player.inside;   // the drifting pollen glitters like sparkles indoors
   if (!ticker && state.mode === 'title') {
-    const angle = 1.15 + Math.sin(t * .08) * .18;
-    camera.position.set(pp.x + Math.sin(angle) * 62, 85, pp.z + Math.cos(angle) * 62);
-    camera.lookAt(pp.x, 110, pp.z - 120);
+    if (!openingOrbit.reduced) openingOrbit.angle += dt * .28;
+    camera.position.set(Math.sin(openingOrbit.angle) * 120, 115, -100 + Math.cos(openingOrbit.angle) * 120);
+    camera.lookAt(0, 0, -100);
   } else if (!ticker) {
     const k = .62 + .38 * sc, wantX = pp.x + Math.sin(player.heading) * player.v * .25, wantZ = pp.z + 15 * k + Math.cos(player.heading) * player.v * .25;
     camera.position.x = lerp(camera.position.x, wantX, 1 - Math.exp(-dt * 4)); camera.position.z = lerp(camera.position.z, wantZ, 1 - Math.exp(-dt * 4)); camera.position.y = lerp(camera.position.y, 12.5 * k, 1 - Math.exp(-dt * 4));
@@ -2860,7 +2944,7 @@ addEventListener('keydown', e => {
   if (e.repeat) { keys.add(e.code); return; }
   keys.add(e.code);
   if (state.mode === 'goto') { if (['Escape', 'KeyG'].includes(e.code)) toggleGoto(false); return; }
-  if (state.mode === 'explore' && !busy && e.code === 'KeyG') { toggleGoto(true); return; }
+  if (e.code === 'KeyG') { requestGoto(); return; }
   if (state.mode === 'folio') { if (['Escape', 'KeyE'].includes(e.code)) closeFolio(); else if (['ArrowRight', 'KeyD', 'Space', 'Enter'].includes(e.code)) slideNext(); else if (['ArrowLeft', 'KeyA'].includes(e.code)) showSlide(SL.i - 1); return; }
   if (state.mode === 'box') { if (e.code === 'Escape') boxQuit(); return; }
   if (state.mode === 'crab') { if (e.code === 'Escape') crabQuit(); else if (['KeyE', 'Space', 'Enter'].includes(e.code)) crabGrab(); return; }
@@ -2902,14 +2986,16 @@ async function descendFromSky() {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (reduced) { camera.position.set(p.x, 12.5 * k, p.z + 15 * k); camera.lookAt(p.x, 1.2, p.z + .5 * k); return; }
   state.mode = 'arrival'; busy = true;
-  camera.position.set(p.x + Math.sin(1.15) * 62, 85, p.z + Math.cos(1.15) * 62); camera.lookAt(p.x, 125, p.z - 120);
+  const startPosition = camera.position.clone(), startTarget = new T.Vector3(0, 0, -100);
+  const startAngle = Math.atan2(startPosition.x, startPosition.z + 100);
+  const startRadius = Math.hypot(startPosition.x, startPosition.z + 100);
   await new Promise(resolve => {
     const started = performance.now();
     ticker = () => {
       const elapsed = (performance.now() - started) / 1000, t = clamp(elapsed / 2.6, 0, 1), ease = t * t * (3 - 2 * t);
-      const angle = 1.15 * (1 - ease), radius = lerp(62, 15 * k, ease);
-      camera.position.set(p.x + Math.sin(angle) * radius, lerp(85, 12.5 * k, ease), p.z + Math.cos(angle) * radius);
-      camera.lookAt(p.x, lerp(125, 1.2, ease), p.z + lerp(-120, .5 * k, ease));
+      const angle = startAngle * (1 - ease), radius = lerp(startRadius, 15 * k, ease);
+      camera.position.set(lerp(0, p.x, ease) + Math.sin(angle) * radius, lerp(startPosition.y, 12.5 * k, ease), lerp(-100, p.z, ease) + Math.cos(angle) * radius);
+      camera.lookAt(lerp(startTarget.x, p.x, ease), lerp(startTarget.y, 1.2, ease), lerp(startTarget.z, p.z + .5 * k, ease));
       if (t >= 1) { ticker = null; resolve(); }
     };
   });
@@ -2941,20 +3027,22 @@ $('btnCont').onclick = () => begin(false);
 { const m = /act=(\d)/.exec(location.hash); if (m) { const n = +m[1]; save.done = [...Array(n).keys()]; if (n >= 3) save.visited.push('edu', 'ach'); if (n >= 4) save.visited.push('exp', 'ibm', 'ibb', 'city', 'skills'); window.__start = () => begin(false); } }
 window.__j = { ENV, RAY, crabGame, runRayappan, get crabCtl() { return crabCtl; }, get stunt() { return stunt; }, setVehicle, enterOffice, leaveOffice, openFolio, OFFICE, INT, get AR() { return AR; }, arenaTrick, ARENA, pointAt, CUM, startStunt, playCricket, state, save, player, camera, STN, GATES, SPIRE, interact, completeAct, get busy() { return busy; }, pathNear, TOTAL };
 refreshHud();
-// Prepare the world while the visible sky remains part of the opening scene.
+// Finish geometry and warm the renderer before revealing the actual world.
 await wait(0);
 sun.target.position.copy(player.g.position); envStep(0, 0, 0);
 scene.updateMatrixWorld(true); renderer.compile(scene, camera);
 await wait(0);
 if (!MAPB.img) bakeMap();
-animate();
-await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+camera.position.set(Math.sin(openingOrbit.angle) * 120, 115, -100 + Math.cos(openingOrbit.angle) * 120);
+camera.lookAt(0, 0, -100);
 window.__worldReady = true;
-document.body.classList.add('scene-ready');
 if (window.__pendingArrival) {
   const pending = window.__pendingArrival; delete window.__pendingArrival;
   begin(pending.fresh);
 }
+animate();
+await new Promise(resolve => requestAnimationFrame(resolve));
+document.body.classList.add('scene-ready');
 })().catch(error => {
   console.error('World startup failed', error);
   const game = document.getElementById('game');
