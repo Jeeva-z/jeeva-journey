@@ -209,3 +209,18 @@ h1{margin:6px 0 10px;font-family:var(--serif);font-size:clamp(52px,11vw,92px);fo
 #quest small, #sAge, #qArrowRow, #toast b { color: #e5c989; }
 #dlgName { background: #263239; border: 1px solid #b49a65; border-radius: 2px; color: #f2dfb3; }
 #prompt { background: #19262eee; color: #f2dfb3; border: 1px solid #b49a65; border-radius: 3px; }
+
+/* Vehicle switcher */
+#vehBar{pointer-events:auto;position:fixed;left:50%;bottom:38px;transform:translateX(-50%);z-index:80;display:flex;gap:8px;padding:7px;background:var(--glass);border:2px solid #a77a4a;border-radius:16px;box-shadow:0 6px 0 #6b4a2c33,0 12px 28px #3b2a2233}
+#vehBar button{background:#fffaf0;border:2px solid var(--wood);border-radius:10px;padding:7px 12px;color:var(--ink);font-weight:700;font-size:13px;white-space:nowrap}
+#vehBar button i{font-style:normal;margin-left:4px}
+#vehBar button:hover{background:#ffe9a8}
+#vehBar button.on{background:var(--rust);border-color:var(--rust);color:#fff6e4}
+#vehBar button[data-v=iron].on{background:#b3202a;border-color:#f0b43a}
+#vehBar button:focus-visible{outline:3px solid #60d7eb;outline-offset:2px}
+@media(max-width:560px){#vehBar{gap:4px;padding:5px;bottom:34px}#vehBar button{padding:6px 7px;font-size:11px}#vehBar button i{display:none}}
+#flyHint{display:flex;gap:8px;padding-left:8px;border-left:2px solid #a77a4a66}
+#flyHint button{background:#fff0d8;border:2px solid #b3202a;border-radius:10px;padding:7px 10px;color:#7a1219;font-weight:700;font-size:13px;white-space:nowrap;touch-action:none}
+#flyHint kbd{font:700 10px system-ui;background:#b3202a;color:#fff;border-radius:4px;padding:1px 4px;margin-left:3px}
+#vehBar > button i{font-style:normal}
+@media(max-width:560px){#flyHint{gap:4px;padding-left:4px}#flyHint button{padding:6px 7px;font-size:11px}#flyHint kbd{display:none}}

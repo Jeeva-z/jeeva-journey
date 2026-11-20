@@ -882,6 +882,27 @@ const VEH = {
     box(g, .12, .06, .05, 0xff3030, 0, 1.12, -1.24, false); box(g, .32, .03, .5, BLK, 0, 1.12, -1.15);
     return { g, wheels: [fw, rw], exhaust: new T.Vector3(.3, .66, -.95) };
   } },
+  iron: { max: 27, acc: 5, turn: 4.2, fly: true, seat: { y: .05, z: .1, lean: 1.2 }, build() {
+    const g = new T.Group(), RED = 0xb3202a, GOLD = 0xf0b43a, GLOW = new T.MeshBasicMaterial({ color: new T.Color(0xbff4ff).multiplyScalar(1.5) });
+    const armor = [], put = m => { armor.push(m); return m; };
+    const B = player.body, H = player.head;
+    put(box(B, .56, .62, .44, RED, 0, 1.15, .02)); put(box(B, .5, .12, .4, GOLD, 0, .78, .02));
+    const arc = put(new T.Mesh(new T.CircleGeometry(.075, 14), GLOW)); arc.position.set(0, 1.28, .245); B.add(arc);
+    for (const sg of [-1, 1]) { put(sph(B, .15, GOLD, sg * .33, 1.5, 0, 1, .8, 1)); put(box(B, .14, .5, .1, RED, sg * .17, 1.2, -.26)); }
+    put(box(B, .42, .5, .14, RED, 0, 1.2, -.3)); put(cyl(B, .07, .09, .16, 0x333333, 0, .85, -.34));
+    put(sph(H, .335, RED, 0, .02, -.01, .98, 1.02, .98)); put(box(H, .3, .3, .06, GOLD, 0, -.03, .3));
+    for (const sg of [-1, 1]) { const e = put(new T.Mesh(new T.BoxGeometry(.1, .035, .02), GLOW)); e.position.set(sg * .09, .05, .335); H.add(e); }
+    const jets = [], jet = (parent, y, r, z = 0) => {
+      const outer = new T.Mesh(new T.ConeGeometry(r, 1, 10, 1, true).translate(0, .5, 0), new T.MeshBasicMaterial({ color: 0x7fd8ff, transparent: true, opacity: .55, blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide, fog: false }));
+      const inner = new T.Mesh(new T.ConeGeometry(r * .5, .8, 10, 1, true).translate(0, .4, 0), new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .9, blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide, fog: false }));
+      const glow = new T.Sprite(new T.SpriteMaterial({ map: glowTex(), color: 0xbff4ff, transparent: true, opacity: .95, blending: T.AdditiveBlending, depthWrite: false, fog: false }));
+      const grp = new T.Group(); grp.position.set(0, y, z); grp.rotation.x = Math.PI; grp.add(outer, inner); parent.add(grp); parent.add(glow); glow.position.set(0, y, z);
+      put(grp); put(glow); const J = { grp, outer, inner, glow, r }; jets.push(J); return J; };
+    for (const a of player.arms) { put(cyl(a, .1, .08, .38, RED, 0, -.32, 0)); put(sph(a, .11, GOLD, 0, -.64, 0)); const p = put(new T.Mesh(new T.CircleGeometry(.06, 10), GLOW)); p.position.set(0, -.74, 0); p.rotation.x = Math.PI / 2; a.add(p); jet(a, -.76, .12); }
+    for (const l of player.legs) { put(cyl(l, .15, .12, .5, RED, 0, -.4, 0)); put(box(l, .24, .14, .38, GOLD, 0, -.78, .05)); jet(l, -.88, .16, .03); }
+    armor.forEach(m => m.visible = false);
+    return { g, wheels: [], armor, jets };
+  } },
 };
 function setSeat() { const s = player.veh.cfg.seat; player.body.position.set(0, s.y, s.z); player.body.rotation.set(s.lean, 0, 0); }
 function setVehicle(type) {
@@ -890,9 +911,14 @@ function setVehicle(type) {
   player.vehCache = player.vehCache || {};
   if (!player.vehCache[type]) { const d = VEH[type].build(); player.g.add(d.g); player.vehCache[type] = { type, d, cfg: VEH[type] }; }
   player.veh = player.vehCache[type]; player.veh.d.g.visible = !player.onFoot; if (!player.onFoot) setSeat();
+  syncArmor();
+}
+function syncArmor() {
+  for (const k in player.vehCache) { const v = player.vehCache[k]; if (v.d.armor) { const on = v === player.veh && !player.onFoot; v.d.armor.forEach(m => m.visible = on); } }
+  if (!player.veh || player.veh.type !== 'iron' || player.onFoot) { player.head.rotation.set(0, 0, 0); for (const l of [...player.arms, ...player.legs]) { l.rotation.z = 0; l.rotation.y = 0; } }
 }
 function hideVehicle(on) {
-  player.veh.d.g.visible = !on;
+  player.veh.d.g.visible = !on; syncArmor();
   if (on) { player.body.position.set(0, 0, 0); player.body.rotation.set(0, 0, 0); } else setSeat();
 }
 function rideAnim(dt, v) {
@@ -901,6 +927,37 @@ function rideAnim(dt, v) {
   for (const w of d.wheels) w.rotation.x += v * dt / w.userData.r;
   if (V.type === 'trike') { const ph = d.front.rotation.x; player.legs[0].rotation.x = -1.0 + Math.sin(ph) * .4; player.legs[1].rotation.x = -1.0 - Math.sin(ph) * .4; player.arms[0].rotation.x = player.arms[1].rotation.x = -1.0; }
   else if (V.type === 'bike') { d.crank.rotation.x += v * dt * 2.2; const ph = d.crank.rotation.x; player.legs[0].rotation.x = -.6 + Math.sin(ph) * .5; player.legs[1].rotation.x = -.6 - Math.sin(ph) * .5; player.arms[0].rotation.x = player.arms[1].rotation.x = -.95; }
+  else if (V.type === 'iron') {
+    const F = player.fly || {}, air = player.g.position.y > .6, fl = clamp(v / V.cfg.max, 0, 1.6), bo = F.boost || 0, roll = F.roll || 0, vy = F.vy || 0, e = 1 - Math.exp(-dt * 7), tm = performance.now() / 1000;
+    const A = player.arms, L = player.legs, B = player.body;
+    if (air) {
+      // pitch: upright hover -> flat cruise -> superman dive at boost; climbing pulls the chest up, diving tips it down
+      const pitch = clamp(lerp(.12, 1.32, Math.min(1, fl)) + bo * .18 - vy * .035 + (F.surge || 0) * .25, -.15, 1.55);
+      B.rotation.x += (pitch - B.rotation.x) * e; B.rotation.z += (roll * .9 - B.rotation.z) * e; B.position.y = .05 + Math.sin(tm * 2.1) * .04 * (1 - Math.min(1, fl));
+      // head stays level with the horizon so he looks where he flies
+      player.head.rotation.x += (-B.rotation.x * .55 - player.head.rotation.x) * e; player.head.rotation.z += (-roll * .35 - player.head.rotation.z) * e;
+      [0, 1].forEach(i => {
+        const sg = i ? 1 : -1, inside = Math.sign(roll) === sg ? 1 : 0;
+        // hover: arms flared, palms down. cruise: arms swept back, palms behind. boost: tucked tight. the inside arm flares into a turn to steer
+        const az = sg * (lerp(.78, .2, Math.min(1, fl)) * (1 - bo * .75) + inside * Math.abs(roll) * .55), ax = lerp(.18, .05, Math.min(1, fl)) - bo * .08;
+        A[i].rotation.z += (az - A[i].rotation.z) * e; A[i].rotation.x += (ax - A[i].rotation.x) * e;
+        // legs trail together; at hover one knee lifts a touch (the classic Iron Man float), on a dive they straighten
+        const lx = lerp(.16, .06, Math.min(1, fl)) + Math.sin(tm * 2.6 + i * 1.7) * .04 * (1 - bo) - (i === 0 ? .14 : 0) * (1 - Math.min(1, fl)) - (vy < -2 ? .08 : 0);
+        L[i].rotation.x += (lx - L[i].rotation.x) * e;
+        L[i].rotation.z += (sg * lerp(.1, .02, Math.min(1, fl)) * (1 - bo) - L[i].rotation.z) * e;
+      });
+    } else {
+      // standing in the suit on the ground
+      B.rotation.x += (.05 - B.rotation.x) * e; B.rotation.z += (0 - B.rotation.z) * e; player.head.rotation.x += (0 - player.head.rotation.x) * e;
+      [0, 1].forEach(i => { const sg = i ? 1 : -1, w = Math.sin(tm * 7 + i * Math.PI) * Math.min(1, v / 4) * .5; A[i].rotation.z += (sg * .12 - A[i].rotation.z) * e; A[i].rotation.x = -w; L[i].rotation.x = w; L[i].rotation.z = 0; });
+    }
+    for (const J of d.jets) {
+      const hand = J.grp.parent === A[0] || J.grp.parent === A[1], base = air ? (hand ? .45 : .7) + Math.min(1, fl) * (hand ? 1.1 : 1.7) + bo * (hand ? 1.2 : 1.6) + Math.max(0, vy) * .05 : 0;
+      const fk = base * (.86 + .28 * Math.sin(tm * 57 + J.r * 99) * Math.sin(tm * 31 + J.r * 13)), w = 1 + Math.min(1, fl) * .2 + bo * .35;
+      J.grp.visible = J.glow.visible = air; J.grp.scale.set(w, Math.max(.001, fk * 1.25), w);
+      J.outer.material.color.setHex(bo > .5 ? 0xffd27a : 0x7fd8ff); J.glow.scale.setScalar(.35 + .5 * Math.min(1.6, base)); J.glow.material.opacity = .55 + .4 * Math.min(1, base);
+    }
+  }
   else { player.legs[0].rotation.x = player.legs[1].rotation.x = -1.15; player.arms[0].rotation.x = player.arms[1].rotation.x = -1.0; }
 }
 const vehicleFor = i => i < 1 ? 'trike' : i < 4 ? 'bike' : 'moto';
@@ -908,7 +965,7 @@ const vehicleFor = i => i < 1 ? 'trike' : i < 4 ? 'bike' : 'moto';
 
 
 const LOOKS = [[0xf0a44b, 0xeadcc0, .62, 'kid', 'trike'], [0xb7a2dc, 0x2b3a6b, .74, 'kid', 'bike'], [0xf4f0e6, 0x3a3a48, .9, 'teen', 'bike'], [0x7a2d3f, 0xc9b48a, 1, 'adult', 'moto'], [0x7a2d3f, 0xc9b48a, 1, 'adult', 'moto']];
-const VEHNAME = { trike: 'a red tricycle', bike: 'a cycle', moto: 'an Azure Blue XPulse 210-style bike' };
+const VEHNAME = { trike: 'a red tricycle', bike: 'a cycle', moto: 'an Azure Blue XPulse 210-style bike', iron: 'an Iron Man flight suit' };
 let targetScale = .62;
 setVehicle('trike');
 function applyLook(i) { const L = LOOKS[Math.min(i, 4)]; player.torsoMat.color.setHex(L[0]); player.legMat.color.setHex(L[1]); targetScale = L[2]; player.setAge(L[3]); setVehicle(stageVeh()); }
@@ -2078,6 +2135,7 @@ const STUNTS = { wheelie: ['Wheelie!', 1.8], nohands: ['No hands!', 1.5], tablet
 const AIR_TYPES = ['tabletop', 'whip', 'superman', 'nohands', 'flip'], GRAV = 20; let camShake = 0;
 const sstep = (a, b, x) => { const k = clamp((x - a) / (b - a), 0, 1); return k * k * (3 - 2 * k); };
 function startStunt(type, opt = {}) {
+  if (player.veh.type === 'iron') return;
   if (type === 'jump') type = 'tabletop';
   stunt = { type, t: 0, air: !!opt.vy, arena: !!opt.arena, dur: STUNTS[type][1] }; stuntCool = 5 + Math.random() * 5; stuntCount++;
   if (stunt.air) { stunt.vy = opt.vy; stunt.y0 = player.g.position.y; stunt.T = Math.max(.4, (stunt.vy + Math.sqrt(stunt.vy * stunt.vy + 2 * GRAV * Math.max(0, stunt.y0 - .23))) / GRAV); stunt.dur = stunt.T; }
@@ -2348,6 +2406,15 @@ function swapVehicle(v, silent) {
   setVehicle(v); player.g.scale.setScalar(targetScale * .8); poof(player.g.position.x, player.g.position.z, 0xffe9a8);
   if (!silent) toast('New wheels', 'You swapped up to ' + VEHNAME[v] + '.');
 }
+function pickVehicle(v) {
+  if (state.mode !== 'explore' || busy || player.onFoot || player.inside || player.veh.type === v || (typeof AR !== 'undefined' && AR.active)) return;
+  player.manualVeh = true; if (v === 'iron') { player.landed = false; player.alt = 11; player.fly = null; } setVehicle(v); player.g.scale.setScalar(targetScale * .8); poof(player.g.position.x, player.g.position.z, v === 'iron' ? 0x9fe6ff : 0xffe9a8);
+  beep(v === 'iron' ? 520 : 360, .12, 'triangle', .04);
+  toast(v === 'iron' ? 'Suit up' : 'New wheels', v === 'iron' ? 'Move to fly · R climb · F descend/land · Shift boost · V camera' : 'You are riding ' + VEHNAME[v] + '.');
+}
+$('flyCamBtn').onclick = e => { flyCamCycle(); e.currentTarget.blur(); };
+document.querySelectorAll('#flyHint button[data-k]').forEach(b => { const c = b.dataset.k; const on = e => { e.preventDefault(); keys.add(c); }, off = () => keys.delete(c); b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off); b.addEventListener('pointerleave', off); b.addEventListener('pointercancel', off); });
+document.querySelectorAll('#vehBar > button').forEach(b => b.onclick = () => { pickVehicle(b.dataset.v); b.blur(); });
 async function resumePortal() {
   if (state.mode !== 'explore' || busy) return;
   const p = player.g.position;
@@ -2612,7 +2679,7 @@ function arenaStep(dt, pp, t) {
     if (state.mode === 'explore') { AR.t += dt; arSync(); if (Math.hypot(pp.x - ARENA.center.x, pp.z - ARENA.center.z) > 40) arenaCancel('You left the lane. Challenge ended.'); else if ((pp.x - ARENA.fins[AR.dir].x) * ARENA.fins[AR.dir].dx + (pp.z - ARENA.fins[AR.dir].z) * ARENA.fins[AR.dir].dz > 0) arenaCancel('Missed the landing. Ride the lane again.'); else if (AR.t >= AR.limit) { arenaCancel(null); chime(); arBanner('TIME UP', AR.tricks + ' / ' + AR.goal + ' tricks', 2200); toast('So close', 'Ride the lane again to try again.'); } }
     return;
   }
-  if (AR.cd <= 0 && state.mode === 'explore' && !busy && !away && ARENA.gates) { const gi = ARENA.gates.findIndex(G => Math.hypot(pp.x - G.x, pp.z - G.z) < 2.8); if (gi >= 0) { AR.dir = gi; arenaEnter(); } }
+  if (AR.cd <= 0 && state.mode === 'explore' && !busy && !away && player.veh.type !== 'iron' && ARENA.gates) { const gi = ARENA.gates.findIndex(G => Math.hypot(pp.x - G.x, pp.z - G.z) < 2.8); if (gi >= 0) { AR.dir = gi; arenaEnter(); } }
 }
 addEventListener('keydown', e => { if (e.code === 'Escape') { if (AR.active) arenaCancel('Challenge ended. Free ride.'); }  });
 $('arExit').addEventListener('click', () => arenaCancel('Challenge ended. Free ride.'));
@@ -2832,12 +2899,95 @@ function nearestInteract() {
   for (const s of STN) { const d = Math.hypot(s.x - p.x, s.z - p.z); if (d < bd) { bd = d; best = s; } }
   return best;
 }
+// ---- Iron Man flight: momentum, drag, banking, spring-damped altitude
+const CAMF = { mode: 'bird', yaw: Math.PI, b: 0, look: new T.Vector3(), fov: 48, init: false };
+const FLY_CAMS = ['bird', 'chase', 'hero'], FLY_CAM_NAME = { bird: 'Bird view', chase: 'Chase cam', hero: 'Hero cam' };
+function flyStep(dt, ix, iz, len, drive) {
+  const V = player.veh, cfg = V.cfg, p = player.g.position, F = player.fly || (player.fly = { vx: 0, vz: 0, vy: 0, roll: 0, boost: 0, surge: 0, yr: 0 });
+  if (!F.init) { F.vx = Math.sin(player.heading) * player.v; F.vz = Math.cos(player.heading) * player.v; F.init = true; }
+  const mag = drive ? Math.min(1, len) : 0, ang = Math.atan2(ix, iz) + (CAMF.yaw - Math.PI);   // input is relative to where the camera looks
+  const wantBoost = drive && mag > .1 && (keys.has('ShiftLeft') || keys.has('ShiftRight'));
+  if (wantBoost && F.boost < .1) { camShake = Math.max(camShake, .35); beep(140, .3, 'sawtooth', .035); }
+  F.boost += ((wantBoost ? 1 : 0) - F.boost) * Math.min(1, dt * (wantBoost ? 3 : 1.6));
+  // thrust along the input, quadratic-ish drag: top speed ~27, ~45 on boost
+  const thrust = 30 * (1 + 1.1 * F.boost) * mag, sp0 = Math.hypot(F.vx, F.vz), drag = .85 + sp0 * .012 + (mag < .1 ? 1.6 : 0);  // no input: stabilisers brake into a hover
+  const ax = Math.sin(ang) * thrust - F.vx * drag, az = Math.cos(ang) * thrust - F.vz * drag;
+  F.vx += ax * dt; F.vz += az * dt;
+  const sp = Math.hypot(F.vx, F.vz); if (sp < .05 && mag < .1) { F.vx = F.vz = 0; }
+  // the body yaws toward travel (or toward the stick when nearly still); yaw rate drops at speed
+  const th = sp > 1.5 ? Math.atan2(F.vx, F.vz) : mag > .1 ? ang : player.heading;
+  let dh = Math.atan2(Math.sin(th - player.heading), Math.cos(th - player.heading)); const yr = clamp(dh, -1, 1) * (sp > 1.5 ? 6 : 4.5);
+  const step = clamp(dh, -Math.abs(yr) * dt * 1.6, Math.abs(yr) * dt * 1.6); player.heading += step; F.yr = lerp(F.yr, step / Math.max(dt, 1e-4), Math.min(1, dt * 6));
+  // coordinated bank into the turn, stronger at speed; forward surge when the thrust jumps
+  const tRoll = clamp(-F.yr * Math.min(1, sp / 18) * .42, -1.05, 1.05); F.roll += (tRoll - F.roll) * Math.min(1, dt * 5);
+  const fwdA = (ax * Math.sin(player.heading) + az * Math.cos(player.heading)) / 30; F.surge += (clamp(fwdA, -1, 1) - F.surge) * Math.min(1, dt * 4);
+  // altitude: critically-ish damped spring toward the chosen height, with a gentle float at hover
+  const tm = performance.now() / 1000, hy = player.alt + Math.sin(tm * 1.7) * .3 * (1 - Math.min(1, sp / 12)) + Math.min(1, sp / cfg.max) * 1.5;
+  F.vy += ((hy - p.y) * 5 - F.vy * 3.4) * dt; F.vy = clamp(F.vy, -22, 22); p.y = Math.max(.07, p.y + F.vy * dt);
+  p.x += F.vx * dt; p.z += F.vz * dt;
+  // a soft invisible ceiling over the edge of the world: push back in and kill the outward velocity
+  const n = pathNear(p.x, p.z), CR = CORR * 1.8;
+  if (n.d > CR) { const nx = (p.x - n.px) / n.d, nz = (p.z - n.pz) / n.d, out = F.vx * nx + F.vz * nz; p.x = n.px + nx * CR; p.z = n.pz + nz * CR; if (out > 0) { F.vx -= nx * out; F.vz -= nz * out; } }
+  player.v = Math.hypot(F.vx, F.vz); player.vdir = player.heading; player.slip = 0; player.flyH = true;
+  player.g.rotation.y = player.heading; player.lean = 0; V.d.g.rotation.z = 0;
+  rideAnim(dt, player.v);
+}
+function flyCamCycle() { const i = (FLY_CAMS.indexOf(CAMF.mode) + 1) % FLY_CAMS.length; CAMF.mode = FLY_CAMS[i]; toast('🎥 ' + FLY_CAM_NAME[CAMF.mode], CAMF.mode === 'bird' ? 'Top-down over the world.' : CAMF.mode === 'chase' ? 'Behind the suit. Steering follows the camera.' : 'Low three-quarter shot that shows off the suit.'); }
+// flight camera: returns true when it drove the camera this frame
+function flyCam(dt, k) {
+  const pp = player.g.position, F = player.fly || { vx: 0, vz: 0, vy: 0, roll: 0, boost: 0 }, iron = player.veh && player.veh.type === 'iron' && !player.onFoot && !player.inside;
+  const bt = iron ? clamp((pp.y - .6) / 6, 0, 1) : 0; CAMF.b += (bt - CAMF.b) * (1 - Math.exp(-dt * 2.2));
+  const b = CAMF.b, sp = Math.hypot(F.vx, F.vz), f = 1 - Math.exp(-dt * 4.5);
+  // FOV breathes with speed and kicks on boost
+  const fov = lerp(48, 48 + Math.min(1, sp / 30) * 10 + F.boost * 10, b); if (Math.abs(fov - camera.fov) > .01) { camera.fov = lerp(camera.fov, fov, 1 - Math.exp(-dt * 5)); camera.updateProjectionMatrix(); }
+  if (b < .002) { CAMF.yaw = Math.PI; CAMF.init = false; return false; }
+  const hx = Math.sin(player.heading), hz = Math.cos(player.heading), mode = CAMF.mode;
+  // camera yaw: bird keeps north-up; chase swings behind the heading; hero stays fixed while you fly
+  const wantYaw = mode === 'chase' ? player.heading : mode === 'hero' ? CAMF.yaw : Math.PI;
+  CAMF.yaw += Math.atan2(Math.sin(wantYaw - CAMF.yaw), Math.cos(wantYaw - CAMF.yaw)) * Math.min(1, dt * (mode === 'chase' ? 2.4 : 3));
+  const cx = Math.sin(CAMF.yaw), cz = Math.cos(CAMF.yaw);   // camera forward on the ground plane
+  let tx, ty, tz, lx, ly, lz;
+  if (mode === 'chase') {
+    const D = 8 * k + sp * .12 + F.boost * 3, H = 3 * k + pp.y * .08;
+    tx = pp.x - cx * D; tz = pp.z - cz * D; ty = pp.y + H + F.vy * .05;
+    lx = pp.x + cx * 9; lz = pp.z + cz * 9; ly = pp.y + .4 - F.vy * .02;
+  } else if (mode === 'hero') {
+    const a = CAMF.yaw + Math.PI + .75, D = 6.5 * k + sp * .06;
+    tx = pp.x + Math.sin(a) * D; tz = pp.z + Math.cos(a) * D; ty = pp.y + 1.4 * k;
+    lx = pp.x; ly = pp.y + 1.1 * k; lz = pp.z;
+  } else {
+    // bird view: high above, zooms out with altitude and speed, leads ahead of the travel so you see what's coming
+    const H = 15 * k + pp.y * .55 + sp * .35 + F.boost * 4, lead = .55;
+    tx = pp.x + F.vx * lead; tz = pp.z + F.vz * lead + H * .22; ty = pp.y + H;
+    lx = pp.x + F.vx * lead; ly = 0; lz = pp.z + F.vz * lead - H * .04;
+  }
+  // blend from the normal ground camera (straight behind on +z) as he lifts off
+  const gx = pp.x, gz = pp.z + 15 * k, gy = 12.5 * k, glx = pp.x, gly = 1.2, glz = pp.z + 15 * k - 14.5 * k;
+  tx = lerp(gx, tx, b); ty = lerp(gy, ty, b); tz = lerp(gz, tz, b); lx = lerp(glx, lx, b); ly = lerp(gly, ly, b); lz = lerp(glz, lz, b);
+  if (!CAMF.init) { CAMF.look.set(camera.position.x, 1.2, camera.position.z - 14.5 * k); CAMF.init = true; }
+  camera.position.x = lerp(camera.position.x, tx, f); camera.position.y = lerp(camera.position.y, ty, f); camera.position.z = lerp(camera.position.z, tz, f);
+  CAMF.look.x = lerp(CAMF.look.x, lx, f * 1.4); CAMF.look.y = lerp(CAMF.look.y, ly, f * 1.4); CAMF.look.z = lerp(CAMF.look.z, lz, f * 1.4);
+  if (camShake > .01) { camera.position.x += (Math.random() - .5) * camShake; camera.position.y += (Math.random() - .5) * camShake * .6; camShake *= .86; }
+  if (F.boost > .3) { camera.position.x += (Math.random() - .5) * .06 * F.boost; camera.position.y += (Math.random() - .5) * .05 * F.boost; }
+  camera.lookAt(CAMF.look);
+  if (mode === 'chase') camera.rotateZ(-F.roll * .22 * b);   // the horizon leans with the bank
+  return true;
+}
 function movePlayer(dt) {
   const V = player.veh, cfg = player.onFoot ? FOOT : V.cfg, p = player.g.position;
   const ix = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0) + joy.x;
   const iz = (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0) - (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) + joy.z;
   const len = Math.hypot(ix, iz), drive = state.mode === 'explore' && !busy;
-  const max = cfg.max * (boostT > 0 ? 1.7 : 1);
+  const iron = V.type === 'iron' && !player.onFoot && !player.inside;
+  if (iron && drive) {
+    const up = keys.has('KeyR') ? 1 : 0, dn = keys.has('KeyF') ? 1 : 0;
+    if (player.alt === undefined) player.alt = 11;
+    if (player.landed && up) { player.landed = false; player.alt = Math.max(player.alt, 9); if (player.fly) player.fly.vy = 9; camShake = .25; beep(220, .25, 'sawtooth', .03); toast('Lift off', 'R climb · F descend · Shift boost · V camera'); }
+    if (!player.landed) { player.alt = clamp(player.alt + (up - dn) * 16 * dt, 1.4, 60); if (player.alt <= 1.5 && dn) { player.landed = true; player.alt = 11; camShake = .3; if (player.fly) player.fly.init = false; toast('Landed', 'Press R to take off again.'); } }
+  }
+  const flying = iron && !player.landed;
+  if (flying && !stunt) { flyStep(dt, ix, iz, len, drive); return; }
+  const max = cfg.max * (boostT > 0 ? 1.7 : 1) * (V.type === 'iron' && !player.onFoot && player.landed ? .35 : 1);
   let target = 0, dh = 0;
   if (drive && len > .1) {
     const k = Math.min(1, len); let da = Math.atan2(ix, iz) - player.heading; da = Math.atan2(Math.sin(da), Math.cos(da));
@@ -2856,10 +3006,11 @@ function movePlayer(dt) {
   player.slip = slip;
   const px = p.x, pz = p.z; p.x += Math.sin(player.vdir) * player.v * dt; p.z += Math.cos(player.vdir) * player.v * dt;
   const R = .5 * player.g.scale.x + .3;
-  for (const w of walls) { const cx = clamp(p.x, w.x0, w.x1), cz = clamp(p.z, w.z0, w.z1), dx = p.x - cx, dz = p.z - cz, d = Math.hypot(dx, dz); if (d < R) { if (d > 1e-4) { p.x = cx + dx / d * R; p.z = cz + dz / d * R; } else p.x = w.x0 - R; } }
-  for (const r of rounds) { if (r.ground && stunt && stunt.air) continue; const dx = p.x - r.x, dz = p.z - r.z, d = Math.hypot(dx, dz), m = r.r + R; if (d < m && d > 1e-4) { p.x = r.x + dx / d * m; p.z = r.z + dz / d * m; } }
+  if (!flying) for (const w of walls) { const cx = clamp(p.x, w.x0, w.x1), cz = clamp(p.z, w.z0, w.z1), dx = p.x - cx, dz = p.z - cz, d = Math.hypot(dx, dz); if (d < R) { if (d > 1e-4) { p.x = cx + dx / d * R; p.z = cz + dz / d * R; } else p.x = w.x0 - R; } }
+  if (!flying) for (const r of rounds) { if (r.ground && stunt && stunt.air) continue; const dx = p.x - r.x, dz = p.z - r.z, d = Math.hypot(dx, dz), m = r.r + R; if (d < m && d > 1e-4) { p.x = r.x + dx / d * m; p.z = r.z + dz / d * m; } }
   if (player.inside) { p.y = .11; p.x = clamp(p.x, INT.x - INT.W / 2 + 1, INT.x + INT.W / 2 - 1); p.z = clamp(p.z, INT.z - INT.D / 2 + 1.2, INT.z + INT.D / 2 - .9); }
-  const n = pathNear(p.x, p.z); if (!player.inside && n.d > CORR) { p.x = n.px + (p.x - n.px) / n.d * CORR; p.z = n.pz + (p.z - n.pz) / n.d * CORR; }
+  const n = pathNear(p.x, p.z); if (!player.inside && n.d > CORR) { const cx = n.px + (p.x - n.px) / n.d * CORR, cz = n.pz + (p.z - n.pz) / n.d * CORR, soft = n.d > CORR + 1 ? Math.min(1, dt * 3) : 1; p.x += (cx - p.x) * soft; p.z += (cz - p.z) * soft; }  // after landing out past the road, glide back in rather than snapping
+  if (!stunt && !player.inside) { if (flying && state.mode === 'explore') player.flyH = true; if (player.flyH) { const hy = flying ? (player.alt ?? 11) + Math.sin(performance.now() / 500) * .35 + Math.min(1, player.v / cfg.max) * 2.5 : .07; p.y += (hy - p.y) * Math.min(1, dt * (flying ? 2.2 : 3.2)); if (!flying && p.y < .09) { p.y = .07; player.flyH = false; } } }
   if (Math.hypot(p.x - px, p.z - pz) > .02 + player.v * dt * .9 && player.v > 0) player.v *= .85;
   player.g.rotation.y = player.heading;
   player.lean = lerp(player.lean, clamp(-dh * .1 * (player.v / cfg.max), -.35, .35), Math.min(1, dt * 8));
@@ -2871,12 +3022,17 @@ const clock = new T.Clock();
 function animate() {
   requestAnimationFrame(animate);
   $('tabs').hidden = ['title', 'arrival'].includes(state.mode);
+  const boxing = state.mode === 'box';
+  $('tabResume').hidden = boxing;
+  $('gotoBtn').hidden = boxing;
+  if (boxing && !$('gotoWheel').hidden) toggleGoto(false);
+  { const vb = $('vehBar'); vb.hidden = state.mode !== 'explore' || busy || player.onFoot || player.inside; if (!vb.hidden) vb.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === player.veh.type)); $('flyHint').hidden = player.veh.type !== 'iron'; }
   flushGoto();
   const dt = Math.min(clock.getDelta(), .05), t = clock.elapsedTime;
   player.updateFace(t);
   if (state.mode === 'chess') { ChessGame.update(dt); draw(ChessGame.scene, ChessGame.camera); return; }
   if (dlg && !dlg.full) { dlg.pos += dt * 55; const l = dlg.q[dlg.i]; const n = Math.floor(dlg.pos); $('dlgText').textContent = l.text.slice(0, n); if (n % 3 === 0) beep(300 + (n % 5) * 20, .02, 'square', .012); if (n >= l.text.length) finishText(); }
-  if (state.mode === 'explore' && player.veh && !away) { const n = pathNear(player.g.position.x, player.g.position.z); if (n.d < 45 && n.s > (save.reach || 0)) { save.reach = n.s; const v = stageVeh(); if (v !== player.veh.type) { swapVehicle(v); persist(); } } }
+  if (state.mode === 'explore' && player.veh && !away) { const n = pathNear(player.g.position.x, player.g.position.z); if (n.d < 45 && n.s > (save.reach || 0)) { save.reach = n.s; const v = stageVeh(); if (v !== player.veh.type && !player.manualVeh) { swapVehicle(v); persist(); } } }
   const sc = lerp(player.g.scale.x, player.inside ? Math.max(targetScale, 1) : targetScale, 1 - Math.exp(-dt * 8)); player.g.scale.setScalar(sc);
   if (ticker) ticker(dt); else movePlayer(dt);
   const pp = player.g.position;
@@ -2913,6 +3069,7 @@ function animate() {
     if (!openingOrbit.reduced) openingOrbit.angle += dt * .28;
     camera.position.set(Math.sin(openingOrbit.angle) * 120, 115, -100 + Math.cos(openingOrbit.angle) * 120);
     camera.lookAt(0, 0, -100);
+  } else if (!ticker && flyCam(dt, .62 + .38 * sc)) {
   } else if (!ticker) {
     const k = .62 + .38 * sc, wantX = pp.x + Math.sin(player.heading) * player.v * .25, wantZ = pp.z + 15 * k + Math.cos(player.heading) * player.v * .25;
     camera.position.x = lerp(camera.position.x, wantX, 1 - Math.exp(-dt * 4)); camera.position.z = lerp(camera.position.z, wantZ, 1 - Math.exp(-dt * 4)); camera.position.y = lerp(camera.position.y, 12.5 * k, 1 - Math.exp(-dt * 4));
@@ -2952,7 +3109,7 @@ addEventListener('keydown', e => {
   if (state.mode === 'explore' && !busy && !player.inside && e.code === 'KeyM') { toggleMap(true); return; }
   if (state.mode === 'term') { if (['Escape', 'KeyE', 'Space', 'Enter'].includes(e.code)) termKey(); return; }
   if (state.mode === 'dialog') { if (e.code === 'Escape') { e.preventDefault(); closeConversation(); return; } if (e.code === 'Space' || e.code === 'Enter' || e.code === 'KeyE') advance(); else if (/^Digit[1-4]$/.test(e.code)) pick(+e.code.slice(5) - 1); }
-  else if (state.mode === 'explore' && !busy) { if (e.code === 'KeyE' || e.code === 'Enter' || e.code === 'Space') interact(); else if (e.code === 'KeyC') envNext(); else if (e.code === 'KeyT') { ENV.hour = (ENV.hour + 3) % 24; toast('🕒 Time skips ahead', 'Three hours later.'); } }
+  else if (state.mode === 'explore' && !busy) { if (e.code === 'KeyE' || e.code === 'Enter' || e.code === 'Space') interact(); else if (e.code === 'KeyC') envNext(); else if (e.code === 'KeyV' && player.veh.type === 'iron' && !player.onFoot) flyCamCycle(); else if (e.code === 'KeyT') { ENV.hour = (ENV.hour + 3) % 24; toast('🕒 Time skips ahead', 'Three hours later.'); } }
 });
 addEventListener('keyup', e => keys.delete(e.code));
 addEventListener('blur', () => keys.clear());
