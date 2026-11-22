@@ -2974,7 +2974,7 @@ function flyCam(dt, k) {
   return true;
 }
 function movePlayer(dt) {
-  const V = player.veh, cfg = player.onFoot ? FOOT : V.cfg, p = player.g.position;
+  let V = player.veh, cfg = player.onFoot ? FOOT : V.cfg; const p = player.g.position;
   const ix = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0) + joy.x;
   const iz = (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0) - (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) + joy.z;
   const len = Math.hypot(ix, iz), drive = state.mode === 'explore' && !busy;
@@ -2983,7 +2983,14 @@ function movePlayer(dt) {
     const up = keys.has('KeyR') ? 1 : 0, dn = keys.has('KeyF') ? 1 : 0;
     if (player.alt === undefined) player.alt = 11;
     if (player.landed && up) { player.landed = false; player.alt = Math.max(player.alt, 9); if (player.fly) player.fly.vy = 9; camShake = .25; beep(220, .25, 'sawtooth', .03); toast('Lift off', 'R climb · F descend · Shift boost · V camera'); }
-    if (!player.landed) { player.alt = clamp(player.alt + (up - dn) * 16 * dt, 1.4, 60); if (player.alt <= 1.5 && dn) { player.landed = true; player.alt = 11; camShake = .3; if (player.fly) player.fly.init = false; toast('Landed', 'Press R to take off again.'); } }
+    if (!player.landed) { player.alt = clamp(player.alt + (up - dn) * 16 * dt, 1.4, 60); if (player.alt <= 1.5 && dn) {
+      player.landed = true; player.alt = 11; camShake = .3; player.flyH = false; player.g.position.y = .07;
+      const flightSpeed = Math.hypot(player.fly?.vx || 0, player.fly?.vz || 0);
+      player.v = Math.min(VEH.moto.max, flightSpeed); player.vdir = player.heading;
+      setVehicle('moto'); V = player.veh; cfg = V.cfg; player.manualVeh = true;
+      if (player.fly) player.fly.init = false;
+      toast('Landed', 'Iron Man suit parked. You are on the bike.');
+    } }
   }
   const flying = iron && !player.landed;
   if (flying && !stunt) { flyStep(dt, ix, iz, len, drive); return; }
@@ -3019,16 +3026,34 @@ function movePlayer(dt) {
   driftFx(dt, len, dh);
 }
 const clock = new T.Clock();
+let flightHudTimer = 0, flightHudVisible = false;
 function animate() {
   requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), .05), t = clock.elapsedTime;
   $('tabs').hidden = ['title', 'arrival'].includes(state.mode);
   const boxing = state.mode === 'box';
+  const flightActive = state.mode === 'explore' && !busy && !player.onFoot && !player.inside && player.veh?.type === 'iron' && !player.landed;
+  if (flightActive !== flightHudVisible) {
+    flightHudVisible = flightActive;
+    document.body.classList.toggle('flight-active', flightActive);
+    flightHudTimer = 0;
+  }
+  if (flightActive) {
+    flightHudTimer -= dt;
+    if (flightHudTimer <= 0) {
+      flightHudTimer = .1;
+      const F = player.fly || {}, speed = Math.hypot(F.vx || 0, F.vz || 0), boost = clamp(F.boost || 0, 0, 1);
+      $('flightAlt').textContent = String(Math.round(player.g.position.y * 10)).padStart(3, '0');
+      $('flightSpeed').textContent = String(Math.round(speed * 12)).padStart(3, '0');
+      $('flightBoost').style.width = `${Math.round(boost * 100)}%`;
+      $('flightArc').style.width = `${Math.round(72 + (1 - boost) * 28)}%`;
+    }
+  }
   $('tabResume').hidden = boxing;
   $('gotoBtn').hidden = boxing;
   if (boxing && !$('gotoWheel').hidden) toggleGoto(false);
   { const vb = $('vehBar'); vb.hidden = state.mode !== 'explore' || busy || player.onFoot || player.inside; if (!vb.hidden) vb.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === player.veh.type)); $('flyHint').hidden = player.veh.type !== 'iron'; }
   flushGoto();
-  const dt = Math.min(clock.getDelta(), .05), t = clock.elapsedTime;
   player.updateFace(t);
   if (state.mode === 'chess') { ChessGame.update(dt); draw(ChessGame.scene, ChessGame.camera); return; }
   if (dlg && !dlg.full) { dlg.pos += dt * 55; const l = dlg.q[dlg.i]; const n = Math.floor(dlg.pos); $('dlgText').textContent = l.text.slice(0, n); if (n % 3 === 0) beep(300 + (n % 5) * 20, .02, 'square', .012); if (n >= l.text.length) finishText(); }
