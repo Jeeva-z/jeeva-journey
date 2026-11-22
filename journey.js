@@ -2974,7 +2974,7 @@ function flyCam(dt, k) {
   return true;
 }
 function movePlayer(dt) {
-  const V = player.veh, cfg = player.onFoot ? FOOT : V.cfg, p = player.g.position;
+  let V = player.veh, cfg = player.onFoot ? FOOT : V.cfg; const p = player.g.position;
   const ix = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0) + joy.x;
   const iz = (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0) - (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) + joy.z;
   const len = Math.hypot(ix, iz), drive = state.mode === 'explore' && !busy;
@@ -2983,7 +2983,14 @@ function movePlayer(dt) {
     const up = keys.has('KeyR') ? 1 : 0, dn = keys.has('KeyF') ? 1 : 0;
     if (player.alt === undefined) player.alt = 11;
     if (player.landed && up) { player.landed = false; player.alt = Math.max(player.alt, 9); if (player.fly) player.fly.vy = 9; camShake = .25; beep(220, .25, 'sawtooth', .03); toast('Lift off', 'R climb · F descend · Shift boost · V camera'); }
-    if (!player.landed) { player.alt = clamp(player.alt + (up - dn) * 16 * dt, 1.4, 60); if (player.alt <= 1.5 && dn) { player.landed = true; player.alt = 11; camShake = .3; if (player.fly) player.fly.init = false; toast('Landed', 'Press R to take off again.'); } }
+    if (!player.landed) { player.alt = clamp(player.alt + (up - dn) * 16 * dt, 1.4, 60); if (player.alt <= 1.5 && dn) {
+      player.landed = true; player.alt = 11; camShake = .3; player.flyH = false; player.g.position.y = .07;
+      const flightSpeed = Math.hypot(player.fly?.vx || 0, player.fly?.vz || 0);
+      player.v = Math.min(VEH.moto.max, flightSpeed); player.vdir = player.heading;
+      setVehicle('moto'); V = player.veh; cfg = V.cfg; player.manualVeh = true;
+      if (player.fly) player.fly.init = false;
+      toast('Landed', 'Iron Man suit parked. You are on the bike.');
+    } }
   }
   const flying = iron && !player.landed;
   if (flying && !stunt) { flyStep(dt, ix, iz, len, drive); return; }
