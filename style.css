@@ -224,7 +224,6 @@ h1{margin:6px 0 10px;font-family:var(--serif);font-size:clamp(52px,11vw,92px);fo
 #flyHint kbd{font:700 10px system-ui;background:#b3202a;color:#fff;border-radius:4px;padding:1px 4px;margin-left:3px}
 #vehBar > button i{font-style:normal}
 @media(max-width:560px){#flyHint{gap:4px;padding-left:4px}#flyHint button{padding:6px 7px;font-size:11px}#flyHint kbd{display:none}}
-
 /* Iron Man flight: a restrained Stark HUD over the storybook world. */
 #flightOverlay{position:fixed;inset:0;z-index:11;display:none;pointer-events:none;color:#eafaff;font:600 11px/1.4 ui-monospace,Menlo,Consolas,monospace;text-shadow:0 0 10px #28c9ff88}
 body.flight-active #flightOverlay{display:block}
