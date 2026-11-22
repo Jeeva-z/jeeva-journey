@@ -3019,16 +3019,34 @@ function movePlayer(dt) {
   driftFx(dt, len, dh);
 }
 const clock = new T.Clock();
+let flightHudTimer = 0, flightHudVisible = false;
 function animate() {
   requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), .05), t = clock.elapsedTime;
   $('tabs').hidden = ['title', 'arrival'].includes(state.mode);
   const boxing = state.mode === 'box';
+  const flightActive = state.mode === 'explore' && !busy && !player.onFoot && !player.inside && player.veh?.type === 'iron' && !player.landed;
+  if (flightActive !== flightHudVisible) {
+    flightHudVisible = flightActive;
+    document.body.classList.toggle('flight-active', flightActive);
+    flightHudTimer = 0;
+  }
+  if (flightActive) {
+    flightHudTimer -= dt;
+    if (flightHudTimer <= 0) {
+      flightHudTimer = .1;
+      const F = player.fly || {}, speed = Math.hypot(F.vx || 0, F.vz || 0), boost = clamp(F.boost || 0, 0, 1);
+      $('flightAlt').textContent = String(Math.round(player.g.position.y * 10)).padStart(3, '0');
+      $('flightSpeed').textContent = String(Math.round(speed * 12)).padStart(3, '0');
+      $('flightBoost').style.width = `${Math.round(boost * 100)}%`;
+      $('flightArc').style.width = `${Math.round(72 + (1 - boost) * 28)}%`;
+    }
+  }
   $('tabResume').hidden = boxing;
   $('gotoBtn').hidden = boxing;
   if (boxing && !$('gotoWheel').hidden) toggleGoto(false);
   { const vb = $('vehBar'); vb.hidden = state.mode !== 'explore' || busy || player.onFoot || player.inside; if (!vb.hidden) vb.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === player.veh.type)); $('flyHint').hidden = player.veh.type !== 'iron'; }
   flushGoto();
-  const dt = Math.min(clock.getDelta(), .05), t = clock.elapsedTime;
   player.updateFace(t);
   if (state.mode === 'chess') { ChessGame.update(dt); draw(ChessGame.scene, ChessGame.camera); return; }
   if (dlg && !dlg.full) { dlg.pos += dt * 55; const l = dlg.q[dlg.i]; const n = Math.floor(dlg.pos); $('dlgText').textContent = l.text.slice(0, n); if (n % 3 === 0) beep(300 + (n % 5) * 20, .02, 'square', .012); if (n >= l.text.length) finishText(); }
