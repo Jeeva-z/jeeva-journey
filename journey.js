@@ -184,6 +184,29 @@ function house(x, z, w, d, wall, roof) {
   walls.push({ x0: x - w / 2 - .3, x1: x + w / 2 + .3, z0: z - d / 2 - .3, z1: z + d / 2 + .3 });
   return g;
 }
+// Compact timber cabins with steep blue roofs, gold edging, chimney and tool
+// details, shaped after the Builder Huts in Clash of Clans.
+function builderHut(x, z, roofColor = 0x376b9a, trimColor = 0xe8b84a) {
+  const g = new T.Group(); g.position.set(x, 0, z); world.add(g);
+  box(g, 3.7, 2.7, 3.25, 0xa9784b, 0, 1.4, 0);
+  // Exposed timber framing and stacked log ends.
+  for (const sx of [-1, 1]) { box(g, .24, 2.8, 3.4, 0x684327, sx * 1.75, 1.4, 0); box(g, 3.8, .22, .22, 0x684327, 0, .18, 1.66); }
+  for (let k = 0; k < 4; k++) box(g, 3.55, .12, .12, k % 2 ? 0xc08b56 : 0xb17b49, 0, .48 + k * .48, -1.66);
+  // Two steep roof planes make the small cabin silhouette easy to read from above.
+  for (const side of [-1, 1]) { const plane = box(g, 2.55, .22, 3.9, roofColor, side * .91, 3.34, 0); plane.rotation.z = side * -.62; }
+  box(g, .24, .22, 4.05, trimColor, 0, 4.09, 0);
+  for (const side of [-1, 1]) box(g, .13, .18, 4.0, trimColor, side * 1.78, 2.58, 0);
+  // Short chimney, front door, bright window and a small builder hammer plaque.
+  box(g, .62, 1.15, .62, 0x8b5635, 1.12, 4.02, -.72);
+  box(g, .86, 1.72, .16, 0x5b3828, 0, .94, 1.68); box(g, .12, 1.72, .08, trimColor, -.49, .94, 1.79); box(g, .12, 1.72, .08, trimColor, .49, .94, 1.79);
+  box(g, .52, .5, .12, 0x9ed8e8, 1.08, 1.8, 1.69); box(g, .64, .12, .14, trimColor, 1.08, 2.08, 1.72); box(g, .12, .58, .14, trimColor, 1.08, 1.8, 1.72);
+  box(g, .13, .95, .13, 0x5a3a22, -1.05, 2.15, 1.76); box(g, .55, .14, .16, trimColor, -.82, 2.48, 1.76);
+  // Workbench and neatly stacked lumber outside the right wall.
+  box(g, 1.5, .18, .72, 0x8a5a36, 2.35, .78, .25); box(g, .14, .75, .14, 0x6b4428, 1.86, .4, .25); box(g, .14, .75, .14, 0x6b4428, 2.84, .4, .25);
+  for (let i = 0; i < 3; i++) box(g, 1.25, .16, .24, i % 2 ? 0xb98652 : 0xc99c65, 2.35, .2 + i * .2, 1.05 + i * .08);
+  rounds.push({ x, z, r: 2.25 });
+  return g;
+}
 function leafyCrown(parent, radius, color, x, y, z, sx = 1, sy = 1, sz = 1) {
   const geo = new T.SphereGeometry(radius, 20, 14), pos = geo.attributes.position;
   const colors = new Float32Array(pos.count * 3), base = new T.Color(color);
@@ -510,6 +533,7 @@ function ringAt(x, z, col = 0xffd36a) {
 }
 // ---- start: a few homes
 house(-16, 34, 8, 6, 0xf1d9a8, 0xb5532b); house(15, 28, 7, 6, 0xd7a6b0, 0x6b3e1d); house(-18, 8, 7, 6, 0xb9d7e0, 0x7a4a3a); house(16, 4, 6, 6, 0xe5c26b, 0x9a5a3a);
+builderHut(-29, 29, 0x8b4b2c, 0xf0b84a); builderHut(29, 23, 0x6b783d, 0xd8a45d); builderHut(-29, 1, 0x9a5a3a, 0xe1c27d);
 // ---- act 3: B.I.T. campus (north of the east-west stretch at z=-160)
 {
   const g = new T.Group(); g.position.set(12, 0, -169); world.add(g);
@@ -761,6 +785,15 @@ const NPCS = [];
 function npc(name, x, z, o) { const p = person(o); p.g.position.set(x, 0, z); scene.add(p.g); const n = { name, p, ph: Math.random() * 6 }; NPCS.push(n); return n; }
 const ravi = npc('Ravi', 24.6, -25, { shirt: 0xd8402a, pants: 0x35507a, scale: .78 });
 const thatha = npc('Thatha', -24.6, -87.6, { shirt: 0xffffff, pants: 0xf3f0e6, hair: 'bald', moustache: true, glasses: true, scale: .95 });
+// The hamlet has its own visible residents. Their short, looping work routes
+// keep them near the builder huts while giving the village life at a glance.
+const villagers = [
+  npc('Muthu the Builder', -24.7, 28.4, { shirt: 0xe2a83b, pants: 0x76503a, hairColor: 0x2a1d17, scale: .86 }),
+  npc('Kavi the Builder', 24.2, 20.7, { shirt: 0x4a9a6a, pants: 0x59456f, hair: 'bun', hairColor: 0x211b18, scale: .88 }),
+  npc('Rani the Carpenter', -24.4, 1.7, { shirt: 0xd96f55, pants: 0x35507a, hair: 'bun', hairColor: 0x211b18, scale: .9 }),
+  npc('Village Farmer', 22.5, 7.5, { shirt: 0x5a9a45, pants: 0x725139, hair: 'bald', scale: .84 })
+];
+villagers.forEach((n, i) => { n.work = { x: n.p.g.position.x, z: n.p.g.position.z, radius: i === 1 ? 2.4 : 2.8, speed: .48 + i * .04, phase: i * 1.7 }; });
 const stumpMeshes0 = stumpMeshes;
 const fielders = [[-8.5, -2], [-6, -8], [0, -9.5], [6, -8.5], [8.5, -3], [-7.5, 4]].map(([dx, dz], i) => {
   const p = person({ shirt: [0x3f8f88, 0xf0b84a, 0xd8402a, 0x8a4a8a, 0x6b8f4a, 0x397c98][i], pants: 0x35507a, scale: .75, hairColor: 0x2a211c });
@@ -3066,8 +3099,18 @@ function animate() {
     const d = Math.hypot(pp.x - n.p.g.position.x, pp.z - n.p.g.position.z);
     if (state.mode === 'cricket') break;
     n.p.body.position.y = Math.sin(t * 1.6 + n.ph) * .015;
+    if (n.work && !player.inside) {
+      const w = n.work, a = t * w.speed + w.phase;
+      const tx = w.x + Math.cos(a) * w.radius, tz = w.z + Math.sin(a * .72) * w.radius;
+      const dx = tx - n.p.g.position.x, dz = tz - n.p.g.position.z, walk = Math.hypot(dx, dz);
+      if (walk > .08) { n.p.g.position.x += dx / walk * Math.min(walk, dt * .62); n.p.g.position.z += dz / walk * Math.min(walk, dt * .62); if (d >= 9) n.p.g.rotation.y = Math.atan2(dx, dz); }
+      const gait = walk > .12 ? 1 : .22;
+      n.p.legs.forEach((leg, i) => { leg.rotation.x = Math.sin(t * 5 + n.ph + i * Math.PI) * .42 * gait; });
+      n.p.arms[0].rotation.x = -.18 + Math.sin(t * 5 + n.ph) * .2 * gait;
+      n.p.arms[1].rotation.x = -.18 + Math.sin(t * 5 + n.ph + Math.PI) * .2 * gait;
+    }
     if (d < 9) { const ta = Math.atan2(pp.x - n.p.g.position.x, pp.z - n.p.g.position.z); let da = ta - n.p.g.rotation.y; da = Math.atan2(Math.sin(da), Math.cos(da)); n.p.g.rotation.y += da * Math.min(1, dt * 4); }
-    n.p.arms[0].rotation.x = Math.sin(t * 1.3 + n.ph) * .06;
+    if (!n.work) n.p.arms[0].rotation.x = Math.sin(t * 1.3 + n.ph) * .06;
   }
   // station rings
   const cur = curAct();
