@@ -575,6 +575,45 @@ landmark('library', -38, -169, { title: 'LIBRARY', sub: 'Jeeva’s bookshelf', l
       }
     }
   } });
+// Town Hall 15 in the library clearing.
+{
+  const library = PORT.find(p => p.id === 'library');
+  const x = library.x + 10;
+  const entranceZ = library.door[1];
+  const frontEdgeZ = entranceZ - 2.4;
+  const board = new T.Group();
+  board.name = 'Village board';
+  board.position.set(x, 0, frontEdgeZ);
+  world.add(board);
+  for (const postX of [-2.55, 2.55]) {
+    box(board, .26, 3.9, .30, 0x654329, postX, 1.95, -.24);
+    box(board, .56, .24, .56, 0x978777, postX, .12, -.24);
+  }
+  box(board, 6.0, 3.35, .20, 0x60422f, 0, 2.55, -.11);
+  const villageMap = textCanvas(900, 480, (ctx, w, h) => {
+    ctx.fillStyle = '#a5be79'; ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = '#d7c495'; ctx.lineWidth = 14;
+    ctx.beginPath(); ctx.moveTo(180, 305); ctx.lineTo(450, 420); ctx.lineTo(720, 305); ctx.stroke();
+    ctx.fillStyle = '#354c35'; ctx.fillRect(0, 0, w, 74);
+    ctx.fillStyle = '#fff0c4'; ctx.textAlign = 'center'; ctx.font = 'bold 43px Georgia';
+    ctx.fillText('ZupaZup’s village', w / 2, 51);
+    ctx.fillStyle = '#253720'; ctx.font = 'bold 27px system-ui';
+    ctx.fillText('Town Hall 15', 235, 374); ctx.fillText('Builder Hall 10', 665, 374);
+  });
+  const face = add(board, new T.PlaneGeometry(5.78, 3.08),
+    new T.MeshBasicMaterial({ map: villageMap, toneMapped: false }), 0, 2.55, .01, false);
+  for (const [art, offset] of [['town_hall', -1.38], ['builder_hall', 1.38]]) {
+    new T.TextureLoader().load('assets/clash/' + art + '.webp', texture => {
+      texture.colorSpace = T.SRGBColorSpace;
+      const height = 1.52;
+      add(face, new T.PlaneGeometry(height * texture.image.width / texture.image.height, height),
+        new T.MeshBasicMaterial({ map: texture, transparent: true, toneMapped: false }), offset, .15, .012, false);
+    });
+  }
+  walls.push({ x0: x - 3, x1: x + 3, z0: frontEdgeZ - .52, z1: frontEdgeZ + .05 });
+  const st = ringAt(x, entranceZ, 0xf3bd4f);
+  STN.push({ id: 'coc', x, z: entranceZ, label: 'Inspect · Clash of Clans profile', kind: 'folio', ...st });
+}
 // Stepping stones lead from the college road into the library clearing.
 for (let x = -36; x <= -10; x += 2) box(world, 1.3, .06, 1.1, 0xcdbb98, x, .08, -160.6, false);
 landmark('ach', 36, -168, { title: 'HALL OF FAME', sub: 'BIT Hackathon', label: 'Hall of Fame · BIT Hackathon', wall: 0xf3e2b8, roof: 0xc4573a, w: 8, d: 6,
@@ -946,7 +985,9 @@ function setVehicle(type) {
   player.veh = player.vehCache[type]; player.veh.d.g.visible = !player.onFoot; if (!player.onFoot) setSeat();
   syncArmor();
 }
+function wearingIronSuit() { return player.veh?.type === 'iron' && !player.onFoot; }
 function syncArmor() {
+  if (wearingIronSuit()) player.umbrella.visible = false;
   for (const k in player.vehCache) { const v = player.vehCache[k]; if (v.d.armor) { const on = v === player.veh && !player.onFoot; v.d.armor.forEach(m => m.visible = on); } }
   if (!player.veh || player.veh.type !== 'iron' || player.onFoot) { player.head.rotation.set(0, 0, 0); for (const l of [...player.arms, ...player.legs]) { l.rotation.z = 0; l.rotation.y = 0; } }
 }
@@ -1111,7 +1152,7 @@ function envStep(dt, t, aw) {
   const rk = C.rain * (1 - ind), R = RAIN; R.m.visible = rk > .02;
   pitchDamp += (C.rain - pitchDamp) * Math.min(1, dt * .18);
   for (const wet of PITCH_WETNESS) wet.material.opacity = pitchDamp * .34;
-  for (const p of WEATHER_PEOPLE) p.umbrella.visible = rk > .12;
+  for (const p of WEATHER_PEOPLE) p.umbrella.visible = rk > .12 && (p !== player || !wearingIronSuit());
   if (R.m.visible) {
     R.m.position.set(pp.x, 0, pp.z); R.m.material.opacity = .32 + .4 * rk; R.g.setDrawRange(0, Math.floor(R.N * (.25 + .75 * rk)) * 2);
     const vy = 24 + 8 * rk, wx = C.wind * 6, len = .55 + .4 * rk;
@@ -2025,6 +2066,7 @@ const FOLIO = {
   contact: { icon: '✉️', title: 'Say hello', sub: 'Jeeva S U · Software Engineer', blocks: [], contact: [['📞', '+91 75388 81377', 'tel:+917538881377'], ['✉️', 'jeev102003@gmail.com', 'mailto:jeev102003@gmail.com']] },
   portfolio: { icon: '👋', title: 'Jeeva S U', sub: 'Software Engineer · Chennai, India', description: 'I build secure authentication systems and backend services. My work spans enterprise identity, authentication flows, Java, Spring Boot and Keycloak.', blocks: [
     { h: 'What I bring', items: ['End-to-end delivery, from understanding requirements through deployment and production support.', 'A security-first approach to identity, authentication and user access.', 'Experience working with product, QA and DevOps teams.'] }] },
+  coc: { icon: '⚔️', title: 'Clash of Clans', sub: 'Town Hall 15 · Spartan Heroes', description: 'My village, heroes and war record from Clash of Clans.', blocks: [] },
   projects: { icon: '🧩', title: 'Selected Projects', sub: 'Authentication · Identity · Citizen services', blocks: [
     { h: 'IBM PKV · Accessible authentication', items: ['Added ARIA accessibility support to IBM authentication experiences.', 'Implemented secure key management using Hardware Security Modules, notification triggers and external video-identification integrations.'] },
     { h: 'Istanbul Senin · City app', items: ['Delivered secure, scalable features and resolved authentication and access issues.', 'Worked across the feature lifecycle, from requirements to deployment and support.'] },
@@ -2047,6 +2089,51 @@ function openFolio(id) {
   if (d.contact) h += '<div class="fblock">' + d.contact.map(([e, t, u]) => `<a class="clink" href="${u}">${e} ${esc(t)}</a>`).join('') + '</div>';
   $('folioBody').innerHTML = h; $('folio').hidden = false; $('folioBody').scrollTop = 0; state.mode = 'folio'; chime();
   if (!save.visited.includes(id)) { save.visited.push(id); save.xp += 40; persist(); refreshHud(); }
+}
+async function loadCocStats() {
+  const target = $('cocStats'); if (!target) return;
+  const profile = {
+    name: 'ZupaZup', tag: '#8LC8YQ0RQ', townHall: 15, exp: 193, best: 3980,
+    warStars: 790, builderHall: 10, builderTrophies: 3233, capitalGold: 594969,
+    league: 'Witch League 18', builderLeague: 'Steel League III',
+    heroes: [['Barbarian King', 74], ['Archer Queen', 84], ['Grand Warden', 56], ['Royal Champion', 32], ['Minion Prince', 55], ['Dragon Duke', 8]],
+    clan: { name: 'Spartan Heroes', tag: '#20PCPV9CV', level: 6, badge: 'https://api-assets.clashofclans.com/badges/200/ye6xXflh8eRy0alyAeTX0BQ0BMeZzORHitC9Ac6Tito.png' }
+  };
+  let builder = false;
+  let clan = profile.clan;
+  function render() {
+    const stats = builder
+      ? [['Builder Hall', profile.builderHall], ['Trophies', profile.builderTrophies], ['Best trophies', 3581]]
+      : [['Town Hall', profile.townHall], ['Best trophies', profile.best], ['War stars', profile.warStars]];
+    const roster = builder ? [['Battle Machine', 30], ['Battle Copter', 16]] : profile.heroes;
+    target.innerHTML = `
+      <header class="clashBanner"><span class="clashXP" aria-label="Experience level ${profile.exp}">${profile.exp}</span>
+        <div><small>Level ${profile.exp} · Player profile</small><h2>${esc(profile.name)}</h2><code>${esc(profile.tag)}</code></div></header>
+      <div class="clashTabs" aria-label="Village selection">
+        <button type="button" aria-pressed="${!builder}">Home Village</button>
+        <button type="button" aria-pressed="${builder}">Builder Base</button></div>
+      <div class="clashRecord"><img class="clashHallPortrait" src="assets/clash/${builder ? 'builder_hall' : 'town_hall'}.webp" alt="${builder ? 'Builder Hall 10' : 'Town Hall 15'}"><strong>${esc(builder ? profile.builderLeague : profile.league)}</strong>
+        <dl class="clashStats">${stats.map(([label, value]) =>
+          `<div><dt>${label}</dt><dd>${value.toLocaleString()}</dd></div>`).join('')}</dl></div>
+      <section class="clashHeroes"><h3>Heroes</h3><ul>${roster.map(([name, level]) =>
+        `<li><img src="assets/clash/${name.toLowerCase().replaceAll(' ', '_')}.webp" alt=""><b aria-label="Level ${level}">${level}</b><span>${esc(name)}</span></li>`).join('')}</ul></section>
+      <footer class="clashClan"><img src="${profile.clan.badge}" alt="" width="54" height="54">
+        <div><strong>${esc(clan.name)}</strong><br>Clan level ${esc(clan.clanLevel ?? clan.level)} · ${esc(clan.tag)}</div></footer>
+      <p class="clashContribution">Clan Capital contributions · ${profile.capitalGold.toLocaleString()}</p>`;
+    target.querySelectorAll('button').forEach((button, index) => {
+      button.onclick = () => {
+        builder = index === 1;
+        render();
+        target.querySelectorAll('button')[index].focus();
+      };
+    });
+  }
+  render();
+  // If server-side credentials are configured, refresh the clan name and badge.
+  try {
+    const response = await fetch('/api/clan');
+    if (response.ok) { clan = await response.json(); render(); }
+  } catch { /* Keep the saved profile details available without a live API. */ }
 }
 function closeFolio() { if (state.mode !== 'folio') return; $('folio').hidden = true; state.mode = 'explore'; beep(440, .05); if (typeof afterFolio === 'function') afterFolio(); }
 $('folioClose').onclick = closeFolio;
@@ -2809,7 +2896,7 @@ async function gotoLocation(id) {
   if (state.mode !== 'goto' || busy) return;
   const destination = id === 'stunt' ? along(CUM[9] + 12 - 38, 0) : STN.find(s => s.id === id);
   if (!destination) return;
-  const names = { ravi: 'Cricket', thatha: 'Chess', rayappan: 'Boxing', stunt: 'Stunt lane', office: 'Grootan office', edu: 'College', library: 'Library' };
+  const names = { ravi: 'Cricket', thatha: 'Chess', rayappan: 'Boxing', stunt: 'Stunt lane', office: 'Grootan office', edu: 'College', library: 'Library', coc: 'Clash of Clans' };
   const vehicle = player.veh.type;
   // Save the strongest ride before changing regions or leaving the office.
   save.vrank = Math.max(save.vrank || 0, VRANK[vehicle] || 0, VRANK[OFFICE.veh] || 0);
@@ -2853,7 +2940,7 @@ $('gotoWheel').addEventListener('keydown', e => {
 /* ---- project folios as slideshows */
 const SL = { slides: [], i: 0 };
 const DECK = ['exp', 'ibm', 'ibb', 'city', 'skills'];
-const FULL_DECK = ['portfolio', 'edu', 'ach', 'exp', 'projects', 'skills', 'contact'];
+const FULL_DECK = ['portfolio', 'edu', 'ach', 'exp', 'projects', 'coc', 'skills', 'contact'];
 function libraryShelf() {
   const books = [
     { style: 'earth', title: 'Kallikaatu Ithigasam', author: 'Vairamuthu', motif: '☀', note: 'Tamil literature' },
@@ -2879,6 +2966,7 @@ function slidesFor(id) {
   const d = FOLIO[id], out = []; if (!d) return out;
   if (id === 'library') return [{ id, html: libraryShelf() }];
   out.push({ id, html: `<div class="slideCover">${d.photo ? '<img class="mePhoto" src="assets/me.jpg" alt="" onerror="this.remove()">' : ''}<div class="ficon big">${d.icon}</div><h2>${esc(d.title)}</h2><p>${esc(d.sub)}</p></div>` });
+  if (id === 'coc') return [{ id, html: '<article id="cocStats" aria-label="Clash of Clans player profile"></article>' }];
   if (d.description) out.push({ id, html: `<div class="slideBody"><div class="sTag">${d.icon} ${esc(d.title)}</div><p>${esc(d.description)}</p></div>` });
   for (const b of d.blocks || []) out.push({ id, html: `<div class="slideBody"><div class="sTag">${d.icon} ${esc(d.title)}</div>${b.h ? `<h3>${esc(b.h)}</h3>` : ''}${b.meta ? `<small>${esc(b.meta)}</small>` : ''}<ul>${(b.items || []).map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>` });
   if (d.chips) out.push({ id, html: `<div class="slideBody"><div class="sTag">${d.icon} ${esc(d.title)}</div>${d.chips.map(([k, v]) => `<h3>${k}</h3><div class="chips">${v.map(x => `<span>${esc(x)}</span>`).join('')}</div>`).join('')}</div>` });
@@ -2896,6 +2984,8 @@ function openFolio(id) {
 }
 function showSlide(n) {
   SL.i = clamp(n, 0, SL.slides.length - 1); const S = SL.slides[SL.i], b = $('folioBody'); b.innerHTML = S.html; b.classList.remove('slideIn'); void b.offsetWidth; b.classList.add('slideIn'); b.scrollTop = 0;
+  if (S.id === 'coc' && $('cocStats')) loadCocStats();
+  $('folio').classList.toggle('isClash', S.id === 'coc');
   $('folio').classList.toggle('isLibrary', S.id === 'library');
   if (!save.visited.includes(S.id)) { save.visited.push(S.id); save.xp += 40; persist(); refreshHud(); }
   $('fDots').innerHTML = SL.slides.map((x, k) => `<i class="${k === SL.i ? 'on' : (k < SL.i ? 'seen' : '')}"></i>`).join(''); $('fCount').textContent = (SL.i + 1) + ' / ' + SL.slides.length;
