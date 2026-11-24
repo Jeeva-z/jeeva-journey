@@ -125,6 +125,8 @@ h1{margin:6px 0 10px;font-family:var(--serif);font-size:clamp(52px,11vw,92px);fo
 .libraryFootnote{text-align:center;font:italic 11px Georgia,serif;color:#806a54;margin:18px 0 0}
 @media(max-width:600px){.bookcase{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 10px;padding:18px 8px 12px;border-width:5px}.shelfBook{padding-inline:4px}.bookCover{min-height:220px;padding:14px 9px 12px 14px}.bookCover h3{font-size:19px}.cover-origin h3{font-size:25px}.coverNote{font-size:7px}.coverAuthor{font-size:9px}.libraryHeading{padding-inline:0}}
 .fhead{display:flex;align-items:center;gap:16px;margin-bottom:12px;border-bottom:2px dashed #a77a4a77;padding-bottom:12px}
+.cocBadge{width:72px;height:72px;object-fit:contain;filter:drop-shadow(0 3px 3px #68482a55)}
+.fhead h3{margin:0;font-family:var(--serif);font-size:22px;color:var(--rust)}
 .ficon{font-size:44px;filter:drop-shadow(0 3px 0 #e0a03055)}
 .mePhoto{width:84px;height:84px;object-fit:cover;border-radius:50%;border:4px solid #fffaf0;box-shadow:0 3px 10px #3b2a2255}
 .fhead h2{margin:0;font-family:var(--serif);font-size:clamp(22px,4vw,30px);color:var(--rust)}
@@ -238,3 +240,50 @@ body.flight-active #flightOverlay{display:block}
 @media(max-width:760px){.flightRight{top:14px}.flightCallout{bottom:92px}}
 @media(max-width:600px){.flightReadout{top:14px;min-width:132px;padding:9px 10px}.flightLeft{left:10px}.flightRight{right:10px}.flightReadout strong{font-size:20px}.flightReadout small{font-size:7px}.flightReadout span{font-size:8px}.flightCallout{bottom:92px;font-size:8px;padding:7px 8px}.flightCallout span{margin-right:5px;margin-left:2px}.flightReticle{transform:translate(-50%,-50%) scale(.78)}}
 @media(prefers-reduced-motion:reduce){.arcMeter i,.flightMeter i{transition:none}}
+
+/* The armory's player shield and village record. */
+#folio.isClash .folioWrap {
+  background: linear-gradient(145deg,#ffefc2,#dcc48f);
+  border-color: #644529;
+  box-shadow: inset 0 0 0 2px #ffdf89,0 14px 50px #22163099;
+}
+#cocStats {color:#37291e;text-align:left;font-family:system-ui,sans-serif}
+.clashBanner,.clashClan {display:flex;align-items:center;gap:16px}
+.clashBanner {
+  padding:18px;border:2px solid #805328;border-bottom:5px solid #c99a46;border-radius:12px;
+  background:repeating-linear-gradient(125deg,transparent 0 22px,#ffffff07 22px 44px),linear-gradient(110deg,#35224d,#67458a);
+  color:#fff8db;
+}
+.clashBanner small,.clashStats dt {font-weight:700}
+.clashBanner small {color:#ffdc88;text-transform:uppercase;letter-spacing:.12em}
+#cocStats .clashBanner h2 {margin:0;color:white;font:900 clamp(26px,5vw,42px)/1.1 system-ui,sans-serif;text-shadow:0 3px #302039}
+.clashStats,.clashHeroes ul {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.clashStats div {padding:10px;background:#fff5d9;border-bottom:3px solid #b99a65;border-radius:6px}
+.clashStats dt {font-size:12px;color:#705434}
+.clashStats dd {margin:3px 0 0;font-weight:850}
+.clashHeroes ul {list-style:none;padding:0}
+.clashHeroes li {display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700}
+.clashHeroes b {padding:5px;color:#fff4d2;background:#563970;border:2px solid #bf974f;border-radius:5px 5px 10px 10px}
+.clashClan {padding-top:10px;border-top:2px solid #b99a65}
+@media(max-width:540px){.clashStats,.clashHeroes ul{grid-template-columns:repeat(2,minmax(0,1fr))}.clashBanner{padding:12px}.clashBanner img{width:64px;height:64px}}
+
+#folio.isClash .folioWrap {background:#e6e1d6;border-color:#554b43}
+.clashXP {display:grid;place-items:center;width:68px;aspect-ratio:1;background:linear-gradient(#68dfff,#155eaa);clip-path:polygon(50% 0,96% 20%,88% 70%,50% 100%,12% 70%,4% 20%);font:bold 28px system-ui;color:white;text-shadow:0 2px #214872}
+.clashTabs {display:flex;gap:5px;margin:12px 0}
+.clashTabs button {flex:1;cursor:pointer;padding:10px 4px;border:2px solid #74695b;border-radius:8px;background:#c7c0b3;color:#352e26;font-weight:800}
+.clashTabs button[aria-pressed=true] {background:linear-gradient(#94bd50,#568933);border-color:#486a30;color:white;text-shadow:0 1px #385220}
+.clashRecord {background:#fffaf0;border:2px solid #bcb29e;border-radius:9px;padding:12px}
+.clashStats {grid-template-columns:repeat(3,minmax(0,1fr));margin:8px 0 0}
+.clashHeroes li {background:linear-gradient(#faf4e8,#ded3bc);border:1px solid #b9aa91;border-radius:7px;padding:6px}
+.clashContribution {font-size:13px;color:#564838}
+
+#folio.isClash .folioWrap{background:#d8d4c9;border:5px solid #4e4942;box-shadow:inset 0 2px #fefaf0,0 5px #2d2824,0 20px 60px #0009}
+.clashBanner{background:linear-gradient(#64615d,#454440);border:2px solid #34332f;border-bottom:4px solid #33322d;border-radius:8px}
+.clashRecord{display:flow-root;background:linear-gradient(#f6f3e9,#e4dfd1)}
+.clashHallPortrait{float:right;width:clamp(72px,18vw,132px);height:110px;object-fit:contain}
+.clashHeroes ul{grid-template-columns:repeat(auto-fit,minmax(72px,1fr));gap:8px}
+.clashHeroes li{display:grid;grid-template-rows:auto 1fr;position:relative;padding:0;overflow:hidden;text-align:center;border:2px solid #615b51;background:#f5f0e3;box-shadow:0 2px #837969}
+.clashHeroes li img{width:100%;aspect-ratio:1;object-fit:contain;background:linear-gradient(#a892b4,#746284)}
+.clashHeroes li span{padding:4px 2px;line-height:1.1;font-size:11px}
+.clashHeroes li b{position:absolute;top:4px;left:3px;background:#262320;border:1px solid #dfccaa;color:white;border-radius:4px;padding:2px 4px;font-size:12px}
+@media(max-width:540px){.clashHeroes ul{grid-template-columns:repeat(3,minmax(0,1fr))}.clashHallPortrait{height:74px}.clashRecord .clashStats{clear:both}}
