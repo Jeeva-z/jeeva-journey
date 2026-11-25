@@ -91,16 +91,29 @@
 @media (max-width:700px){#bxCam{width:120px}#bxCam.big{width:170px}#boxHud .bxHelp{display:none}#bxCoach{top:70px}}
 #envHud,#seasonHud{position:absolute;left:16px;bottom:16px;padding:7px 14px;border-radius:999px;border:2px solid #a77a4a77;background:var(--glass,#fdf6e3);color:#3b2a22;font:700 13px system-ui,sans-serif;pointer-events:auto;cursor:pointer;box-shadow:0 4px 14px #3b2a2230}
 #flash.bolt{animation:boltgo .7s ease-out}@keyframes boltgo{0%{opacity:.7}10%{opacity:.05}22%{opacity:.6}100%{opacity:0}}
-/* The first visible frame is the scene's sky, with no loading overlay. */
-#game{background:linear-gradient(#5798d2,#a8d3ec 65%,#edf1df);overflow:hidden}
-#game:before{content:'';position:absolute;inset:-35%;background:radial-gradient(ellipse at 20% 40%,#ffffff80,transparent 16%),radial-gradient(ellipse at 75% 30%,#ffffff70,transparent 18%),radial-gradient(ellipse at 65% 70%,#ffffff55,transparent 20%);animation:skyOrbit 24s ease-in-out infinite alternate;pointer-events:none;will-change:transform}
-#game canvas{position:relative;opacity:0;transition:opacity .8s ease}.scene-ready #game canvas{opacity:1}
-@keyframes skyOrbit{from{transform:rotate(-9deg) scale(1.05)}to{transform:rotate(9deg) scale(1.16)}}
-@media(prefers-reduced-motion:reduce){#game:before{animation:none}#game canvas{transition:none}}
+#game{background:linear-gradient(#85bbdf,#dbeef7);overflow:hidden}
+#game canvas{position:relative;opacity:0;transition:opacity .48s ease}
+.scene-ready #game canvas{opacity:1}
+#title.entering{opacity:0;pointer-events:none;transition:opacity .42s ease}
+#arrivalClouds{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:55;visibility:hidden;opacity:0}
+.arriving #arrivalClouds{visibility:visible;opacity:1;background:radial-gradient(ellipse at center,#c6edf433,#9dc8dddb 82%);transition:opacity .32s}
+#arrivalClouds i{position:absolute;inset:-22%;background:
+  url("assets/cloud-0.webp?v=2") left 0 top 5% / 83vw auto no-repeat,
+  url("assets/cloud-1.webp?v=2") right 0 bottom 2% / 90vw auto no-repeat}
+#arrivalClouds i::before{content:"";position:absolute;inset:0;background:
+  url("assets/cloud-2.webp?v=2") right 4% top 6% / 49vw auto no-repeat,
+  url("assets/cloud-0.webp?v=2") left 2% bottom 10% / 58vw auto no-repeat}
+.arriving #arrivalClouds i{animation:arrivalSwirl 8s ease-in-out infinite alternate}
+.arriving #arrivalClouds i::before{animation:arrivalSwirl 11s ease-in-out infinite alternate-reverse}
+.arriving.scene-ready #arrivalClouds{opacity:0;transition:opacity .8s ease-out}
+@keyframes arrivalSwirl{from{transform:rotate(-12deg) scale(1)}to{transform:rotate(16deg) scale(1.25)}}
+@media(prefers-reduced-motion:reduce){#arrivalClouds{display:none}}
+@media(prefers-reduced-motion:reduce){#title.entering,#game canvas{transition:none}}
 </style>
 </head>
-<body>
+<body class="arriving">
 <div id="game"></div>
+<div id="arrivalClouds" aria-hidden="true"><i></i></div>
 <div id="flightOverlay" aria-hidden="true">
   <div class="flightVignette"></div><div class="flightScan"></div>
   <div class="flightReadout flightLeft"><small>STARK INDUSTRIES · FLIGHT SYSTEM</small><strong>MARK <b>III</b></strong><span>ARC REACTOR <i>ONLINE</i></span><div class="arcMeter"><i id="flightArc"></i></div></div>
@@ -109,6 +122,13 @@
   <div class="flightCallout">W A S D <span>FLIGHT VECTOR</span><b>SHIFT</b> <span>REPULSOR BOOST</span></div>
 </div>
 <div id="hud" hidden>
+  <div id="musicDeck" role="group" aria-label="Music controls">
+    <button id="musicDisc" type="button" aria-label="Open gramophone playlist" title="Open playlist"><i aria-hidden="true"></i></button>
+    <div class="musicStrip"><span id="musicTitle">Choose songs</span>
+      <button id="musicToggle" type="button" aria-label="Play" title="Play" disabled>▶</button>
+      <button id="musicForward" type="button" aria-label="Next song" title="Next song" disabled>⏭</button>
+    </div>
+  </div>
   <canvas id="miniMap" width="180" height="180" title="Map (M)"></canvas>
   <div id="vehBar" hidden><button type="button" data-v="trike">Tricycle <i>&#128690;</i></button><button type="button" data-v="bike">Cycle <i>&#128693;</i></button><button type="button" data-v="moto">Bike <i>&#127949;</i></button><button type="button" data-v="iron">Iron Man <i>&#128640;</i></button><span id="flyHint" hidden><button type="button" data-k="KeyR" title="Go higher (R)">&#9650; Up <kbd>R</kbd></button><button type="button" data-k="KeyF" title="Go lower / land (F)">&#9660; Land <kbd>F</kbd></button><button type="button" data-k="ShiftLeft" title="Boost (Shift)">&#128293; Boost <kbd>Shift</kbd></button><button type="button" id="flyCamBtn" title="Change camera (V)">&#127909; View <kbd>V</kbd></button></span></div>
   <nav id="tabs"><a href="#" id="tabMap">Map <i>&#128506;</i></a><a href="#" id="tabResume">Resume <i>&#128424;</i></a><button id="gotoBtn" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="gotoWheel">Go to <span aria-hidden="true">➤</span></button></nav>
@@ -169,9 +189,30 @@
 
 <div id="chessTalk"></div>
 
+<dialog id="gramophone" aria-labelledby="gramTitle">
+  <header class="gramHeader"><i class="gramVinyl" aria-hidden="true"></i>
+    <h2 id="gramTitle">Gramophone</h2>
+    <form method="dialog"><button aria-label="Close music player">×</button></form>
+  </header>
+  <label for="gramSource">Playlist</label>
+  <select id="gramSource">
+    <option value="595UvcxccTCCxmAl0nIMP2">Beat</option>
+    <option value="39NkcA2zO9Kc641cA41t46">Lala’s</option>
+    <option value="31PopWzeztGrPC65xUkog5">Pleasant</option>
+    <option value="0wiqn41AkGyEobBo2NGxwO">English</option>
+    <option value="local">Local audio files</option>
+  </select>
+  <section id="gramSpotify"><div id="gramEmbed"></div><a id="gramSpotifyLink" target="_blank" rel="noopener noreferrer">Open in Spotify ↗</a></section>
+  <section id="gramLocal" hidden>
+  <p id="gramTrack" aria-live="polite">Choose songs to start your playlist.</p>
+  <div class="gramControls"><button id="gramPrev" disabled>Previous</button><button id="gramPlay" disabled>Play</button><button id="gramNext" disabled>Next</button></div>
+  <label for="gramFiles">Choose audio files</label>
+  <input id="gramFiles" type="file" accept="audio/*" multiple>
+  </section>
+</dialog>
 <div id="folio" hidden>
   <div class="folioWrap">
-    <button id="folioClose" aria-label="Close">×</button>
+    <div class="folioToolbar"><strong>Clash of Clans</strong><button id="folioClose" type="button" aria-label="Close">×</button></div>
     <div id="folioBody"></div>
     <div id="folioNav"><button id="fPrev" type="button">‹ Back</button><span id="fDots"></span><b id="fCount"></b><button id="fNext" type="button">Next ›</button></div>
     <em>← → or A / D to flip slides · Esc to close</em>
@@ -199,7 +240,7 @@
   </div>
 </div>
 
-<div id="title">
+<div id="title" hidden>
   <div class="titlebox">
     <img id="titlePhoto" src="assets/me.jpg" alt="" onerror="this.remove()">
     <p class="eyebrow">Jeeva S U · a life journey</p>
@@ -243,31 +284,11 @@
 <div id="snap" hidden><img id="snapImg" alt=""><b id="snapCap"></b></div>
 <div id="fade"></div>
 
-<script>
-// Keep the title interactive: world construction waits for an accepted click.
-window.__arrivalRequested = new Promise(resolve => { window.__requestArrival = resolve; });
-try {
-  const saved = JSON.parse(localStorage.getItem('gully-journey-v1'));
-  if (saved && (saved.done?.length || saved.visited?.length)) document.getElementById('btnCont').hidden = false;
-} catch (_) { }
-for (const [id, fresh] of [['btnNew', true], ['btnCont', false]]) {
-  document.getElementById(id).addEventListener('click', event => {
-    if (window.__worldReady) return;
-    event.stopImmediatePropagation();
-    if (window.__pendingArrival) return;
-    window.__pendingArrival = { fresh };
-    document.getElementById('title').hidden = true;
-    document.getElementById('btnNew').disabled = true;
-    document.getElementById('btnCont').disabled = true;
-    window.__requestArrival();
-  }, true);
-}
-</script>
 <script defer src="vendor/three.min.js"></script>
 <script defer src="chess.js?v=1793300000"></script>
 <script defer src="cricket.js?v=1794700009"></script>
 <script defer src="boxing.js?v=1794800003"></script>
 <script defer src="post.js?v=1794800100"></script>
-<script defer src="journey.js?v=1794800106"></script>
+<script defer src="journey.js?v=1794800112"></script>
 </body>
 </html>
