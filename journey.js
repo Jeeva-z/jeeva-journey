@@ -609,30 +609,124 @@ landmark('library', -38, -169, { title: 'LIBRARY', sub: 'Jeeva’s bookshelf', l
     box(board, .56, .24, .56, 0x978777, postX, .12, -.24);
   }
   box(board, 6.0, 3.35, .20, 0x60422f, 0, 2.55, -.11);
-  const villageMap = textCanvas(900, 480, (ctx, w, h) => {
-    ctx.fillStyle = '#a5be79'; ctx.fillRect(0, 0, w, h);
-    ctx.strokeStyle = '#d7c495'; ctx.lineWidth = 14;
-    ctx.beginPath(); ctx.moveTo(180, 305); ctx.lineTo(450, 420); ctx.lineTo(720, 305); ctx.stroke();
-    ctx.fillStyle = '#354c35'; ctx.fillRect(0, 0, w, 74);
-    ctx.fillStyle = '#fff0c4'; ctx.textAlign = 'center'; ctx.font = 'bold 43px Georgia';
-    ctx.fillText('ZupaZup’s village', w / 2, 51);
-    ctx.fillStyle = '#253720'; ctx.font = 'bold 27px system-ui';
-    ctx.fillText('Town Hall 15', 235, 374); ctx.fillText('Builder Hall 10', 665, 374);
+  // Project village tiles onto the board, with the far corner at the top.
+  const tile = (u, v) => [450 + (u - v) * 22, 78 + (u + v) * 11];
+  const villageMap = textCanvas(900, 480, ctx => {
+    ctx.fillStyle = '#46663e';
+    ctx.fillRect(0, 0, 900, 480);
+    for (let u = 0; u < 18; u++) for (let v = 0; v < 18; v++) {
+      const [x, y] = tile(u, v);
+      ctx.fillStyle = ['#99b958', '#9cbd5b', '#96b556'][(u * 3 + v * 5) % 3];
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 22, y + 11);
+      ctx.lineTo(x, y + 22); ctx.lineTo(x - 22, y + 11); ctx.fill();
+    }
+    ctx.fillStyle = '#293d30';
+    ctx.fillRect(0, 0, 900, 58);
+    ctx.fillStyle = '#fff2c8'; ctx.font = 'bold 32px Georgia';
+    ctx.fillText('ZupaZup’s village', 24, 39);
+    ctx.textAlign = 'right'; ctx.font = 'bold 23px system-ui';
+    ctx.fillText('TOWN HALL 15', 878, 38);
   });
-  const face = add(board, new T.PlaneGeometry(5.78, 3.08),
+  add(board, new T.PlaneGeometry(5.78, 3.08),
     new T.MeshBasicMaterial({ map: villageMap, toneMapped: false }), 0, 2.55, .01, false);
-  for (const [art, offset] of [['town_hall', -1.38], ['builder_hall', 1.38]]) {
-    new T.TextureLoader().load('assets/clash/' + art + '.webp', texture => {
-      texture.colorSpace = T.SRGBColorSpace;
-      const height = 1.52;
-      add(face, new T.PlaneGeometry(height * texture.image.width / texture.image.height, height),
-        new T.MeshBasicMaterial({ map: texture, transparent: true, toneMapped: false }), offset, .15, .012, false);
-    });
+
+  const buildings = [
+    ['archer_tower', 3, 3, 62], ['monolith', 7, 4, 76],
+    ['gold_storage', 3, 8, 67], ['elixir_storage', 8, 3, 67],
+    ['spell_tower', 4, 12, 62], ['town_hall', 9, 9, 119],
+    ['cannon', 13, 4, 58], ['cannon', 4, 15, 58],
+    ['gold_storage', 14, 9, 67], ['elixir_storage', 9, 14, 67],
+    ['spell_tower', 13, 13, 62], ['archer_tower', 15, 15, 62]
+  ];
+  const models = new Map();
+  for (const [name] of buildings) {
+    if (models.has(name)) continue;
+    const image = new Image();
+    image.src = 'assets/clash/' + name + '.webp';
+    models.set(name, image);
   }
+  Promise.allSettled([...models.values()].map(image => image.decode())).then(() => {
+    const ctx = villageMap.image.getContext('2d');
+    const pieces = buildings.map(([name, u, v, width]) => ({ name, u, v, width }));
+    for (let u = 2; u <= 16; u++) for (let v = 2; v <= 16; v++) {
+      const perimeter = u === 2 || v === 2 || u === 16 || v === 16;
+      const keep = u >= 6 && u <= 11 && v >= 6 && v <= 11 &&
+        (u === 6 || u === 11 || v === 6 || v === 11);
+      if ((perimeter || keep) && !(u === 16 && v === 10)) pieces.push({ u, v });
+    }
+    for (const piece of pieces.sort((a, b) => a.u + a.v - b.u - b.v)) {
+      const [x, y] = tile(piece.u, piece.v);
+      if (piece.name) {
+        const image = models.get(piece.name);
+        if (!image.naturalWidth) continue;
+        const height = piece.width * image.naturalHeight / image.naturalWidth;
+        ctx.drawImage(image, x - piece.width / 2, y - height + 7, piece.width, height);
+      } else {
+        ctx.fillStyle = '#433654'; ctx.fillRect(x - 11, y - 12, 22, 14);
+        ctx.fillStyle = '#80739b'; ctx.beginPath(); ctx.moveTo(x, y - 19);
+        ctx.lineTo(x + 13, y - 12); ctx.lineTo(x, y - 5); ctx.lineTo(x - 13, y - 12); ctx.fill();
+        ctx.fillStyle = '#dfbf6c'; ctx.fillRect(x - 2, y - 6, 4, 7);
+      }
+    }
+    villageMap.needsUpdate = true;
+  });
   walls.push({ x0: x - 3, x1: x + 3, z0: frontEdgeZ - .52, z1: frontEdgeZ + .05 });
   const st = ringAt(x, entranceZ, 0xf3bd4f);
   STN.push({ id: 'coc', x, z: entranceZ, label: 'Inspect · Clash of Clans profile', kind: 'folio', ...st });
 }
+// Brass horn and shellac record outside the reading room.
+const gramAudio = new Audio();
+{
+  const library = PORT.find(place => place.id === 'library');
+  const x = library.x - 7, z = library.z + 2;
+  const cabinet = new T.Group();
+  cabinet.position.set(x, 0, z);
+  world.add(cabinet);
+  box(cabinet, 2, 1.6, 1.65, 0x73432a, 0, .85, 0);
+  box(cabinet, 2.15, .18, 1.8, 0xbd8653, 0, 1.72, 0);
+  const disc = cyl(cabinet, .66, .66, .06, 0x252024, -.2, 1.85, .03, 48);
+  cyl(disc, .17, .17, .02, 0xaf5840, 0, .045, 0, 24);
+  box(disc, .07, .014, .04, 0xf4d49a, .095, .06, 0);
+  cyl(cabinet, .09, .12, .91, 0xc19b50, .72, 2.2, -.52);
+  // Flute the bell into twelve petals. The raised seams catch the scene light.
+  const profile = [[.09,0],[.11,.24],[.18,.47],[.34,.71],[.57,.92],[.83,1.07],[.99,1.16]];
+  const horn = new T.LatheGeometry(profile.map(([r,h]) => new T.Vector2(r,h)), 96);
+  const vertices = horn.attributes.position, colors = [];
+  const brass = new T.Color(), lip = [];
+  for (let i = 0; i < vertices.count; i++) {
+    const row = i % profile.length, angle = Math.floor(i / profile.length) * Math.PI / 48;
+    const flare = row / (profile.length - 1), petal = (1 - Math.cos(angle * 12)) / 2;
+    const radius = profile[row][0] * (1 + .09 * petal * flare);
+    const y = profile[row][1] + .12 * petal * flare ** 3;
+    const point = new T.Vector3(radius * Math.sin(angle), y, radius * Math.cos(angle));
+    vertices.setXYZ(i, point.x, point.y, point.z);
+    brass.setHSL(.092 + .018 * flare,.65,.20 + .28 * flare + .10 * petal);
+    colors.push(brass.r, brass.g, brass.b);
+    if (row === profile.length - 1 && lip.length < 96) lip.push(point);
+  }
+  horn.setAttribute('color', new T.Float32BufferAttribute(colors,3));
+  horn.computeVertexNormals();
+  const bell = add(cabinet, horn, new T.MeshStandardMaterial({
+    vertexColors:true, side:T.DoubleSide, metalness:.36, roughness:.32
+  }), .72, 2.62, -.52);
+  bell.rotation.z = .68; bell.rotation.x = .6;
+  add(bell, new T.TubeGeometry(new T.CatmullRomCurve3(lip,true),96,.026,6,true),
+    mat(0xffdc8b),0,0,0);
+  box(cabinet,2.07,.07,1.74,0xc39151,0,.19,0);
+  for (const px of [-.83,.83]) for (const pz of [-.66,.66])
+    cyl(cabinet,.14,.18,.16,0x583920,px,.08,pz,8);
+  const arm = new T.CatmullRomCurve3([
+    new T.Vector3(.7,2.16,-.48), new T.Vector3(.51,2.17,-.25),
+    new T.Vector3(.27,2.04,.14), new T.Vector3(.15,1.94,.19)
+  ]);
+  add(cabinet,new T.TubeGeometry(arm,18,.043,8,false),mat(0xebc779),0,0,0);
+  signBoard(cabinet, 'GRAMOPHONE', 1.82, .48, 0, 1.15, .86);
+  rounds.push({ x, z, r: 1 });
+  const doorZ = library.door[1];
+  STN.push({ id:'gramophone', kind:'music', x, z:doorZ, label:'Listen · Gramophone', ...ringAt(x, doorZ) });
+  globalThis.PREAMB.push(() => { if ($('musicDeck').classList.contains('playing')) disc.rotation.y = -performance.now() * .004; });
+}
+
 // Stepping stones lead from the college road into the library clearing.
 for (let x = -36; x <= -10; x += 2) box(world, 1.3, .06, 1.1, 0xcdbb98, x, .08, -160.6, false);
 landmark('ach', 36, -168, { title: 'HALL OF FAME', sub: 'BIT Hackathon', label: 'Hall of Fame · BIT Hackathon', wall: 0xf3e2b8, roof: 0xc4573a, w: 8, d: 6,
@@ -2141,8 +2235,30 @@ async function loadCocStats() {
     heroes: [['Barbarian King', 74], ['Archer Queen', 84], ['Grand Warden', 56], ['Royal Champion', 32], ['Minion Prince', 55], ['Dragon Duke', 8]],
     clan: { name: 'Spartan Heroes', tag: '#20PCPV9CV', level: 6, badge: 'https://api-assets.clashofclans.com/badges/200/ye6xXflh8eRy0alyAeTX0BQ0BMeZzORHitC9Ac6Tito.png' }
   };
+  const homeTroops = [
+    ['Barbarian',10], ['Archer',9], ['Goblin',7], ['Giant',9], ['Wall Breaker',7],
+    ['Balloon',10], ['Wizard',10], ['Healer',7], ['Dragon',10], ['P.E.K.K.A',9],
+    ['Minion',9], ['Hog Rider',11], ['Valkyrie',8], ['Golem',10], ['Witch',5],
+    ['Lava Hound',5], ['Bowler',5], ['Baby Dragon',6], ['Miner',7], ['Yeti',4],
+    ['Ice Golem',6], ['Electro Dragon',5], ['Dragon Rider',3], ['Headhunter',2],
+    ['Electro Titan',1], ['Apprentice Warden',2], ['Root Rider',2], ['Druid',1],
+    ['Furnace',2], ['Barch Squad',1]
+  ];
+  const builderTroops = [
+    ['Raged Barbarian',12], ['Sneaky Archer',20], ['Beta Minion',10], ['Boxer Giant',12],
+    ['Bomber',13], ['Power P.E.K.K.A',20], ['Cannon Cart',20], ['Drop Ship',12],
+    ['Baby Dragon',11], ['Night Witch',20], ['Hog Glider',15], ['Electrofire Wizard',18]
+  ];
+  function unitTiles(units, folder) {
+    return units.map(([name, level]) => {
+      const icon = name.toLowerCase().replaceAll('.', '').replaceAll(' ', '_');
+      return `<li><img src="assets/clash/${folder}${icon}.webp" loading="lazy" alt="">
+        <b aria-label="Level ${level}">${level}</b><span>${esc(name)}</span></li>`;
+    }).join('');
+  }
   let builder = false;
   let clan = profile.clan;
+  let armyOpen = false;
   function render() {
     const stats = builder
       ? [['Builder Hall', profile.builderHall], ['Trophies', profile.builderTrophies], ['Best trophies', 3581]]
@@ -2157,13 +2273,24 @@ async function loadCocStats() {
       <div class="clashRecord"><img class="clashHallPortrait" src="assets/clash/${builder ? 'builder_hall' : 'town_hall'}.webp" alt="${builder ? 'Builder Hall 10' : 'Town Hall 15'}"><strong>${esc(builder ? profile.builderLeague : profile.league)}</strong>
         <dl class="clashStats">${stats.map(([label, value]) =>
           `<div><dt>${label}</dt><dd>${value.toLocaleString()}</dd></div>`).join('')}</dl></div>
-      <section class="clashHeroes"><h3>Heroes</h3><ul>${roster.map(([name, level]) =>
-        `<li><img src="assets/clash/${name.toLowerCase().replaceAll(' ', '_')}.webp" alt=""><b aria-label="Level ${level}">${level}</b><span>${esc(name)}</span></li>`).join('')}</ul></section>
+      <section class="clashHeroes"><h3>Heroes</h3><ul>${unitTiles(roster, '')}</ul></section>
+      <details class="clashHeroes clashArmy" ${armyOpen ? 'open' : ''}>
+        <summary>Troops <span>${builder ? builderTroops.length : homeTroops.length}</span></summary>
+        <ul>${unitTiles(builder ? builderTroops : homeTroops, 'troops/')}</ul>
+      </details>
+      <section class="clashService"><h3>Clan service</h3><dl class="clashStats">
+        <div><dt>War preference</dt><dd>Opted in</dd></div>
+        <div><dt>Donations</dt><dd>122 given · 96 received</dd></div>
+        <div><dt>Capital Gold contributed</dt><dd>${profile.capitalGold.toLocaleString()}</dd></div>
+      </dl></section>
       <footer class="clashClan"><img src="${profile.clan.badge}" alt="" width="54" height="54">
-        <div><strong>${esc(clan.name)}</strong><br>Clan level ${esc(clan.clanLevel ?? clan.level)} · ${esc(clan.tag)}</div></footer>
-      <p class="clashContribution">Clan Capital contributions · ${profile.capitalGold.toLocaleString()}</p>`;
+        <div><strong>${esc(clan.name)}</strong><br>Member · Clan level ${esc(clan.clanLevel ?? clan.level)} · ${esc(clan.tag)}</div></footer>
+      `;
+    const army = target.querySelector('.clashArmy');
+    army.ontoggle = () => { if (army.isConnected) armyOpen = army.open; };
     target.querySelectorAll('button').forEach((button, index) => {
       button.onclick = () => {
+        armyOpen = army.open;
         builder = index === 1;
         render();
         target.querySelectorAll('button')[index].focus();
@@ -2174,7 +2301,11 @@ async function loadCocStats() {
   // If server-side credentials are configured, refresh the clan name and badge.
   try {
     const response = await fetch('/api/clan');
-    if (response.ok) { clan = await response.json(); render(); }
+    if (response.ok) {
+      clan = await response.json();
+      const footer = target.querySelector('.clashClan div');
+      footer.innerHTML = `<strong>${esc(clan.name)}</strong><br>Member · Clan level ${esc(clan.clanLevel)} · ${esc(clan.tag)}`;
+    }
   } catch { /* Keep the saved profile details available without a live API. */ }
 }
 function closeFolio() { if (state.mode !== 'folio') return; $('folio').hidden = true; state.mode = 'explore'; beep(440, .05); if (typeof afterFolio === 'function') afterFolio(); }
@@ -2428,7 +2559,9 @@ function smokeStep(dt) {
   for (const P of SMOKE) { if (P.t >= P.life) { if (P.s.visible) P.s.visible = false; continue; } P.t += dt; const k = P.t / P.life; P.s.position.x += P.vx * dt; P.s.position.z += P.vz * dt; P.s.position.y += dt * .7; P.s.scale.setScalar(.25 + k * 1.1); P.s.material.opacity = .55 * (1 - k); }
 }
 // ---- map
-const MAPN = { ravi: 'Cricket · Ravi', thatha: 'Chess · Thatha', edu: 'B.I.T.', ach: 'Hackathon Hall', office: 'Grootan Office', printer: 'Resume printer', portfolio: 'Jeeva · Portfolio', claude: 'Claude Code', codex: 'Codex', astra: 'Astra', auto: 'Automation', ai: 'The AI tower', rayappan: 'Beedi Rayappan · crab training' };
+const villageMapIcon = new Image();
+villageMapIcon.src = 'assets/clash/town_hall.webp';
+const MAPN = { library: 'Library', coc: 'TH15 village', ravi: 'Cricket · Ravi', thatha: 'Chess · Thatha', edu: 'B.I.T.', ach: 'Hackathon Hall', office: 'Grootan Office', printer: 'Resume printer', portfolio: 'Jeeva · Portfolio', claude: 'Claude Code', codex: 'Codex', astra: 'Astra', auto: 'Automation', ai: 'The AI tower', rayappan: 'Beedi Rayappan · crab training' };
 let mapBig = false, mapAcc = 0;
 function drawMap(cv, big) {
   const x = cv.getContext('2d'), W = cv.width, H = cv.height, pp = player.g.position;
@@ -2469,11 +2602,21 @@ function drawMap(cv, big) {
     const col = s.kind === 'hologram' ? '#35caff' : s.kind === 'side' ? '#ff8a2a' : s.kind === 'term' ? '#8f7cff' : s.kind === 'print' ? '#2fb8a0' : s.kind === 'folio' ? '#e8a33d' : '#d8402a';
     const sx = X(s.x, s.z), sy = Y(s.x, s.z), r = big ? 5.5 : 3.5;
     x.fillStyle = done ? '#ffffffaa' : col; x.strokeStyle = '#3b2a22'; x.lineWidth = 1.5; x.beginPath(); x.arc(sx, sy, want ? r + 2 : r, 0, 7); x.fill(); x.stroke();
+    if (s.id === 'coc' && villageMapIcon.naturalWidth) {
+      const height = big ? 24 : 15;
+      const width = height * villageMapIcon.naturalWidth / villageMapIcon.naturalHeight;
+      x.drawImage(villageMapIcon, sx - width / 2, sy - height + 3, width, height);
+    }
     if (want) { x.strokeStyle = '#ffffff'; x.lineWidth = 2; x.beginPath(); x.arc(sx, sy, r + 5 + Math.sin(performance.now() / 200) * 1.5, 0, 7); x.stroke(); }
     if (big && MAPN[s.id]) {
       x.font = '600 13px system-ui, sans-serif'; x.fillStyle = '#2b1d16';
       const n = pathNear(s.x, s.z), nx = X(n.px, n.pz), ny = Y(n.px, n.pz), dx = sx - nx, dy = sy - ny;
-      if (s.kind === 'term') { const first = s.z > -303; x.textAlign = first ? 'right' : 'left'; x.fillText(MAPN[s.id], sx + (first ? -9 : 9), sy + (dy < 0 ? -9 : 15)); }
+      if (s.id === 'coc' || s.id === 'library') {
+        const village = s.id === 'coc';
+        x.textAlign = village ? 'right' : 'left';
+        x.fillText(MAPN[s.id], sx + (village ? -13 : 10), sy + 3);
+      }
+      else if (s.kind === 'term') { const first = s.z > -303; x.textAlign = first ? 'right' : 'left'; x.fillText(MAPN[s.id], sx + (first ? -9 : 9), sy + (dy < 0 ? -9 : 15)); }
       else if (s.id === 'ai') { x.textAlign = 'left'; x.fillText(MAPN[s.id], X(0, -334) + 12, sy + 4); }
       else if (Math.abs(dx) > Math.abs(dy)) { x.textAlign = dx < 0 ? 'right' : 'left'; x.fillText(MAPN[s.id], sx + (dx < 0 ? -10 : 10), sy + 4); }
       else { x.textAlign = 'center'; x.fillText(MAPN[s.id], sx, sy + (dy < 0 ? -11 : 20)); }
@@ -2790,7 +2933,115 @@ async function runSpar(R, opp) {
   } else await say([A(W, conor ? (r.lost ? 'Told you. Precision beats power. Go practise.' : 'A draw? Cute. I will take it.') : (r.lost ? 'Stay down, little boy. Boxing is not a college exam.' : 'Hmph. Draw? I will take it.')), A(R, r.lost ? 'You dropped your hands. Show your open palm when his glove turns red, then counter!' : 'Close, thambi. Land the clean ones and block when his glove turns red. Again!')]);
 }
 
+const gramDialog = $('gramophone');
+let gramTracks = [], gramIndex = 0;
+const source = $('gramSource');
+let spotifyPlayer, spotifyLoading = false, spotifyPaused = true;
+const spotifyURI = () => 'spotify:playlist:' + source.value;
+function loadSpotify() {
+  if (spotifyPlayer || spotifyLoading || source.value === 'local') return;
+  spotifyLoading = true;
+  window.onSpotifyIframeApiReady = api => {
+    api.createController($('gramEmbed'), {
+      uri: source.value === 'local' ? 'spotify:playlist:' + source.options[0].value : spotifyURI(),
+      width: '100%', height: 352
+    }, controller => {
+      spotifyPlayer = controller;
+      controller.addListener('playback_update', event => {
+        spotifyPaused = event.data.isPaused;
+        updateGramControls();
+      });
+      if (source.value !== 'local') controller.loadUri(spotifyURI());
+      updateGramControls();
+    });
+  };
+  const script = document.createElement('script');
+  script.src = 'https://open.spotify.com/embed/iframe-api/v1';
+  script.onerror = () => { spotifyLoading = false; script.remove(); };
+  document.head.appendChild(script);
+}
+source.onchange = () => {
+  gramAudio.pause();
+  spotifyPlayer?.pause();
+  spotifyPaused = true;
+  if (source.value !== 'local') {
+    if (spotifyPlayer) spotifyPlayer.loadUri(spotifyURI());
+    else loadSpotify();
+  }
+  updateGramControls();
+};
+function updateGramControls() {
+  const local = source.value === 'local';
+  const paused = local ? gramAudio.paused : spotifyPaused;
+  const action = paused ? 'Play' : 'Pause';
+  $('gramLocal').hidden = !local;
+  $('gramSpotify').hidden = local;
+  if (!local) $('gramSpotifyLink').href = 'https://open.spotify.com/playlist/' + source.value;
+  $('gramPlay').textContent = gramAudio.paused ? 'Play' : 'Pause';
+  const toggle = $('musicToggle');
+  toggle.textContent = paused ? '▶' : 'Ⅱ';
+  toggle.title = action;
+  toggle.setAttribute('aria-label', action);
+  toggle.disabled = local && !gramTracks.length;
+  const forward = $('musicForward');
+  forward.disabled = local && gramTracks.length < 2;
+  forward.title = local ? 'Next song' : 'Choose next song in Spotify';
+  forward.setAttribute('aria-label', forward.title);
+  $('musicDeck').classList.toggle('playing', !paused);
+  $('musicTitle').textContent = local ? gramTracks[gramIndex]?.title || 'Choose songs' : source.selectedOptions[0].text;
+  $('gramPlay').disabled = !gramTracks.length;
+  $('gramPrev').disabled = $('gramNext').disabled = gramTracks.length < 2;
+}
+function playGramTrack() {
+  gramAudio.play().catch(error => {
+    if (error.name !== 'AbortError') $('gramTrack').textContent = 'This song could not be played.';
+    updateGramControls();
+  });
+}
+function selectGramTrack(index, play) {
+  gramIndex = (index + gramTracks.length) % gramTracks.length;
+  const track = gramTracks[gramIndex];
+  gramAudio.src = track.url;
+  $('gramTrack').textContent = track.title;
+  updateGramControls();
+  if (play) playGramTrack();
+}
+$('gramFiles').onchange = event => {
+  const files = Array.from(event.target.files);
+  if (!files.length) return;
+  gramAudio.pause();
+  gramTracks.forEach(track => URL.revokeObjectURL(track.url));
+  gramTracks = files.map(file => ({title:file.name.replace(/\.[^.]+$/, ''), url:URL.createObjectURL(file)}));
+  selectGramTrack(0, false);
+};
+$('gramPlay').onclick = () => gramAudio.paused ? playGramTrack() : gramAudio.pause();
+$('gramNext').onclick = () => selectGramTrack(gramIndex + 1, true);
+$('gramPrev').onclick = () => selectGramTrack(gramIndex - 1, true);
+$('musicToggle').onclick = () => {
+  if (source.value === 'local') $('gramPlay').click();
+  else if (spotifyPlayer) spotifyPlayer.togglePlay();
+  else openGramophone();
+};
+$('musicForward').onclick = () => source.value === 'local' ? $('gramNext').click() : openGramophone();
+updateGramControls();
+function openGramophone() {
+  if (state.mode !== 'explore' || busy) return;
+  keys.clear();
+  state.mode = 'music';
+  gramDialog.showModal();
+  loadSpotify();
+}
+$('musicDisc').onclick = openGramophone;
+$('musicDeck').addEventListener('keydown', event => {
+  if (event.code === 'Space' || event.code === 'Enter') event.stopPropagation();
+});
+gramAudio.onended = () => selectGramTrack(gramIndex + 1, true);
+gramAudio.onplay = gramAudio.onpause = updateGramControls;
+gramDialog.onclose = () => { state.mode = 'explore'; keys.clear(); };
+gramDialog.addEventListener('keydown', event => event.stopPropagation());
+
 async function interactStation(s) {
+  if (s.kind === 'music') { openGramophone(); return; }
   if (s.kind === 'side') { await runRayappan(); return; }
   if (s.kind === 'hologram') { openFolio('portfolio'); return; }
   if (s.kind === 'portfolio' || s.kind === 'project') { if (s.url) { window.open(s.url, '_blank', 'noopener,noreferrer'); } else toast('Link coming soon', 'This link is not available yet.'); return; }
