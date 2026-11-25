@@ -287,3 +287,41 @@ body.flight-active #flightOverlay{display:block}
 .clashHeroes li span{padding:4px 2px;line-height:1.1;font-size:11px}
 .clashHeroes li b{position:absolute;top:4px;left:3px;background:#262320;border:1px solid #dfccaa;color:white;border-radius:4px;padding:2px 4px;font-size:12px}
 @media(max-width:540px){.clashHeroes ul{grid-template-columns:repeat(3,minmax(0,1fr))}.clashHallPortrait{height:74px}.clashRecord .clashStats{clear:both}}
+
+.folioToolbar{display:contents}
+.folioToolbar strong{display:none}
+#folio.isClash .folioWrap{
+  width:min(820px,95vw);max-height:min(90dvh,960px);box-sizing:border-box;
+  padding:0;overflow:hidden;animation:none;
+}
+#folio.isClash .folioToolbar{
+  display:flex;align-items:center;justify-content:space-between;flex:none;
+  padding:4px 12px 4px 16px;background:#4e4942;color:#fff3d3;
+}
+#folio.isClash .folioToolbar strong{display:block}
+#folio.isClash #folioClose{
+  position:static;display:grid;place-items:center;width:44px;height:44px;
+  padding:0;margin:0;font:700 25px/1 system-ui;cursor:pointer;
+}
+#folio.isClash #folioBody{
+  min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;
+  padding:12px;scrollbar-gutter:stable;animation:none;
+}
+#folio.isClash #folioNav{flex:none;margin:0;padding:8px;border-top:1px solid #ad9e84}
+#folio.isClash #fDots{min-width:0;flex-wrap:wrap;justify-content:center}
+#folio.isClash .folioWrap>em{margin:0;padding:0 8px 8px}
+@media(max-width:600px){#folio.isClash #fDots{display:none}}
+
+#cocStats .clashBanner{border-color:#343237;background:linear-gradient(115deg,#38303d,#655167 65%,#48404b);padding:14px 20px}
+#cocStats .clashRecord{display:grid;align-items:center;grid-template-columns:100px 1fr;gap:0 12px}
+#cocStats .clashHallPortrait{grid-row:span 2;width:100%;height:96px}
+#cocStats .clashRecord strong{align-self:end}
+#cocStats .clashHeroes,#cocStats .clashService{margin:12px 0;padding:12px;background:#f6f0df;border:1px solid #b5aa92;border-radius:9px}
+#cocStats h3,#cocStats summary{margin:0;font:800 16px system-ui;color:#3c332d}
+#cocStats .clashHeroes ul{grid-template-columns:repeat(auto-fill,minmax(76px,1fr));margin:10px 0 0}
+#cocStats .clashArmy summary{cursor:pointer;padding:4px}
+.clashArmy summary span{padding:2px 7px;background:#e1d4ba;border-radius:6px;font-size:12px}
+#cocStats .clashArmy img{background:linear-gradient(#c5af87,#948467)}
+#cocStats .clashClan{background:#e3d7be;padding:8px 12px;border-radius:8px}
+@media(max-width:540px){#cocStats .clashRecord{grid-template-columns:65px 1fr}#cocStats .clashHallPortrait{height:75px;grid-row:auto}#cocStats .clashRecord strong{align-self:center}#cocStats .clashRecord dl{grid-column:1/-1}#cocStats .clashService dl{grid-template-columns:1fr 1fr}#cocStats .clashHeroes ul{grid-template-columns:repeat(auto-fill,minmax(64px,1fr))}}
+
