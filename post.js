@@ -23,17 +23,17 @@ window.Post = function (renderer) {
         + texture2D(tScene, vUv + vec2(-px.x, px.y)).rgb
         + texture2D(tScene, vUv + vec2(px.x, -px.y)).rgb
         + texture2D(tScene, vUv - px).rgb) * .25;
-      c = mix(c, soft, defocus * .75);
-      c += (texture2D(b1, vUv).rgb * .16 + texture2D(b2, vUv).rgb * .23) * vec3(1.08, 1.0, .84);
+      c = mix(c, soft, defocus * .38);
+      c += (texture2D(b1, vUv).rgb * .12 + texture2D(b2, vUv).rgb * .18) * vec3(1.08, 1.0, .84);
       c *= exposure;
       // Filmic highlight rolloff, applied once to the linear HDR scene.
       c = clamp((c * (2.51*c + .03)) / (c * (2.43*c + .59) + .14), 0.0, 1.0);
       float l = dot(c, vec3(.299,.587,.114));
       c = mix(vec3(l), c, .90);
-      c *= mix(vec3(.83, .94, 1.09), vec3(1.10, 1.025, .88), smoothstep(.08, .8, l));
+      c *= mix(vec3(.88, .96, 1.055), vec3(1.055, 1.015, .955), smoothstep(.08, .8, l));
       c *= vec3(1.015, 1.0, .975);
       c = (c - .5) * 1.08 + .5;
-      vec2 d = vUv - .5; c *= 1.0 - dot(d, d) * .55;
+      vec2 d = vUv - .5; c *= 1.0 - dot(d, d) * .32;
       c += (fract(sin(dot(floor(vUv * res * .5), vec2(12.9898, 78.233))) * 43758.5453) - .5) * .004;
       gl_FragColor = vec4(pow(max(c, 0.0), vec3(1.0 / 2.2)), 1.0); }`,
     { tScene: { value: null }, b1: { value: null }, b2: { value: null }, res: { value: new T.Vector2(1, 1) }, exposure: { value: 1 } });
