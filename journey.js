@@ -590,26 +590,67 @@ landmark('library', -38, -169, { title: 'LIBRARY', sub: 'Jeeva’s bookshelf', l
     box(board, .56, .24, .56, 0x978777, postX, .12, -.24);
   }
   box(board, 6.0, 3.35, .20, 0x60422f, 0, 2.55, -.11);
-  const villageMap = textCanvas(900, 480, (ctx, w, h) => {
-    ctx.fillStyle = '#a5be79'; ctx.fillRect(0, 0, w, h);
-    ctx.strokeStyle = '#d7c495'; ctx.lineWidth = 14;
-    ctx.beginPath(); ctx.moveTo(180, 305); ctx.lineTo(450, 420); ctx.lineTo(720, 305); ctx.stroke();
-    ctx.fillStyle = '#354c35'; ctx.fillRect(0, 0, w, 74);
-    ctx.fillStyle = '#fff0c4'; ctx.textAlign = 'center'; ctx.font = 'bold 43px Georgia';
-    ctx.fillText('ZupaZup’s village', w / 2, 51);
-    ctx.fillStyle = '#253720'; ctx.font = 'bold 27px system-ui';
-    ctx.fillText('Town Hall 15', 235, 374); ctx.fillText('Builder Hall 10', 665, 374);
+  // Project village tiles onto the board, with the far corner at the top.
+  const tile = (u, v) => [450 + (u - v) * 22, 78 + (u + v) * 11];
+  const villageMap = textCanvas(900, 480, ctx => {
+    ctx.fillStyle = '#46663e';
+    ctx.fillRect(0, 0, 900, 480);
+    for (let u = 0; u < 18; u++) for (let v = 0; v < 18; v++) {
+      const [x, y] = tile(u, v);
+      ctx.fillStyle = ['#99b958', '#9cbd5b', '#96b556'][(u * 3 + v * 5) % 3];
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 22, y + 11);
+      ctx.lineTo(x, y + 22); ctx.lineTo(x - 22, y + 11); ctx.fill();
+    }
+    ctx.fillStyle = '#293d30';
+    ctx.fillRect(0, 0, 900, 58);
+    ctx.fillStyle = '#fff2c8'; ctx.font = 'bold 32px Georgia';
+    ctx.fillText('ZupaZup’s village', 24, 39);
+    ctx.textAlign = 'right'; ctx.font = 'bold 23px system-ui';
+    ctx.fillText('TOWN HALL 15', 878, 38);
   });
-  const face = add(board, new T.PlaneGeometry(5.78, 3.08),
+  add(board, new T.PlaneGeometry(5.78, 3.08),
     new T.MeshBasicMaterial({ map: villageMap, toneMapped: false }), 0, 2.55, .01, false);
-  for (const [art, offset] of [['town_hall', -1.38], ['builder_hall', 1.38]]) {
-    new T.TextureLoader().load('assets/clash/' + art + '.webp', texture => {
-      texture.colorSpace = T.SRGBColorSpace;
-      const height = 1.52;
-      add(face, new T.PlaneGeometry(height * texture.image.width / texture.image.height, height),
-        new T.MeshBasicMaterial({ map: texture, transparent: true, toneMapped: false }), offset, .15, .012, false);
-    });
+
+  const buildings = [
+    ['archer_tower', 3, 3, 62], ['monolith', 7, 4, 76],
+    ['gold_storage', 3, 8, 67], ['elixir_storage', 8, 3, 67],
+    ['spell_tower', 4, 12, 62], ['town_hall', 9, 9, 119],
+    ['cannon', 13, 4, 58], ['cannon', 4, 15, 58],
+    ['gold_storage', 14, 9, 67], ['elixir_storage', 9, 14, 67],
+    ['spell_tower', 13, 13, 62], ['archer_tower', 15, 15, 62]
+  ];
+  const models = new Map();
+  for (const [name] of buildings) {
+    if (models.has(name)) continue;
+    const image = new Image();
+    image.src = 'assets/clash/' + name + '.webp';
+    models.set(name, image);
   }
+  Promise.allSettled([...models.values()].map(image => image.decode())).then(() => {
+    const ctx = villageMap.image.getContext('2d');
+    const pieces = buildings.map(([name, u, v, width]) => ({ name, u, v, width }));
+    for (let u = 2; u <= 16; u++) for (let v = 2; v <= 16; v++) {
+      const perimeter = u === 2 || v === 2 || u === 16 || v === 16;
+      const keep = u >= 6 && u <= 11 && v >= 6 && v <= 11 &&
+        (u === 6 || u === 11 || v === 6 || v === 11);
+      if ((perimeter || keep) && !(u === 16 && v === 10)) pieces.push({ u, v });
+    }
+    for (const piece of pieces.sort((a, b) => a.u + a.v - b.u - b.v)) {
+      const [x, y] = tile(piece.u, piece.v);
+      if (piece.name) {
+        const image = models.get(piece.name);
+        if (!image.naturalWidth) continue;
+        const height = piece.width * image.naturalHeight / image.naturalWidth;
+        ctx.drawImage(image, x - piece.width / 2, y - height + 7, piece.width, height);
+      } else {
+        ctx.fillStyle = '#433654'; ctx.fillRect(x - 11, y - 12, 22, 14);
+        ctx.fillStyle = '#80739b'; ctx.beginPath(); ctx.moveTo(x, y - 19);
+        ctx.lineTo(x + 13, y - 12); ctx.lineTo(x, y - 5); ctx.lineTo(x - 13, y - 12); ctx.fill();
+        ctx.fillStyle = '#dfbf6c'; ctx.fillRect(x - 2, y - 6, 4, 7);
+      }
+    }
+    villageMap.needsUpdate = true;
+  });
   walls.push({ x0: x - 3, x1: x + 3, z0: frontEdgeZ - .52, z1: frontEdgeZ + .05 });
   const st = ringAt(x, entranceZ, 0xf3bd4f);
   STN.push({ id: 'coc', x, z: entranceZ, label: 'Inspect · Clash of Clans profile', kind: 'folio', ...st });
@@ -2099,8 +2140,30 @@ async function loadCocStats() {
     heroes: [['Barbarian King', 74], ['Archer Queen', 84], ['Grand Warden', 56], ['Royal Champion', 32], ['Minion Prince', 55], ['Dragon Duke', 8]],
     clan: { name: 'Spartan Heroes', tag: '#20PCPV9CV', level: 6, badge: 'https://api-assets.clashofclans.com/badges/200/ye6xXflh8eRy0alyAeTX0BQ0BMeZzORHitC9Ac6Tito.png' }
   };
+  const homeTroops = [
+    ['Barbarian',10], ['Archer',9], ['Goblin',7], ['Giant',9], ['Wall Breaker',7],
+    ['Balloon',10], ['Wizard',10], ['Healer',7], ['Dragon',10], ['P.E.K.K.A',9],
+    ['Minion',9], ['Hog Rider',11], ['Valkyrie',8], ['Golem',10], ['Witch',5],
+    ['Lava Hound',5], ['Bowler',5], ['Baby Dragon',6], ['Miner',7], ['Yeti',4],
+    ['Ice Golem',6], ['Electro Dragon',5], ['Dragon Rider',3], ['Headhunter',2],
+    ['Electro Titan',1], ['Apprentice Warden',2], ['Root Rider',2], ['Druid',1],
+    ['Furnace',2], ['Barch Squad',1]
+  ];
+  const builderTroops = [
+    ['Raged Barbarian',12], ['Sneaky Archer',20], ['Beta Minion',10], ['Boxer Giant',12],
+    ['Bomber',13], ['Power P.E.K.K.A',20], ['Cannon Cart',20], ['Drop Ship',12],
+    ['Baby Dragon',11], ['Night Witch',20], ['Hog Glider',15], ['Electrofire Wizard',18]
+  ];
+  function unitTiles(units, folder) {
+    return units.map(([name, level]) => {
+      const icon = name.toLowerCase().replaceAll('.', '').replaceAll(' ', '_');
+      return `<li><img src="assets/clash/${folder}${icon}.webp" loading="lazy" alt="">
+        <b aria-label="Level ${level}">${level}</b><span>${esc(name)}</span></li>`;
+    }).join('');
+  }
   let builder = false;
   let clan = profile.clan;
+  let armyOpen = false;
   function render() {
     const stats = builder
       ? [['Builder Hall', profile.builderHall], ['Trophies', profile.builderTrophies], ['Best trophies', 3581]]
@@ -2115,13 +2178,24 @@ async function loadCocStats() {
       <div class="clashRecord"><img class="clashHallPortrait" src="assets/clash/${builder ? 'builder_hall' : 'town_hall'}.webp" alt="${builder ? 'Builder Hall 10' : 'Town Hall 15'}"><strong>${esc(builder ? profile.builderLeague : profile.league)}</strong>
         <dl class="clashStats">${stats.map(([label, value]) =>
           `<div><dt>${label}</dt><dd>${value.toLocaleString()}</dd></div>`).join('')}</dl></div>
-      <section class="clashHeroes"><h3>Heroes</h3><ul>${roster.map(([name, level]) =>
-        `<li><img src="assets/clash/${name.toLowerCase().replaceAll(' ', '_')}.webp" alt=""><b aria-label="Level ${level}">${level}</b><span>${esc(name)}</span></li>`).join('')}</ul></section>
+      <section class="clashHeroes"><h3>Heroes</h3><ul>${unitTiles(roster, '')}</ul></section>
+      <details class="clashHeroes clashArmy" ${armyOpen ? 'open' : ''}>
+        <summary>Troops <span>${builder ? builderTroops.length : homeTroops.length}</span></summary>
+        <ul>${unitTiles(builder ? builderTroops : homeTroops, 'troops/')}</ul>
+      </details>
+      <section class="clashService"><h3>Clan service</h3><dl class="clashStats">
+        <div><dt>War preference</dt><dd>Opted in</dd></div>
+        <div><dt>Donations</dt><dd>122 given · 96 received</dd></div>
+        <div><dt>Capital Gold contributed</dt><dd>${profile.capitalGold.toLocaleString()}</dd></div>
+      </dl></section>
       <footer class="clashClan"><img src="${profile.clan.badge}" alt="" width="54" height="54">
-        <div><strong>${esc(clan.name)}</strong><br>Clan level ${esc(clan.clanLevel ?? clan.level)} · ${esc(clan.tag)}</div></footer>
-      <p class="clashContribution">Clan Capital contributions · ${profile.capitalGold.toLocaleString()}</p>`;
+        <div><strong>${esc(clan.name)}</strong><br>Member · Clan level ${esc(clan.clanLevel ?? clan.level)} · ${esc(clan.tag)}</div></footer>
+      `;
+    const army = target.querySelector('.clashArmy');
+    army.ontoggle = () => { if (army.isConnected) armyOpen = army.open; };
     target.querySelectorAll('button').forEach((button, index) => {
       button.onclick = () => {
+        armyOpen = army.open;
         builder = index === 1;
         render();
         target.querySelectorAll('button')[index].focus();
@@ -2132,7 +2206,11 @@ async function loadCocStats() {
   // If server-side credentials are configured, refresh the clan name and badge.
   try {
     const response = await fetch('/api/clan');
-    if (response.ok) { clan = await response.json(); render(); }
+    if (response.ok) {
+      clan = await response.json();
+      const footer = target.querySelector('.clashClan div');
+      footer.innerHTML = `<strong>${esc(clan.name)}</strong><br>Member · Clan level ${esc(clan.clanLevel)} · ${esc(clan.tag)}`;
+    }
   } catch { /* Keep the saved profile details available without a live API. */ }
 }
 function closeFolio() { if (state.mode !== 'folio') return; $('folio').hidden = true; state.mode = 'explore'; beep(440, .05); if (typeof afterFolio === 'function') afterFolio(); }
@@ -2386,7 +2464,9 @@ function smokeStep(dt) {
   for (const P of SMOKE) { if (P.t >= P.life) { if (P.s.visible) P.s.visible = false; continue; } P.t += dt; const k = P.t / P.life; P.s.position.x += P.vx * dt; P.s.position.z += P.vz * dt; P.s.position.y += dt * .7; P.s.scale.setScalar(.25 + k * 1.1); P.s.material.opacity = .55 * (1 - k); }
 }
 // ---- map
-const MAPN = { ravi: 'Cricket · Ravi', thatha: 'Chess · Thatha', edu: 'B.I.T.', ach: 'Hackathon Hall', office: 'Grootan Office', printer: 'Resume printer', portfolio: 'Jeeva · Portfolio', claude: 'Claude Code', codex: 'Codex', astra: 'Astra', auto: 'Automation', ai: 'The AI tower', rayappan: 'Beedi Rayappan · crab training' };
+const villageMapIcon = new Image();
+villageMapIcon.src = 'assets/clash/town_hall.webp';
+const MAPN = { library: 'Library', coc: 'TH15 village', ravi: 'Cricket · Ravi', thatha: 'Chess · Thatha', edu: 'B.I.T.', ach: 'Hackathon Hall', office: 'Grootan Office', printer: 'Resume printer', portfolio: 'Jeeva · Portfolio', claude: 'Claude Code', codex: 'Codex', astra: 'Astra', auto: 'Automation', ai: 'The AI tower', rayappan: 'Beedi Rayappan · crab training' };
 let mapBig = false, mapAcc = 0;
 function drawMap(cv, big) {
   const x = cv.getContext('2d'), W = cv.width, H = cv.height, pp = player.g.position;
@@ -2427,11 +2507,21 @@ function drawMap(cv, big) {
     const col = s.kind === 'hologram' ? '#35caff' : s.kind === 'side' ? '#ff8a2a' : s.kind === 'term' ? '#8f7cff' : s.kind === 'print' ? '#2fb8a0' : s.kind === 'folio' ? '#e8a33d' : '#d8402a';
     const sx = X(s.x, s.z), sy = Y(s.x, s.z), r = big ? 5.5 : 3.5;
     x.fillStyle = done ? '#ffffffaa' : col; x.strokeStyle = '#3b2a22'; x.lineWidth = 1.5; x.beginPath(); x.arc(sx, sy, want ? r + 2 : r, 0, 7); x.fill(); x.stroke();
+    if (s.id === 'coc' && villageMapIcon.naturalWidth) {
+      const height = big ? 24 : 15;
+      const width = height * villageMapIcon.naturalWidth / villageMapIcon.naturalHeight;
+      x.drawImage(villageMapIcon, sx - width / 2, sy - height + 3, width, height);
+    }
     if (want) { x.strokeStyle = '#ffffff'; x.lineWidth = 2; x.beginPath(); x.arc(sx, sy, r + 5 + Math.sin(performance.now() / 200) * 1.5, 0, 7); x.stroke(); }
     if (big && MAPN[s.id]) {
       x.font = '600 13px system-ui, sans-serif'; x.fillStyle = '#2b1d16';
       const n = pathNear(s.x, s.z), nx = X(n.px, n.pz), ny = Y(n.px, n.pz), dx = sx - nx, dy = sy - ny;
-      if (s.kind === 'term') { const first = s.z > -303; x.textAlign = first ? 'right' : 'left'; x.fillText(MAPN[s.id], sx + (first ? -9 : 9), sy + (dy < 0 ? -9 : 15)); }
+      if (s.id === 'coc' || s.id === 'library') {
+        const village = s.id === 'coc';
+        x.textAlign = village ? 'right' : 'left';
+        x.fillText(MAPN[s.id], sx + (village ? -13 : 10), sy + 3);
+      }
+      else if (s.kind === 'term') { const first = s.z > -303; x.textAlign = first ? 'right' : 'left'; x.fillText(MAPN[s.id], sx + (first ? -9 : 9), sy + (dy < 0 ? -9 : 15)); }
       else if (s.id === 'ai') { x.textAlign = 'left'; x.fillText(MAPN[s.id], X(0, -334) + 12, sy + 4); }
       else if (Math.abs(dx) > Math.abs(dy)) { x.textAlign = dx < 0 ? 'right' : 'left'; x.fillText(MAPN[s.id], sx + (dx < 0 ? -10 : 10), sy + 4); }
       else { x.textAlign = 'center'; x.fillText(MAPN[s.id], sx, sy + (dy < 0 ? -11 : 20)); }
