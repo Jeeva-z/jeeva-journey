@@ -163,7 +163,16 @@ if ($('seasonHud')) $('seasonHud').onclick = seasonNext;
   }
   x.putImageData(pixels, 0, 0);
   const tex = new T.CanvasTexture(c); tex.wrapS = tex.wrapT = T.RepeatWrapping; tex.repeat.set(75, 75); tex.colorSpace = T.SRGBColorSpace; tex.anisotropy = 8;
-  const gm = new T.Mesh(new T.PlaneGeometry(900, 900), new T.MeshToonMaterial({ map: tex, gradientMap: toonGrad }));
+  // Broad meadow patches under the fine painted grass, tinted by the season.
+  const meadow = new T.PlaneGeometry(900, 900, 90, 90);
+  const points = meadow.attributes.position, meadowColors = [];
+  for (let i = 0; i < points.count; i++) {
+    const x = points.getX(i), y = points.getY(i);
+    const patch = Math.sin(x * .092 + Math.sin(y * .06)) * Math.cos(y * .087) * .5 + .5;
+    meadowColors.push(.77 + .23 * patch, .86 + .12 * patch, .78 + .19 * (1 - patch));
+  }
+  meadow.setAttribute('color', new T.Float32BufferAttribute(meadowColors, 3));
+  const gm = new T.Mesh(meadow, new T.MeshToonMaterial({ map: tex, gradientMap: toonGrad, vertexColors: true }));
   SEASON.material = gm.material; gm.material.color.copy(SEASONS[0].color);
   gm.rotation.x = -Math.PI / 2; gm.receiveShadow = true; gm.position.set(0, 0, -140); world.add(gm);
 }
@@ -207,6 +216,7 @@ function builderHut(x, z, roofColor = 0x376b9a, trimColor = 0xe8b84a) {
   rounds.push({ x, z, r: 2.25 });
   return g;
 }
+const leafShade = new T.Color(0x325753), leafTip = new T.Color(0xdfdfa0);
 function leafyCrown(parent, radius, color, x, y, z, sx = 1, sy = 1, sz = 1) {
   const geo = new T.SphereGeometry(radius, 20, 14), pos = geo.attributes.position;
   const colors = new Float32Array(pos.count * 3), base = new T.Color(color);
@@ -214,7 +224,9 @@ function leafyCrown(parent, radius, color, x, y, z, sx = 1, sy = 1, sz = 1) {
     const px = pos.getX(i)/radius, py = pos.getY(i)/radius, pz = pos.getZ(i)/radius;
     const ripple = 1 + .065*Math.sin(px*13+pz*7)*Math.cos(py*11-pz*9);
     pos.setXYZ(i,pos.getX(i)*ripple,pos.getY(i)*ripple,pos.getZ(i)*ripple);
-    const tint = base.clone().lerp(new T.Color(0xc7d598), Math.max(0,py)*.22);
+    const leafLight = Math.max(0, py * .7 + px * .32 + pz * .18);
+    const tint = base.clone().lerp(leafShade, Math.max(0, -py) * .38)
+      .lerp(leafTip, leafLight * (.26 + .08 * Math.sin(px * 11 + pz * 8)));
     tint.multiplyScalar(.86 + (py+1)*.09); tint.toArray(colors,i*3);
   }
   geo.setAttribute('color',new T.BufferAttribute(colors,3)); geo.computeVertexNormals();
@@ -315,13 +327,20 @@ const cloudTex = (() => {
   const t = new T.CanvasTexture(c); t.colorSpace = T.SRGBColorSpace; return t;
 })();
 const clouds = [];
-for (let i = 0; i < 12; i++) { const sp = new T.Sprite(new T.SpriteMaterial({ map: cloudTex, transparent: true, depthWrite: false, fog: false, opacity: .96 })); const w = 55 + rnd() * 60; sp.scale.set(w, w * .5, 1); sp.position.set(-170 + rnd() * 340, 85 + rnd() * 55, -280 - rnd() * 60); far.add(sp); clouds.push(sp); }
+for (let i = 0; i < 12; i++) { const sp = new T.Sprite(new T.SpriteMaterial({ map: cloudTex, transparent: true, depthWrite: false, fog: false, opacity: .96 })); const w = 55 + rnd() * 60; sp.scale.set(w, w * .5, 1); sp.position.set(-170 + rnd() * 340, 85 + rnd() * 55, 80 - (i * 173 % 620) - rnd() * 35); scene.add(sp); sp.name = "Drifting cloud"; clouds.push(sp); }
 // Drifting pollen & petals
 const motes = (() => {
-  const n = 160, p = new Float32Array(n * 3); for (let i = 0; i < n; i++) { p[i * 3] = rnd() * 60 - 30; p[i * 3 + 1] = rnd() * 10; p[i * 3 + 2] = rnd() * 40 - 20; }
+  const n = 960, p = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    p[i * 3] = rnd() * 110 - 55;
+    p[i * 3 + 1] = .8 + rnd() * 4;
+    p[i * 3 + 2] = 32 - rnd() * 402;
+  }
   const g = new T.BufferGeometry(); g.setAttribute('position', new T.BufferAttribute(p, 3));
-  const pts = new T.Points(g, new T.PointsMaterial({ color: 0xfff3b0, map: glowTex(), size: .45, transparent: true, opacity: .85, depthWrite: false })); scene.add(pts); return pts;
+  const pts = new T.Points(g, new T.PointsMaterial({ color: 0xfff3b0, map: glowTex(), size: .45, transparent: true, opacity: .85, depthWrite: false })); pts.name = "Meadow motes"; scene.add(pts); return pts;
 })();
+
+const moteHomes = motes.geometry.attributes.position.array.slice();
 
 function person(o) {
   const g = new T.Group(), body = new T.Group(); g.add(body);
@@ -977,6 +996,29 @@ await wait(0);
       tree(x, z, .8 + rnd() * .7, rnd() < .3 ? 1 : 0);
     }
   }
+  // Painted blade clusters share one mesh along both verges.
+  const blades = [], bladeColors = [];
+  for (let distance = 4; distance < TOTAL - 5; distance += .75) {
+    for (const side of [-1, 1]) {
+      const phase = distance * 1.83 + side;
+      const path = pointAt(distance), offset = side * (5.8 + 2.4 * Math.sin(phase * .27) ** 2);
+      const patch = { x: path.x - path.tz * offset, z: path.z + path.tx * offset };
+      if (blocked(patch.x, patch.z)) continue;
+      for (let j = 0; j < 5; j++) {
+        const angle = phase + j * 2.4, x = patch.x + .32 * Math.cos(angle), z = patch.z + .28 * Math.sin(angle);
+        const h = .22 + .32 * Math.sin(angle * 3) ** 2;
+        blades.push(x - .055,.09,z, x + .055,.09,z, x + .15 * Math.cos(angle),h,z + .11);
+        bladeColors.push(.32,.42,.20, .32,.42,.20, .75,.78,.39);
+      }
+    }
+  }
+  const verge = new T.BufferGeometry();
+  verge.setAttribute('position', new T.Float32BufferAttribute(blades, 3));
+  verge.setAttribute('color', new T.Float32BufferAttribute(bladeColors, 3));
+  verge.computeVertexNormals();
+  const grass = new T.Mesh(verge, new T.MeshLambertMaterial({ vertexColors: true, side: T.DoubleSide }));
+  grass.receiveShadow = true;
+  world.add(grass);
   for (let s = 14, k = 0; s < TOTAL - 6; s += 21, k++) {
     const p = pointAt(s), side = k % 2 ? 1 : -1, off = side * 4.2, x = p.x - p.tz * off, z = p.z + p.tx * off;
     const g = new T.Group(); g.position.set(x, 0, z); world.add(g); cyl(g, .06, .08, 2.1, 0x5a3a22, 0, 1.05, 0, 6);
@@ -1222,7 +1264,7 @@ function envStep(dt, t, aw) {
     E.skyT = .12;
     const sky = A.sky.map((c, j) => { let m = mixHex(c, B.sky[j], f); m = mixHex(m, mixHex(gc, '#ffffff', j * .05 * day), clamp(C.gray * .85, 0, 1)); m = mixHex(m, SKY.dawn[j], aw); m = mixHex(m, SKY.day[j], ind); return m; });
     const x = skyCanvas.getContext('2d'), g = x.createLinearGradient(0, 0, 0, 256); g.addColorStop(0, sky[0]); g.addColorStop(.45, sky[1]); g.addColorStop(.8, sky[2]); g.addColorStop(1, sky[3]); x.fillStyle = g; x.fillRect(0, 0, 2, 256); skyTex.needsUpdate = true;
-    scene.fog.color.set(sky[3]);
+    scene.fog.color.set(sky[3]).lerp(new T.Color(sky[2]), .35 * (1 - ind));
     // clouds: count, darkness and colour follow the weather and the hour
     const cc = mixHex(mixHex('#2a3150', '#ffffff', day), mixHex('#27303c', '#8f98a4', day), clamp(C.cover * C.gray * 1.1, 0, 1));
     clouds.forEach((sp, j) => { const on = j < 3 + C.cover * 9; sp.visible = on; sp.material.color.set(cc); sp.material.opacity = (.35 + .6 * C.cover) * (on ? 1 : 0) * (1 - .35 * ind); });
@@ -3470,9 +3512,18 @@ function animate() {
   }
   envStep(dt, t, SPIRE.awaken);
   far.position.set(pp.x, 0, pp.z);
-  clouds.forEach((c, i) => { c.position.x += dt * (1 + i * .1); if (c.position.x > 180) c.position.x = -180; });
-  const mp = motes.geometry.attributes.position; for (let i = 0; i < mp.count; i++) { mp.array[i * 3 + 1] += Math.sin(t + i) * .004 + .004; mp.array[i * 3] += Math.sin(t * .3 + i) * .004; if (mp.array[i * 3 + 1] > 10) mp.array[i * 3 + 1] = 0; }
-  mp.needsUpdate = true; motes.position.set(pp.x, 0, pp.z);
+  clouds.forEach((cloud, i) => {
+    cloud.position.x += dt * (1 + i * .1) * (1 + ENV.cur.wind);
+    if (cloud.position.x > 520) cloud.position.x -= 1040;
+  });
+  const particles = motes.geometry.attributes.position;
+  for (let i = 0; i < particles.count; i++) {
+    const offset = i * 3, phase = i * 2.4 + t * (.65 + (i % 7) * .1);
+    particles.setXYZ(i, moteHomes[offset] + Math.sin(phase) * .95,
+      moteHomes[offset + 1] + Math.sin(phase * 1.6) * .55,
+      moteHomes[offset + 2] + Math.cos(phase * .83) * .8);
+  }
+  particles.needsUpdate = true;
   motes.visible = !player.inside;   // the drifting pollen glitters like sparkles indoors
   if (!ticker && state.mode === 'title') {
     if (!openingOrbit.reduced) openingOrbit.angle += dt * .28;
