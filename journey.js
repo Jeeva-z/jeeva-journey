@@ -1657,13 +1657,30 @@ function rampH(p) {
     if (d < 30 && !greeted) { greeted = true; toast('STUNT LANE', 'Take the curve, hit the orange kicker at speed and land it clean.'); }
     if (d > 60) greeted = false;
     arenaStep(dt, pp, t);
-    for (const R of ARENA.ramps) {
-      R.cool -= dt;
-      if (R.trig === false) continue;
-      if (R.cool <= 0 && !stunt && state.mode === 'explore' && !busy && player.veh && !player.onFoot && player.v > 4.5 && (pp.x - R.x) * R.dx + (pp.z - R.z) * R.dz > -.4 && (pp.x - R.x) * R.dx + (pp.z - R.z) * R.dz < 1.4 && Math.abs(-(pp.x - R.x) * R.dz + (pp.z - R.z) * R.dx) < R.w / 2 + .3 && Math.sin(player.heading) * R.dx + Math.cos(player.heading) * R.dz > .45) {
-        R.cool = 2.2; const vy = clamp(player.v * 1.9 * R.h / R.len * .95, 3.8, 13), kinds = R.big && vy > 8 ? ['flip', 'tabletop', 'superman', 'whip'] : ['tabletop', 'whip', 'superman', 'nohands'];
-        startStunt(kinds[Math.floor(Math.random() * kinds.length)], { vy, arena: true }); player.v = Math.max(player.v, player.veh.cfg.max * .95);
+    if (state.mode !== 'explore' || busy || player.onFoot || player.veh.type === 'iron') {
+      AR.ramp = null;
+      return;
+    }
+    if (AR.ramp) {
+      const R = AR.ramp;
+      const progress = (pp.x - R.x) * R.dx + (pp.z - R.z) * R.dz;
+      if (progress > 13.3 || d > 35) AR.ramp = null;
+      else if (progress >= 0 && !AR.launched) {
+        AR.launched = true;
+        const tricks = { trike: ['nohands', 'whip'], bike: ['tabletop', 'nohands', 'flip'], moto: ['flip', 'tabletop', 'superman', 'whip'] };
+        const choices = tricks[player.veh.type];
+        startStunt(choices[Math.floor(Math.random() * choices.length)], { vy: 6.4, arena: true });
       }
+      return;
+    }
+    for (const R of ARENA.ramps) {
+      if (!R.trig) continue;
+      const local = R.r.worldToLocal(_pv.set(pp.x, 0, pp.z));
+      const forward = Math.sin(player.heading) * R.dx + Math.cos(player.heading) * R.dz;
+      if (forward <= .45 || Math.abs(local.z) > R.w / 2 || local.x < -R.len / 2 || local.x > R.len / 2) continue;
+      AR.ramp = R;
+      AR.launched = false;
+      break;
     }
   });
 }
@@ -2480,10 +2497,10 @@ function driftFx(dt, len, dh) {
   for (const D of DUST) { if (!D.s.visible) continue; D.t += dt; const k = D.t / D.life; D.s.position.y += dt * .5; D.s.scale.setScalar(.4 + k * 1.6); D.s.material.opacity = .5 * (1 - k); if (k >= 1) D.s.visible = false; }
   // stunts
   stuntCool -= dt;
-  if (isMoto && !stunt && state.mode === 'explore' && !busy && stuntCool <= 0 && player.v > V.cfg.max * .65 && Math.abs(slip) < .12 && Math.random() < dt * .35) startStunt(Math.random() < .6 ? 'wheelie' : 'nohands');
+  if (isMoto && !AR.ramp && !stunt && state.mode === 'explore' && !busy && stuntCool <= 0 && player.v > V.cfg.max * .65 && Math.abs(slip) < .12 && Math.random() < dt * .35) startStunt(Math.random() < .6 ? 'wheelie' : 'nohands');
   player.g.rotation.order = 'YXZ'; let pitch = 0, roll = 0, yaw = 0;
   const rh = state.mode === 'explore' || state.mode === 'cut' ? rampH(p) : 0; let yy = .07 + rh;
-  if (isMoto && !stunt && rh > .17) { const f = .8, h2 = rampH({ x: p.x + Math.sin(player.heading) * f, z: p.z + Math.cos(player.heading) * f }); pitch = -Math.atan((h2 - rh) / f); }
+  if (!player.onFoot && V.type !== 'iron' && !stunt && rh > .17) { const f = .8, h2 = rampH({ x: p.x + Math.sin(player.heading) * f, z: p.z + Math.cos(player.heading) * f }); pitch = -Math.atan((h2 - rh) / f); }
   if (stunt) {
     stunt.t += dt; const k = Math.min(1, stunt.t / stunt.dur), env = sstep(0, .2, k) * sstep(1, .8, k), bell = Math.sin(Math.PI * k);
     if (stunt.air) {
@@ -2502,7 +2519,7 @@ function driftFx(dt, len, dh) {
       if (k >= 1) { stunt = null; $('stuntTxt').hidden = true; }
     }
   }
-  if (isMoto || player.g.rotation.x) { player.g.rotation.x = stunt && stunt.type === 'flip' ? pitch : lerp(player.g.rotation.x, pitch, Math.min(1, dt * 14)); player.g.position.y = yy; V.d.g.rotation.z += roll; V.d.g.rotation.y = lerp(V.d.g.rotation.y || 0, yaw, Math.min(1, dt * 12)); }
+  if ((!player.onFoot && V.type !== 'iron') || player.g.rotation.x) { player.g.rotation.x = stunt && stunt.type === 'flip' ? pitch : lerp(player.g.rotation.x, pitch, Math.min(1, dt * 14)); player.g.position.y = yy; V.d.g.rotation.z += roll; V.d.g.rotation.y = lerp(V.d.g.rotation.y || 0, yaw, Math.min(1, dt * 12)); }
 }
 function lifeStep(t, dt) {
   const pp = player.g.position;
@@ -3197,12 +3214,16 @@ async function gotoLocation(id) {
   away = null;
   toggleGoto(false); busy = true; state.mode = 'cut';
   if (AR.active) arenaCancel(null);
-  stunt = null; boostT = 0; $('stuntTxt').hidden = true;
+  AR.ramp = null; stunt = null; boostT = 0; $('stuntTxt').hidden = true;
   try {
     await portal(() => {
       if (parkedBike) { world.remove(parkedBike.g); parkedBike = null; }
       player.inside = false; player.onFoot = false;
-      setVehicle(VBYRANK[save.vrank]); hideVehicle(false);
+      if (id === 'stunt' && vehicle !== 'iron') {
+        player.manualVeh = true;
+        setVehicle(vehicle);
+      } else setVehicle(VBYRANK[save.vrank]);
+      hideVehicle(false);
       player.g.position.set(destination.x, .07, destination.z);
       player.heading = id === 'stunt' ? destination.ry : Math.PI;
       player.vdir = player.heading; player.v = 0; player.lean = 0; player.slip = 0;
@@ -3426,6 +3447,11 @@ function movePlayer(dt) {
   let slip = Math.atan2(Math.sin(player.heading - player.vdir), Math.cos(player.heading - player.vdir));
   if (isMoto) { const sp = Math.min(1, player.v / cfg.max), grip = 7 + 6 * (1 - sp) + (len < .1 ? 3 : 0); player.vdir += slip * Math.min(1, dt * grip);
     { const ms = .4, sl = Math.atan2(Math.sin(player.heading - player.vdir), Math.cos(player.heading - player.vdir)); if (Math.abs(sl) > ms) player.vdir = player.heading - Math.sign(sl) * ms; } /* never slide more than ~23 degrees */  slip = Math.atan2(Math.sin(player.heading - player.vdir), Math.cos(player.heading - player.vdir)); player.v *= 1 - Math.min(.5, Math.abs(slip)) * dt * .35; }
+  if (AR.ramp && drive && !player.onFoot && V.type !== 'iron') {
+    player.heading = player.vdir = Math.atan2(AR.ramp.dx, AR.ramp.dz);
+    player.v = 12;
+    dh = slip = 0;
+  }
   player.slip = slip;
   const px = p.x, pz = p.z; p.x += Math.sin(player.vdir) * player.v * dt; p.z += Math.cos(player.vdir) * player.v * dt;
   const R = .5 * player.g.scale.x + .3;
@@ -3473,7 +3499,7 @@ function animate() {
   player.updateFace(t);
   if (state.mode === 'chess') { ChessGame.update(dt); draw(ChessGame.scene, ChessGame.camera); return; }
   if (dlg && !dlg.full) { dlg.pos += dt * 55; const l = dlg.q[dlg.i]; const n = Math.floor(dlg.pos); $('dlgText').textContent = l.text.slice(0, n); if (n % 3 === 0) beep(300 + (n % 5) * 20, .02, 'square', .012); if (n >= l.text.length) finishText(); }
-  if (state.mode === 'explore' && player.veh && !away) { const n = pathNear(player.g.position.x, player.g.position.z); if (n.d < 45 && n.s > (save.reach || 0)) { save.reach = n.s; const v = stageVeh(); if (v !== player.veh.type && !player.manualVeh) { swapVehicle(v); persist(); } } }
+  if (state.mode === 'explore' && player.veh && !away) { const n = pathNear(player.g.position.x, player.g.position.z); if (n.d < 45 && n.s > (save.reach || 0)) { save.reach = n.s; const v = stageVeh(); if (v !== player.veh.type && !player.manualVeh && !AR.ramp && !AR.active) { swapVehicle(v); persist(); } } }
   const sc = lerp(player.g.scale.x, player.inside ? Math.max(targetScale, 1) : targetScale, 1 - Math.exp(-dt * 8)); player.g.scale.setScalar(sc);
   if (ticker) ticker(dt); else movePlayer(dt);
   const pp = player.g.position;
