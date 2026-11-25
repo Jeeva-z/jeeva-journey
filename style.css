@@ -324,4 +324,3 @@ body.flight-active #flightOverlay{display:block}
 #cocStats .clashArmy img{background:linear-gradient(#c5af87,#948467)}
 #cocStats .clashClan{background:#e3d7be;padding:8px 12px;border-radius:8px}
 @media(max-width:540px){#cocStats .clashRecord{grid-template-columns:65px 1fr}#cocStats .clashHallPortrait{height:75px;grid-row:auto}#cocStats .clashRecord strong{align-self:center}#cocStats .clashRecord dl{grid-column:1/-1}#cocStats .clashService dl{grid-template-columns:1fr 1fr}#cocStats .clashHeroes ul{grid-template-columns:repeat(auto-fill,minmax(64px,1fr))}}
-
