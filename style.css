@@ -325,3 +325,69 @@ body.flight-active #flightOverlay{display:block}
 #cocStats .clashClan{background:#e3d7be;padding:8px 12px;border-radius:8px}
 @media(max-width:540px){#cocStats .clashRecord{grid-template-columns:65px 1fr}#cocStats .clashHallPortrait{height:75px;grid-row:auto}#cocStats .clashRecord strong{align-self:center}#cocStats .clashRecord dl{grid-column:1/-1}#cocStats .clashService dl{grid-template-columns:1fr 1fr}#cocStats .clashHeroes ul{grid-template-columns:repeat(auto-fill,minmax(64px,1fr))}}
 
+#gramophone{width:min(360px,90vw);padding:24px;border:3px solid #5e422e;border-radius:14px;background:#fff1cf;color:#3a291c;box-shadow:0 12px 48px #21181077}
+#gramophone::backdrop{background:#1c1610aa}
+#gramophone form{float:right}
+#gramophone h2{margin:0;font-family:var(--serif)}
+#gramTrack{overflow-wrap:anywhere}
+#gramophone button{background:#785136;color:white;border:0;border-radius:6px;padding:8px 12px;cursor:pointer}
+#gramophone button:disabled{opacity:.5}
+.gramControls{display:flex;gap:8px;margin:16px 0}
+#gramophone label{display:block;font-weight:bold;margin-bottom:5px}
+#gramFiles{max-width:100%}
+
+#musicDeck {
+  position:absolute;left:max(12px,env(safe-area-inset-left));top:50%;transform:translateY(-50%);
+  display:flex;align-items:center;gap:6px;padding:5px 9px 5px 5px;pointer-events:auto;
+  border:1px solid #cab07c;border-radius:30px 12px 12px 30px;background:linear-gradient(140deg,#43362c,#272321);
+  box-shadow:inset 0 1px #fff3,0 3px 9px #33231055;color:#fff1ce;
+}
+#musicDeck button {cursor:pointer;color:inherit;border:0;background:transparent}
+#musicDeck button:focus-visible {outline:2px solid #ffdc86;outline-offset:1px}
+#musicDisc {padding:3px;width:45px;height:45px}
+#musicDisc i {display:block;width:100%;height:100%;border-radius:50%;border:1px solid #eee4c6;
+  background:radial-gradient(circle,#322d29 0 9%,#ddc48f 10% 16%,transparent 17%),
+    repeating-radial-gradient(circle,transparent 0 3px,#fff3 4px,transparent 5px),
+    conic-gradient(#abbcc0,#f4e5b5,#a5baca,#ab91ae,#dedfcc,#abbcc0);
+  animation:musicSpin 4s linear infinite paused}
+#musicDeck.playing #musicDisc i {animation-play-state:running}
+@keyframes musicSpin {to{transform:rotate(360deg)}}
+.musicStrip {display:grid;grid-template-columns:32px 32px;text-align:center}
+#musicTitle {grid-column:span 2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 10px/1.4 system-ui}
+.musicStrip button {height:28px;font-size:16px;border-radius:6px}
+.musicStrip button:hover:enabled {background:#ffffff20}
+.musicStrip button:disabled {opacity:.38;cursor:default}
+@media(prefers-reduced-motion:reduce){#musicDeck #musicDisc i{animation:none}}
+
+#gramophone{max-height:90dvh;overflow:auto}
+#gramSource{width:100%;margin:6px 0 12px;padding:8px;color:#3a291c;background:#fff8e7;border:1px solid #a08055;border-radius:6px;font:inherit}
+#gramSpotify iframe{display:block;border:0;border-radius:12px;width:100%}
+#gramSpotifyLink{display:inline-block;margin-top:8px;color:#58412c}
+
+#gramophone {
+  --gram-pad:clamp(14px,4vw,22px);
+  width:min(405px,93vw);padding:0 var(--gram-pad) var(--gram-pad);
+  border:2px solid #92764b;border-radius:18px;
+  background:linear-gradient(135deg,#fff7e5,#eee0c3);
+  box-shadow:0 20px 70px #1e140cb3,inset 0 0 0 3px #fff8;
+}
+.gramHeader {
+  position:relative;isolation:isolate;overflow:hidden;display:flex;align-items:center;
+  justify-content:space-between;min-height:94px;margin:0 calc(0px - var(--gram-pad)) 18px;
+  padding:14px var(--gram-pad);color:#ffeac2;border-bottom:3px solid #bf985f;
+  background:repeating-linear-gradient(3deg,#ffffff05 0 1px,transparent 1px 6px),linear-gradient(105deg,#37251f,#684832);
+}
+.gramVinyl {
+  position:absolute;z-index:-1;right:-12px;top:-50px;width:165px;aspect-ratio:1;border-radius:50%;
+  background:radial-gradient(circle,#251d1a 0 3%,#a86e42 3% 20%,transparent 21%),
+    repeating-radial-gradient(circle,transparent 0 3px,#fff1 3.5px 4px),
+    conic-gradient(#292726,#585450,#211f1e,#484642,#221f1d,#292726);
+  box-shadow:0 6px 15px #2117;
+}
+#gramophone .gramHeader h2 {font:700 clamp(25px,5vw,34px)/1.1 var(--serif);text-shadow:0 2px 3px #271a10}
+#gramophone .gramHeader button {width:40px;height:40px;border-radius:50%;background:#291e19dd;border:1px solid #d7bb8b;color:#fff4dc;font-size:22px;line-height:1;padding:0}
+#gramSource{padding:10px 12px;border-color:#b69c73}
+#gramSpotifyLink{font-weight:700;padding:5px 0}
+#musicDeck {box-shadow:inset 0 0 0 2px #57463a,0 3px 0 #382b24,0 6px 14px #25180e55}
+#musicDisc i {box-shadow:0 2px 5px #130e09aa,inset 0 0 0 2px #fff5}
+#musicTitle {color:#f5deb1;font-size:11px}
