@@ -109,6 +109,13 @@
   <div class="flightCallout">W A S D <span>FLIGHT VECTOR</span><b>SHIFT</b> <span>REPULSOR BOOST</span></div>
 </div>
 <div id="hud" hidden>
+  <div id="musicDeck" role="group" aria-label="Music controls">
+    <button id="musicDisc" type="button" aria-label="Open gramophone playlist" title="Open playlist"><i aria-hidden="true"></i></button>
+    <div class="musicStrip"><span id="musicTitle">Choose songs</span>
+      <button id="musicToggle" type="button" aria-label="Play" title="Play" disabled>▶</button>
+      <button id="musicForward" type="button" aria-label="Next song" title="Next song" disabled>⏭</button>
+    </div>
+  </div>
   <canvas id="miniMap" width="180" height="180" title="Map (M)"></canvas>
   <div id="vehBar" hidden><button type="button" data-v="trike">Tricycle <i>&#128690;</i></button><button type="button" data-v="bike">Cycle <i>&#128693;</i></button><button type="button" data-v="moto">Bike <i>&#127949;</i></button><button type="button" data-v="iron">Iron Man <i>&#128640;</i></button><span id="flyHint" hidden><button type="button" data-k="KeyR" title="Go higher (R)">&#9650; Up <kbd>R</kbd></button><button type="button" data-k="KeyF" title="Go lower / land (F)">&#9660; Land <kbd>F</kbd></button><button type="button" data-k="ShiftLeft" title="Boost (Shift)">&#128293; Boost <kbd>Shift</kbd></button><button type="button" id="flyCamBtn" title="Change camera (V)">&#127909; View <kbd>V</kbd></button></span></div>
   <nav id="tabs"><a href="#" id="tabMap">Map <i>&#128506;</i></a><a href="#" id="tabResume">Resume <i>&#128424;</i></a><button id="gotoBtn" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="gotoWheel">Go to <span aria-hidden="true">➤</span></button></nav>
@@ -169,6 +176,27 @@
 
 <div id="chessTalk"></div>
 
+<dialog id="gramophone" aria-labelledby="gramTitle">
+  <header class="gramHeader"><i class="gramVinyl" aria-hidden="true"></i>
+    <h2 id="gramTitle">Gramophone</h2>
+    <form method="dialog"><button aria-label="Close music player">×</button></form>
+  </header>
+  <label for="gramSource">Playlist</label>
+  <select id="gramSource">
+    <option value="595UvcxccTCCxmAl0nIMP2">Beat</option>
+    <option value="39NkcA2zO9Kc641cA41t46">Lala’s</option>
+    <option value="31PopWzeztGrPC65xUkog5">Pleasant</option>
+    <option value="0wiqn41AkGyEobBo2NGxwO">English</option>
+    <option value="local">Local audio files</option>
+  </select>
+  <section id="gramSpotify"><div id="gramEmbed"></div><a id="gramSpotifyLink" target="_blank" rel="noopener noreferrer">Open in Spotify ↗</a></section>
+  <section id="gramLocal" hidden>
+  <p id="gramTrack" aria-live="polite">Choose songs to start your playlist.</p>
+  <div class="gramControls"><button id="gramPrev" disabled>Previous</button><button id="gramPlay" disabled>Play</button><button id="gramNext" disabled>Next</button></div>
+  <label for="gramFiles">Choose audio files</label>
+  <input id="gramFiles" type="file" accept="audio/*" multiple>
+  </section>
+</dialog>
 <div id="folio" hidden>
   <div class="folioWrap">
     <div class="folioToolbar"><strong>Clash of Clans</strong><button id="folioClose" type="button" aria-label="Close">×</button></div>

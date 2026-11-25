@@ -655,6 +655,59 @@ landmark('library', -38, -169, { title: 'LIBRARY', sub: 'Jeeva’s bookshelf', l
   const st = ringAt(x, entranceZ, 0xf3bd4f);
   STN.push({ id: 'coc', x, z: entranceZ, label: 'Inspect · Clash of Clans profile', kind: 'folio', ...st });
 }
+// Brass horn and shellac record outside the reading room.
+const gramAudio = new Audio();
+{
+  const library = PORT.find(place => place.id === 'library');
+  const x = library.x - 7, z = library.z + 2;
+  const cabinet = new T.Group();
+  cabinet.position.set(x, 0, z);
+  world.add(cabinet);
+  box(cabinet, 2, 1.6, 1.65, 0x73432a, 0, .85, 0);
+  box(cabinet, 2.15, .18, 1.8, 0xbd8653, 0, 1.72, 0);
+  const disc = cyl(cabinet, .66, .66, .06, 0x252024, -.2, 1.85, .03, 48);
+  cyl(disc, .17, .17, .02, 0xaf5840, 0, .045, 0, 24);
+  box(disc, .07, .014, .04, 0xf4d49a, .095, .06, 0);
+  cyl(cabinet, .09, .12, .91, 0xc19b50, .72, 2.2, -.52);
+  // Flute the bell into twelve petals. The raised seams catch the scene light.
+  const profile = [[.09,0],[.11,.24],[.18,.47],[.34,.71],[.57,.92],[.83,1.07],[.99,1.16]];
+  const horn = new T.LatheGeometry(profile.map(([r,h]) => new T.Vector2(r,h)), 96);
+  const vertices = horn.attributes.position, colors = [];
+  const brass = new T.Color(), lip = [];
+  for (let i = 0; i < vertices.count; i++) {
+    const row = i % profile.length, angle = Math.floor(i / profile.length) * Math.PI / 48;
+    const flare = row / (profile.length - 1), petal = (1 - Math.cos(angle * 12)) / 2;
+    const radius = profile[row][0] * (1 + .09 * petal * flare);
+    const y = profile[row][1] + .12 * petal * flare ** 3;
+    const point = new T.Vector3(radius * Math.sin(angle), y, radius * Math.cos(angle));
+    vertices.setXYZ(i, point.x, point.y, point.z);
+    brass.setHSL(.092 + .018 * flare,.65,.20 + .28 * flare + .10 * petal);
+    colors.push(brass.r, brass.g, brass.b);
+    if (row === profile.length - 1 && lip.length < 96) lip.push(point);
+  }
+  horn.setAttribute('color', new T.Float32BufferAttribute(colors,3));
+  horn.computeVertexNormals();
+  const bell = add(cabinet, horn, new T.MeshStandardMaterial({
+    vertexColors:true, side:T.DoubleSide, metalness:.36, roughness:.32
+  }), .72, 2.62, -.52);
+  bell.rotation.z = .68; bell.rotation.x = .6;
+  add(bell, new T.TubeGeometry(new T.CatmullRomCurve3(lip,true),96,.026,6,true),
+    mat(0xffdc8b),0,0,0);
+  box(cabinet,2.07,.07,1.74,0xc39151,0,.19,0);
+  for (const px of [-.83,.83]) for (const pz of [-.66,.66])
+    cyl(cabinet,.14,.18,.16,0x583920,px,.08,pz,8);
+  const arm = new T.CatmullRomCurve3([
+    new T.Vector3(.7,2.16,-.48), new T.Vector3(.51,2.17,-.25),
+    new T.Vector3(.27,2.04,.14), new T.Vector3(.15,1.94,.19)
+  ]);
+  add(cabinet,new T.TubeGeometry(arm,18,.043,8,false),mat(0xebc779),0,0,0);
+  signBoard(cabinet, 'GRAMOPHONE', 1.82, .48, 0, 1.15, .86);
+  rounds.push({ x, z, r: 1 });
+  const doorZ = library.door[1];
+  STN.push({ id:'gramophone', kind:'music', x, z:doorZ, label:'Listen · Gramophone', ...ringAt(x, doorZ) });
+  globalThis.PREAMB.push(() => { if ($('musicDeck').classList.contains('playing')) disc.rotation.y = -performance.now() * .004; });
+}
+
 // Stepping stones lead from the college road into the library clearing.
 for (let x = -36; x <= -10; x += 2) box(world, 1.3, .06, 1.1, 0xcdbb98, x, .08, -160.6, false);
 landmark('ach', 36, -168, { title: 'HALL OF FAME', sub: 'BIT Hackathon', label: 'Hall of Fame · BIT Hackathon', wall: 0xf3e2b8, roof: 0xc4573a, w: 8, d: 6,
@@ -2838,7 +2891,115 @@ async function runSpar(R, opp) {
   } else await say([A(W, conor ? (r.lost ? 'Told you. Precision beats power. Go practise.' : 'A draw? Cute. I will take it.') : (r.lost ? 'Stay down, little boy. Boxing is not a college exam.' : 'Hmph. Draw? I will take it.')), A(R, r.lost ? 'You dropped your hands. Show your open palm when his glove turns red, then counter!' : 'Close, thambi. Land the clean ones and block when his glove turns red. Again!')]);
 }
 
+const gramDialog = $('gramophone');
+let gramTracks = [], gramIndex = 0;
+const source = $('gramSource');
+let spotifyPlayer, spotifyLoading = false, spotifyPaused = true;
+const spotifyURI = () => 'spotify:playlist:' + source.value;
+function loadSpotify() {
+  if (spotifyPlayer || spotifyLoading || source.value === 'local') return;
+  spotifyLoading = true;
+  window.onSpotifyIframeApiReady = api => {
+    api.createController($('gramEmbed'), {
+      uri: source.value === 'local' ? 'spotify:playlist:' + source.options[0].value : spotifyURI(),
+      width: '100%', height: 352
+    }, controller => {
+      spotifyPlayer = controller;
+      controller.addListener('playback_update', event => {
+        spotifyPaused = event.data.isPaused;
+        updateGramControls();
+      });
+      if (source.value !== 'local') controller.loadUri(spotifyURI());
+      updateGramControls();
+    });
+  };
+  const script = document.createElement('script');
+  script.src = 'https://open.spotify.com/embed/iframe-api/v1';
+  script.onerror = () => { spotifyLoading = false; script.remove(); };
+  document.head.appendChild(script);
+}
+source.onchange = () => {
+  gramAudio.pause();
+  spotifyPlayer?.pause();
+  spotifyPaused = true;
+  if (source.value !== 'local') {
+    if (spotifyPlayer) spotifyPlayer.loadUri(spotifyURI());
+    else loadSpotify();
+  }
+  updateGramControls();
+};
+function updateGramControls() {
+  const local = source.value === 'local';
+  const paused = local ? gramAudio.paused : spotifyPaused;
+  const action = paused ? 'Play' : 'Pause';
+  $('gramLocal').hidden = !local;
+  $('gramSpotify').hidden = local;
+  if (!local) $('gramSpotifyLink').href = 'https://open.spotify.com/playlist/' + source.value;
+  $('gramPlay').textContent = gramAudio.paused ? 'Play' : 'Pause';
+  const toggle = $('musicToggle');
+  toggle.textContent = paused ? '▶' : 'Ⅱ';
+  toggle.title = action;
+  toggle.setAttribute('aria-label', action);
+  toggle.disabled = local && !gramTracks.length;
+  const forward = $('musicForward');
+  forward.disabled = local && gramTracks.length < 2;
+  forward.title = local ? 'Next song' : 'Choose next song in Spotify';
+  forward.setAttribute('aria-label', forward.title);
+  $('musicDeck').classList.toggle('playing', !paused);
+  $('musicTitle').textContent = local ? gramTracks[gramIndex]?.title || 'Choose songs' : source.selectedOptions[0].text;
+  $('gramPlay').disabled = !gramTracks.length;
+  $('gramPrev').disabled = $('gramNext').disabled = gramTracks.length < 2;
+}
+function playGramTrack() {
+  gramAudio.play().catch(error => {
+    if (error.name !== 'AbortError') $('gramTrack').textContent = 'This song could not be played.';
+    updateGramControls();
+  });
+}
+function selectGramTrack(index, play) {
+  gramIndex = (index + gramTracks.length) % gramTracks.length;
+  const track = gramTracks[gramIndex];
+  gramAudio.src = track.url;
+  $('gramTrack').textContent = track.title;
+  updateGramControls();
+  if (play) playGramTrack();
+}
+$('gramFiles').onchange = event => {
+  const files = Array.from(event.target.files);
+  if (!files.length) return;
+  gramAudio.pause();
+  gramTracks.forEach(track => URL.revokeObjectURL(track.url));
+  gramTracks = files.map(file => ({title:file.name.replace(/\.[^.]+$/, ''), url:URL.createObjectURL(file)}));
+  selectGramTrack(0, false);
+};
+$('gramPlay').onclick = () => gramAudio.paused ? playGramTrack() : gramAudio.pause();
+$('gramNext').onclick = () => selectGramTrack(gramIndex + 1, true);
+$('gramPrev').onclick = () => selectGramTrack(gramIndex - 1, true);
+$('musicToggle').onclick = () => {
+  if (source.value === 'local') $('gramPlay').click();
+  else if (spotifyPlayer) spotifyPlayer.togglePlay();
+  else openGramophone();
+};
+$('musicForward').onclick = () => source.value === 'local' ? $('gramNext').click() : openGramophone();
+updateGramControls();
+function openGramophone() {
+  if (state.mode !== 'explore' || busy) return;
+  keys.clear();
+  state.mode = 'music';
+  gramDialog.showModal();
+  loadSpotify();
+}
+$('musicDisc').onclick = openGramophone;
+$('musicDeck').addEventListener('keydown', event => {
+  if (event.code === 'Space' || event.code === 'Enter') event.stopPropagation();
+});
+gramAudio.onended = () => selectGramTrack(gramIndex + 1, true);
+gramAudio.onplay = gramAudio.onpause = updateGramControls;
+gramDialog.onclose = () => { state.mode = 'explore'; keys.clear(); };
+gramDialog.addEventListener('keydown', event => event.stopPropagation());
+
 async function interactStation(s) {
+  if (s.kind === 'music') { openGramophone(); return; }
   if (s.kind === 'side') { await runRayappan(); return; }
   if (s.kind === 'hologram') { openFolio('portfolio'); return; }
   if (s.kind === 'portfolio' || s.kind === 'project') { if (s.url) { window.open(s.url, '_blank', 'noopener,noreferrer'); } else toast('Link coming soon', 'This link is not available yet.'); return; }
