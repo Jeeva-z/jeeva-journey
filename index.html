@@ -91,16 +91,29 @@
 @media (max-width:700px){#bxCam{width:120px}#bxCam.big{width:170px}#boxHud .bxHelp{display:none}#bxCoach{top:70px}}
 #envHud,#seasonHud{position:absolute;left:16px;bottom:16px;padding:7px 14px;border-radius:999px;border:2px solid #a77a4a77;background:var(--glass,#fdf6e3);color:#3b2a22;font:700 13px system-ui,sans-serif;pointer-events:auto;cursor:pointer;box-shadow:0 4px 14px #3b2a2230}
 #flash.bolt{animation:boltgo .7s ease-out}@keyframes boltgo{0%{opacity:.7}10%{opacity:.05}22%{opacity:.6}100%{opacity:0}}
-/* The first visible frame is the scene's sky, with no loading overlay. */
-#game{background:linear-gradient(#5798d2,#a8d3ec 65%,#edf1df);overflow:hidden}
-#game:before{content:'';position:absolute;inset:-35%;background:radial-gradient(ellipse at 20% 40%,#ffffff80,transparent 16%),radial-gradient(ellipse at 75% 30%,#ffffff70,transparent 18%),radial-gradient(ellipse at 65% 70%,#ffffff55,transparent 20%);animation:skyOrbit 24s ease-in-out infinite alternate;pointer-events:none;will-change:transform}
-#game canvas{position:relative;opacity:0;transition:opacity .8s ease}.scene-ready #game canvas{opacity:1}
-@keyframes skyOrbit{from{transform:rotate(-9deg) scale(1.05)}to{transform:rotate(9deg) scale(1.16)}}
-@media(prefers-reduced-motion:reduce){#game:before{animation:none}#game canvas{transition:none}}
+#game{background:linear-gradient(#85bbdf,#dbeef7);overflow:hidden}
+#game canvas{position:relative;opacity:0;transition:opacity .48s ease}
+.scene-ready #game canvas{opacity:1}
+#title.entering{opacity:0;pointer-events:none;transition:opacity .42s ease}
+#arrivalClouds{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:55;visibility:hidden;opacity:0}
+.arriving #arrivalClouds{visibility:visible;opacity:1;background:radial-gradient(ellipse at center,#c6edf433,#9dc8dddb 82%);transition:opacity .32s}
+#arrivalClouds i{position:absolute;inset:-22%;background:
+  url("assets/cloud-0.webp?v=2") left 0 top 5% / 83vw auto no-repeat,
+  url("assets/cloud-1.webp?v=2") right 0 bottom 2% / 90vw auto no-repeat}
+#arrivalClouds i::before{content:"";position:absolute;inset:0;background:
+  url("assets/cloud-2.webp?v=2") right 4% top 6% / 49vw auto no-repeat,
+  url("assets/cloud-0.webp?v=2") left 2% bottom 10% / 58vw auto no-repeat}
+.arriving #arrivalClouds i{animation:arrivalSwirl 8s ease-in-out infinite alternate}
+.arriving #arrivalClouds i::before{animation:arrivalSwirl 11s ease-in-out infinite alternate-reverse}
+.arriving.scene-ready #arrivalClouds{opacity:0;transition:opacity .8s ease-out}
+@keyframes arrivalSwirl{from{transform:rotate(-12deg) scale(1)}to{transform:rotate(16deg) scale(1.25)}}
+@media(prefers-reduced-motion:reduce){#arrivalClouds{display:none}}
+@media(prefers-reduced-motion:reduce){#title.entering,#game canvas{transition:none}}
 </style>
 </head>
-<body>
+<body class="arriving">
 <div id="game"></div>
+<div id="arrivalClouds" aria-hidden="true"><i></i></div>
 <div id="flightOverlay" aria-hidden="true">
   <div class="flightVignette"></div><div class="flightScan"></div>
   <div class="flightReadout flightLeft"><small>STARK INDUSTRIES · FLIGHT SYSTEM</small><strong>MARK <b>III</b></strong><span>ARC REACTOR <i>ONLINE</i></span><div class="arcMeter"><i id="flightArc"></i></div></div>
@@ -227,7 +240,7 @@
   </div>
 </div>
 
-<div id="title">
+<div id="title" hidden>
   <div class="titlebox">
     <img id="titlePhoto" src="assets/me.jpg" alt="" onerror="this.remove()">
     <p class="eyebrow">Jeeva S U · a life journey</p>
@@ -271,31 +284,11 @@
 <div id="snap" hidden><img id="snapImg" alt=""><b id="snapCap"></b></div>
 <div id="fade"></div>
 
-<script>
-// Keep the title interactive: world construction waits for an accepted click.
-window.__arrivalRequested = new Promise(resolve => { window.__requestArrival = resolve; });
-try {
-  const saved = JSON.parse(localStorage.getItem('gully-journey-v1'));
-  if (saved && (saved.done?.length || saved.visited?.length)) document.getElementById('btnCont').hidden = false;
-} catch (_) { }
-for (const [id, fresh] of [['btnNew', true], ['btnCont', false]]) {
-  document.getElementById(id).addEventListener('click', event => {
-    if (window.__worldReady) return;
-    event.stopImmediatePropagation();
-    if (window.__pendingArrival) return;
-    window.__pendingArrival = { fresh };
-    document.getElementById('title').hidden = true;
-    document.getElementById('btnNew').disabled = true;
-    document.getElementById('btnCont').disabled = true;
-    window.__requestArrival();
-  }, true);
-}
-</script>
 <script defer src="vendor/three.min.js"></script>
 <script defer src="chess.js?v=1793300000"></script>
 <script defer src="cricket.js?v=1794700009"></script>
 <script defer src="boxing.js?v=1794800003"></script>
 <script defer src="post.js?v=1794800100"></script>
-<script defer src="journey.js?v=1794800106"></script>
+<script defer src="journey.js?v=1794800112"></script>
 </body>
 </html>
